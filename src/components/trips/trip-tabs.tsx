@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BalanceCards } from "@/components/trips/balance-cards";
 import { SettlementView } from "@/components/trips/settlement-view";
@@ -81,9 +81,30 @@ export function TripTabs({
   const myMembership = memberRows.find((m) => m.id === currentUserMemberId) ?? null;
   const tabs = isCaptain ? CAPTAIN_TABS : MEMBER_TABS;
 
+  // Lets an Overview quick action ("Add expense", "Record payment") jump
+  // straight to the right tab AND scroll/focus the form in one tap,
+  // instead of landing on a tab and making the golfer hunt for it.
+  const expenseFormRef = useRef<HTMLDivElement>(null);
+  const paymentFormRef = useRef<HTMLDivElement>(null);
+  const [pendingFocus, setPendingFocus] = useState<"expense" | "payment" | null>(null);
+
   useEffect(() => {
     setReviewedBalances(isStepDoneLocally(trip.id, "reviewedBalances"));
   }, [trip.id]);
+
+  useEffect(() => {
+    if (!pendingFocus) return;
+    const target = pendingFocus === "expense" ? expenseFormRef.current : paymentFormRef.current;
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.querySelector<HTMLElement>("input, select, textarea")?.focus({ preventScroll: true });
+    setPendingFocus(null);
+  }, [tab, pendingFocus]);
+
+  function goToQuickAction(destination: Tab, focus: "expense" | "payment" | null) {
+    setTab(destination);
+    setPendingFocus(focus);
+  }
 
   function handleReviewBalances() {
     markStepDone(trip.id, "reviewedBalances");
@@ -140,26 +161,45 @@ export function TripTabs({
 
   return (
     <div>
-      <div className="flex w-fit flex-wrap gap-1 rounded-full bg-cream-200 p-1">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={
-              tab === t
-                ? "rounded-full bg-white px-4 py-1.5 text-sm font-medium text-forest-900 shadow-card"
-                : "rounded-full px-4 py-1.5 text-sm text-charcoal-500 transition-colors hover:text-charcoal"
-            }
-          >
-            {t}
-          </button>
-        ))}
+      {/* -mx-5 px-5 lets the pill row bleed to the screen edge and scroll
+          horizontally on a phone (7 tabs don't fit in 320px) without the
+          page itself gaining horizontal scroll. */}
+      <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+        <div className="flex w-fit gap-1 rounded-full bg-cream-200 p-1">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={
+                tab === t
+                  ? "shrink-0 rounded-full bg-white px-4 py-3 text-sm font-medium text-forest-900 shadow-card sm:py-1.5"
+                  : "shrink-0 rounded-full px-4 py-3 text-sm text-charcoal-500 transition-colors hover:text-charcoal sm:py-1.5"
+              }
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6">
         {tab === "Overview" && (
           <div className="space-y-6">
+            <MyBalanceHero
+              balance={balances.find((b) => b.memberId === currentUserMemberId) ?? null}
+              onAddExpense={
+                isCaptain && activeMembers.length > 0
+                  ? () => goToQuickAction("Expenses", "expense")
+                  : undefined
+              }
+              onRecordPayment={
+                myMembership && myMembership.status === "active"
+                  ? () => goToQuickAction("Payments", "payment")
+                  : undefined
+              }
+              onViewPayments={() => goToQuickAction("Payments", null)}
+            />
             {isCaptain && <OnboardingChecklist tripId={trip.id} steps={onboardingSteps} />}
             <OverviewTab
               overview={overview}
@@ -226,14 +266,16 @@ export function TripTabs({
             </Card>
 
             {isCaptain && activeMembers.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add an expense</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ExpenseForm tripId={trip.id} members={activeMembers} />
-                </CardContent>
-              </Card>
+              <div ref={expenseFormRef}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Add an expense</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ExpenseForm tripId={trip.id} members={activeMembers} />
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         )}
@@ -258,18 +300,20 @@ export function TripTabs({
             </Card>
 
             {myMembership && myMembership.status === "active" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Report a payment</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PaymentForm
-                    tripId={trip.id}
-                    payerMemberId={myMembership.id}
-                    recipients={activeMembers.filter((m) => m.id !== myMembership.id)}
-                  />
-                </CardContent>
-              </Card>
+              <div ref={paymentFormRef}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Report a payment</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PaymentForm
+                      tripId={trip.id}
+                      payerMemberId={myMembership.id}
+                      recipients={activeMembers.filter((m) => m.id !== myMembership.id)}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         )}
@@ -341,6 +385,114 @@ export function TripTabs({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The first thing a golfer sees on Overview — their own balance, in the
+ * biggest text on the page, plus the three actions the whole app is
+ * built around. Everything below this (trip-wide stats, settlement
+ * suggestions, everyone else's balances) is context; this is the answer.
+ */
+function MyBalanceHero({
+  balance,
+  onAddExpense,
+  onRecordPayment,
+  onViewPayments,
+}: {
+  balance: MemberBalance | null;
+  onAddExpense?: () => void;
+  onRecordPayment?: () => void;
+  onViewPayments: () => void;
+}) {
+  const isSettled = balance ? balance.netCents === 0 : true;
+  const owes = balance ? balance.netCents < 0 : false;
+
+  return (
+    <div className="rounded-2xl bg-forest-950 p-5 text-cream-50 shadow-card sm:p-6">
+      <p className="text-xs font-medium uppercase tracking-wide text-cream-100/60">
+        Your balance
+      </p>
+      {balance ? (
+        <>
+          <p className="mt-1 text-3xl font-medium tabular-nums sm:text-4xl">
+            {isSettled ? "Settled up" : formatCurrency(Math.abs(balance.netCents))}
+          </p>
+          <p className="mt-1 text-sm text-cream-100/75">
+            {isSettled
+              ? "You don't owe anyone, and no one owes you."
+              : owes
+                ? "You owe the group"
+                : "The group owes you"}
+          </p>
+        </>
+      ) : (
+        <p className="mt-1 text-sm text-cream-100/75">
+          You&apos;re not an active golfer on this trip yet.
+        </p>
+      )}
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <QuickAction
+          label="Add expense"
+          disabled={!onAddExpense}
+          onClick={onAddExpense}
+          icon={<path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />}
+        />
+        <QuickAction
+          label="Record payment"
+          disabled={!onRecordPayment}
+          onClick={onRecordPayment}
+          icon={
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 8.5h18M3 8.5v9a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-9M3 8.5l2.4-3.6a1 1 0 0 1 .83-.44h11.54a1 1 0 0 1 .83.44L21 8.5M9 14h6"
+            />
+          }
+        />
+        <QuickAction
+          label="Who's paid"
+          onClick={onViewPayments}
+          icon={
+            <path strokeLinecap="round" strokeLinejoin="round" d="m5 12.5 4.5 4.5L19 7.5" />
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function QuickAction({
+  label,
+  onClick,
+  icon,
+  disabled,
+}: {
+  label: string;
+  onClick?: () => void;
+  icon: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-xl bg-cream-50/10 px-2 py-3 text-center transition-colors hover:bg-cream-50/15 active:bg-cream-50/20 disabled:pointer-events-none disabled:opacity-40"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        className="h-5 w-5"
+      >
+        {icon}
+      </svg>
+      <span className="text-xs font-medium leading-tight">{label}</span>
+    </button>
   );
 }
 

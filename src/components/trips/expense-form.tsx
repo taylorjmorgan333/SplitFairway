@@ -190,7 +190,7 @@ export function ExpenseForm({
           {members.map((m) => (
             <label
               key={m.id}
-              className="flex items-center gap-1.5 rounded-full border border-forest-900/[0.08] bg-cream-100 px-3 py-1.5 text-sm text-charcoal"
+              className="flex min-h-11 items-center gap-2 rounded-full border border-forest-900/[0.08] bg-cream-100 px-3.5 py-2 text-sm text-charcoal sm:min-h-0 sm:py-1.5"
             >
               <input
                 type="checkbox"
@@ -198,7 +198,7 @@ export function ExpenseForm({
                 value={m.id}
                 checked={selectedIds.has(m.id)}
                 onChange={() => toggleMember(m.id)}
-                className="h-3.5 w-3.5"
+                className="h-4 w-4"
               />
               {m.display_name}
             </label>
@@ -209,23 +209,25 @@ export function ExpenseForm({
       <div>
         <Label>How to split it</Label>
         <div className="flex gap-4 text-sm text-charcoal">
-          <label className="flex items-center gap-1.5">
+          <label className="flex min-h-11 items-center gap-2 sm:min-h-0">
             <input
               type="radio"
               name="splitMode"
               value="equal"
               checked={splitMode === "equal"}
               onChange={() => setSplitMode("equal")}
+              className="h-4 w-4"
             />
             Split evenly
           </label>
-          <label className="flex items-center gap-1.5">
+          <label className="flex min-h-11 items-center gap-2 sm:min-h-0">
             <input
               type="radio"
               name="splitMode"
               value="custom"
               checked={splitMode === "custom"}
               onChange={() => setSplitMode("custom")}
+              className="h-4 w-4"
             />
             Custom amounts
           </label>

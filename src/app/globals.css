@@ -60,4 +60,19 @@
       transparent
     );
   }
+
+  /* Safe-area helpers for the installed standalone PWA (notch, Dynamic
+     Island, home indicator). env(safe-area-inset-*) is 0 on any browser
+     that doesn't support it or isn't full-bleed, so these are harmless
+     no-ops outside iOS standalone mode — no @supports guard needed. */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 }

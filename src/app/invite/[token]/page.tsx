@@ -9,7 +9,23 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { InvitationPreview } from "@/lib/invitations";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "You're invited" };
+
+// Deliberately generic and static — never derived from the invitation
+// itself. Link-preview scrapers (iMessage, WhatsApp, SMS rich previews)
+// fetch this metadata unauthenticated before anyone taps the link, so it
+// must never carry the real trip name, destination, dates, or captain
+// name, even though the page itself shows those to the invited person
+// once the token is validated. noindex keeps invite links out of search
+// results and social crawlers' cached-page indexes.
+export const metadata: Metadata = {
+  title: "You're invited",
+  description: "Open this link to view your golf trip invitation on SplitFairway.",
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "You're invited · SplitFairway",
+    description: "Open this link to view your golf trip invitation.",
+  },
+};
 
 export default async function InvitePage({
   params,

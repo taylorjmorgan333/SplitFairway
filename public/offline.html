@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>You're offline · SplitFairway</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+        background: #0f2117;
+        color: #fdfbf6;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        text-align: center;
+      }
+      .card {
+        max-width: 22rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.375rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 1.5rem;
+        color: rgba(253, 251, 246, 0.75);
+        font-size: 0.9375rem;
+        line-height: 1.5;
+      }
+      button {
+        min-height: 44px;
+        padding: 0 1.5rem;
+        border: none;
+        border-radius: 999px;
+        background: #d9a441;
+        color: #0f2117;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        font-family: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You're offline</h1>
+      <p>
+        SplitFairway needs a connection to load trip data. Reconnect and try
+        again — nothing you've entered is lost.
+      </p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

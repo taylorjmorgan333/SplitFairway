@@ -12,7 +12,10 @@ const VARIANT_CLASSES = {
 } as const;
 
 const SIZE_CLASSES = {
-  sm: "h-9 px-3.5 text-sm",
+  // 44px is the minimum comfortable tap target on a phone; sm stays that
+  // tall by default and only tightens to the old 36px once there's a
+  // mouse (sm:), where precision and density both improve.
+  sm: "h-11 px-3.5 text-sm sm:h-9",
   md: "h-11 px-5 text-sm",
   lg: "h-12 px-7 text-base",
 } as const;

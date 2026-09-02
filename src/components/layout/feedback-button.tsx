@@ -55,7 +55,10 @@ export function FeedbackButton() {
   if (hidden) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 pb-[env(safe-area-inset-bottom)] sm:bottom-6 sm:right-6">
+    // Below md the app shell adds a fixed bottom tab bar, so this floats
+    // above it (4.75rem clears the tab bar's own height + safe area);
+    // from md up there's no tab bar, so it drops back to a small fixed gap.
+    <div className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-50 sm:right-6 md:bottom-6">
       {open && (
         <div className="mb-3 w-[calc(100vw-2rem)] max-w-sm rounded-2xl border border-forest-900/[0.08] bg-white p-4 shadow-card-hover">
           <div className="flex items-center justify-between">
@@ -64,7 +67,7 @@ export function FeedbackButton() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close feedback form"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-charcoal-400 hover:bg-cream-100"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-charcoal-400 hover:bg-cream-100"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>

@@ -167,6 +167,7 @@ copy, and launch mechanics rather than new product features.
   `SECURITY DEFINER` RPC functions for anything with cross-row
   authorization logic
 - Deployable to [Vercel](https://vercel.com/)
+- Installable as a Progressive Web App — see "Mobile & PWA" below
 
 ## Getting started
 
@@ -697,6 +698,130 @@ Use this before inviting real beta testers:
       trip → invite a golfer → accept the invite as them → add an
       expense → report and confirm a payment.
 
+## Mobile & PWA
+
+SplitFairway is a single Next.js web app — there is no separate React
+Native app or mobile codebase — packaged as an installable Progressive
+Web App. Most real usage happens on a phone, standing on a cart path
+mid-round, so the authenticated app (`(app)` route group and everything
+under `/trips/[tripId]`) is designed mobile-first: the marketing site is
+still polished at desktop widths, but the product itself assumes a phone
+screen first and scales up from there.
+
+**What "installable" gets you:**
+
+- `src/app/manifest.ts` generates the web app manifest (name
+  "SplitFairway", `display: "standalone"`, theme/background colors
+  matching the brand palette, and `/icons/icon-*.png` in both `any` and
+  `maskable` purposes). Next serves it at `/manifest.webmanifest` and
+  auto-injects the `<link rel="manifest">` tag — nothing to wire up
+  manually.
+- `src/app/icon.png` / `src/app/apple-icon.png` (existing) plus
+  `public/icons/icon-192.png`, `icon-512.png`,
+  `icon-maskable-192.png`, and `icon-maskable-512.png` are all
+  re-exports of the same approved crest artwork (`public/logo.png`) —
+  cropped/padded/resized for each format's requirements, never
+  redrawn. The maskable variants add the ~10%-per-side safe-zone padding
+  Android's adaptive-icon mask needs; the "any" variants are the
+  existing full-bleed export.
+- `appleWebApp` in `src/app/layout.tsx`'s metadata adds the
+  `apple-mobile-web-app-*` tags iOS's "Add to Home Screen" needs for a
+  standalone (no browser chrome) launch, with a translucent status bar.
+- `viewport.viewportFit: "cover"` lets the page draw edge-to-edge under
+  the notch/Dynamic Island and home indicator; `env(safe-area-inset-*)`
+  (see the `.safe-top` / `.safe-bottom` / `.safe-x` utilities in
+  `globals.css`) is applied to the sticky header, the bottom tab bar, and
+  the footer so nothing sits under the notch or gets clipped by the home
+  indicator.
+- `public/sw.js` is a hand-written, intentionally minimal service
+  worker — no library, no app-shell/asset caching. It exists for two
+  reasons: Android's install prompt requires a registered service
+  worker with a fetch handler, and it lets an offline launch show
+  `public/offline.html` (an on-brand "you're offline, try again"
+  page) instead of the browser's default error page. It does **not**
+  cache trip data, does **not** support offline editing, and does
+  **not** do any background sync — every real screen always requires a
+  live network round-trip. See "Later phases" below for why that's a
+  deliberate scope boundary for this release, not an oversight.
+
+**Mobile-first UI decisions:**
+
+- The authenticated app shell (`app-shell.tsx`) uses a bottom tab bar
+  below `md` (Dashboard / New Trip / Account) instead of a top nav row,
+  so the three things you reach for most are within one thumb's reach
+  at the bottom of the screen — the same zone iOS/Android's own
+  system UI trains people to expect. The desktop top nav is unchanged
+  above `md`.
+- The trip Overview tab leads with a "Your balance" card
+  (`MyBalanceHero` in `trip-tabs.tsx`) — the single number a golfer
+  actually opens the app to check — followed by three quick actions
+  (Add expense, Record payment, Who's paid) that jump straight to the
+  right tab **and** scroll/focus the relevant form, instead of making
+  someone tap into a tab and then hunt for the button. Trip-wide stats,
+  the settlement suggestions, and everyone else's balances stay below
+  it as supporting detail.
+- Every interactive control that matters — buttons, the tab switcher,
+  the "split with" golfer picker, the mobile nav — targets a minimum
+  44×44px tap area on phone widths (Apple/WCAG's baseline), tightening
+  back down to a denser desktop size only once a mouse is available
+  (`sm:`/`md:` breakpoints on the same components).
+- Expense/payment lists were already card/list-based rather than
+  tables, so there's nothing that requires horizontal scrolling to
+  read on a narrow screen; long names and large dollar amounts wrap
+  instead of overflowing (`balance-cards.tsx`).
+- Currency fields use `inputMode="decimal"` and date fields use native
+  `<input type="date">` throughout, so the OS shows the right keyboard
+  instead of a full QWERTY layout for a dollar amount.
+- The homepage hero shows the real mobile UI in a plain CSS phone
+  frame (`phone-preview.tsx`) — no stock device photography, no
+  glossy mockup styling — so what a visitor sees is what they get
+  after signing up.
+
+**Staying signed in:** authentication persists the same way in an
+installed/standalone PWA as it does in a normal browser tab. Session
+cookies are set via `@supabase/ssr`, and `src/middleware.ts` calls
+`supabase.auth.getUser()` on every request, which silently refreshes the
+session and re-persists the cookie — there's no separate "remember me"
+setting to configure. On iOS, an "Add to Home Screen" app is a WKWebView
+that shares Safari's cookie store for the same origin, so a session
+started in Safari carries into the installed app and vice versa; Android
+installed/TWA apps share Chrome's cookie jar the same way. No code
+change was needed for this — it was already correct, just not
+previously verified against the standalone-launch case.
+
+**Not exposed to link previews or notifications:** the one meaningful
+pre-auth shareable link, `/invite/[token]`, has a fixed, generic
+`generateMetadata`/`openGraph` block (title/description only, `noindex`)
+that is never derived from the invitation itself — a link-preview
+scraper (iMessage, WhatsApp, SMS) never sees the real trip name,
+destination, or captain. The actual trip details only render after the
+page validates the token server-side. `/trips/[tripId]` and
+`/invite/[token]` are both ordinary Next.js dynamic routes, so a link
+shared by text message opens directly to the right trip or invitation
+screen — signed-out visitors hitting a protected route are bounced to
+`/login?next=<path>` and land back on the same URL after signing in.
+
+**Later phases (deliberately not built yet):**
+
+- **Push notifications.** Nothing here sends a native push. Doing this
+  safely would mean: a `notifications` permission-request UX which
+  should never fire before install and never repeat if declined; a
+  server-held per-device push subscription table with its own RLS
+  scoped to the owning user; and re-registering the subscription in the
+  now-registered service worker's `push`/`notificationclick` handlers.
+  `public/sw.js` intentionally stays a bare offline-fallback worker
+  until that's designed — bolting a `push` handler onto it early would
+  ship a permission prompt with nothing trustworthy behind it yet.
+- **Offline editing / background sync.** The service worker's only
+  offline behavior is showing `offline.html` when a page can't be
+  reached — there's no local write queue, no conflict resolution, and
+  no background sync registration. Expense/payment writes always go
+  straight to Supabase through the existing server actions; building
+  real offline editing would need an outbox pattern (queue writes
+  locally, replay on reconnect, reconcile server-side balance
+  recalculation against the authoritative `src/lib/balances.ts` module)
+  that's a project of its own, not a PWA checkbox.
+
 ## Known limitations
 
 Honest gaps, not hidden ones — worth knowing before/during the beta:
@@ -722,7 +847,8 @@ Honest gaps, not hidden ones — worth knowing before/during the beta:
   the schema but nothing in the UI lets it be anything else yet.
 - **No push notifications.** Reminders are email (or copy-paste text)
   only — there's no mobile push or SMS sending, just SMS-ready copy
-  text the captain sends manually.
+  text the captain sends manually. See "Mobile & PWA" above for what
+  that would take and why it's deliberately out of scope for now.
 - **The legal pages are drafts.** Said elsewhere in this README too,
   but worth repeating here: Privacy Policy, Terms of Service, and the
   data-deletion page are placeholder text for a beta, not
