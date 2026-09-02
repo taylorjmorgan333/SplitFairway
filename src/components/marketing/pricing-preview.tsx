@@ -39,7 +39,7 @@ export function PricingPreview() {
         <div className="max-w-2xl">
           <h2 className="text-3xl sm:text-4xl">Simple pricing, coming soon</h2>
           <p className="mt-4 text-lg text-charcoal-500">
-            Golf Trip Treasurer is free to use while we finish building it.
+            SplitFairway is free to use while we finish building it.
             Final pricing will only ever cover the software — never a cut of
             your group&apos;s money.
           </p>

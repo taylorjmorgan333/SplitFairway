@@ -2,7 +2,7 @@ import { Container } from "@/components/ui/container";
 
 const FAQS = [
   {
-    question: "Does Golf Trip Treasurer hold or move my group's money?",
+    question: "Does SplitFairway hold or move my group's money?",
     answer:
       "No. This version is payment tracking only. You record payments made through Venmo, Zelle, PayPal, cash, check, or any other method your group already uses — we never touch the money itself.",
   },

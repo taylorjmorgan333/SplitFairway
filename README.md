@@ -1,6 +1,6 @@
-# Golf Trip Treasurer
+# SplitFairway
 
-Golf Trip Treasurer helps golf-trip organizers calculate group expenses,
+SplitFairway helps golf-trip organizers calculate group expenses,
 divide costs fairly, track payments, send reminders, and stop chasing
 friends for money.
 
@@ -101,14 +101,14 @@ days.
 
 ### External payment tracking
 
-Golf Trip Treasurer never processes or holds money. A golfer reports a
+SplitFairway never processes or holds money. A golfer reports a
 payment (amount, recipient, method — Venmo / Zelle / PayPal / cash /
 check / other, date, and an optional note or confirmation reference) and
 it starts out **"Awaiting confirmation."** Only the trip's captain or
 that specific payment's designated recipient can confirm or reject it,
 and only a **confirmed** payment ever moves a balance. Every step —
 report, confirm, reject — is written to the trip's activity log. Every
-payment form carries the same explanatory copy: *"Golf Trip Treasurer
+payment form carries the same explanatory copy: *"SplitFairway
 tracks payments but does not transfer funds. Complete the payment using
 the trip captain's instructions, then record it here."*
 
@@ -196,7 +196,7 @@ cp .env.example .env.local
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API (service role key) | **No — server only** |
 | `NEXT_PUBLIC_SITE_URL` | The URL this app is running at (e.g. `http://localhost:3000`) | Yes |
 | `RESEND_API_KEY` | [Resend](https://resend.com/) dashboard → API Keys — **optional** | **No — server only** |
-| `EMAIL_FROM_ADDRESS` | A verified sending address/domain in Resend, e.g. `Golf Trip Treasurer <reminders@yourdomain.com>` — **optional** | **No — server only** |
+| `EMAIL_FROM_ADDRESS` | A verified sending address/domain in Resend, e.g. `SplitFairway <reminders@yourdomain.com>` — **optional** | **No — server only** |
 | `FEEDBACK_TO_ADDRESS` | Where the in-app feedback button forwards a copy of each submission (also requires the two Resend vars above) — **optional** | **No — server only** |
 | `ALLOW_DEMO_SEED` | Must be `true` to run `npm run seed:demo` — **local development only, never set in a real deployment** | **No — read only by `scripts/seed-demo.ts`, never by the running app** |
 

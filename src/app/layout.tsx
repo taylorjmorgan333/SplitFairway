@@ -4,8 +4,8 @@ import { FeedbackButton } from "@/components/layout/feedback-button";
 
 export const metadata: Metadata = {
   title: {
-    default: "Golf Trip Treasurer",
-    template: "%s · Golf Trip Treasurer",
+    default: "SplitFairway",
+    template: "%s · SplitFairway",
   },
   description:
     "Split lodging, tee times, rental cars and every other golf trip expense. Everyone sees exactly what they owe and when it's due.",

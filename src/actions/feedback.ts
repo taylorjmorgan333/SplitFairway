@@ -72,7 +72,7 @@ export async function submitFeedbackAction(
     await provider
       .send({
         to: notifyAddress,
-        subject: "New beta feedback — Golf Trip Treasurer",
+        subject: "New beta feedback — SplitFairway",
         text: `From: ${user.email ?? user.id}\nPage: ${pagePath}\nTrip: ${tripId ?? "(none)"}\n\n${message}`,
         html: `<p><strong>From:</strong> ${user.email ?? user.id}<br/><strong>Page:</strong> ${pagePath}<br/><strong>Trip:</strong> ${tripId ?? "(none)"}</p><p>${message.replace(/\n/g, "<br/>")}</p>`,
       })

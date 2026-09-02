@@ -40,7 +40,7 @@ export default async function InvitePage({
         className="pointer-events-none absolute inset-0 bg-contour-lines opacity-40"
       />
       <div className="relative flex flex-1 flex-col items-center justify-center px-5 py-16">
-        <Link href="/" className="mb-10" aria-label="Golf Trip Treasurer home">
+        <Link href="/" className="mb-10" aria-label="SplitFairway home">
           <Logo variant="light" />
         </Link>
 
@@ -165,7 +165,7 @@ export default async function InvitePage({
             </CardContent>
           </Card>
           <CardDescription className="mt-4 text-center text-cream-100/70">
-            Golf Trip Treasurer tracks who owes what — it never moves any money.
+            SplitFairway tracks who owes what — it never moves any money.
           </CardDescription>
         </div>
       </div>

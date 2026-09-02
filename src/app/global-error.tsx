@@ -29,7 +29,7 @@ export default function GlobalError({
           color: "#292722",
         }}
       >
-        <p style={{ fontSize: "1.25rem", fontWeight: 600 }}>Golf Trip Treasurer hit a snag</p>
+        <p style={{ fontSize: "1.25rem", fontWeight: 600 }}>SplitFairway hit a snag</p>
         <p style={{ marginTop: "0.5rem", maxWidth: "28rem", fontSize: "0.9rem", color: "#615C51" }}>
           Nothing was lost — please try reloading the page.
         </p>

@@ -54,7 +54,7 @@ export default async function AccountPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Session</CardTitle>
-          <CardDescription>Sign out of Golf Trip Treasurer on this device.</CardDescription>
+          <CardDescription>Sign out of SplitFairway on this device.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={signOutAction}>

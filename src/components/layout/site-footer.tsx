@@ -98,7 +98,7 @@ export function SiteFooter() {
           <li>• Trip captains are responsible for verifying reservations and balances.</li>
         </ul>
         <p className="mt-4 border-t border-cream-100/10 pt-4 text-xs text-cream-100/50">
-          © {new Date().getFullYear()} Golf Trip Treasurer. All rights reserved. Currently in
+          © {new Date().getFullYear()} SplitFairway. All rights reserved. Currently in
           private beta.
         </p>
       </Container>

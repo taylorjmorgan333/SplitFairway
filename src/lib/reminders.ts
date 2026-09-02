@@ -57,7 +57,7 @@ export type ReminderMessage = {
 };
 
 const PAYMENT_DISCLAIMER =
-  "Golf Trip Treasurer tracks payments but does not transfer funds. Complete the payment using the trip captain's instructions, then record it here.";
+  "SplitFairway tracks payments but does not transfer funds. Complete the payment using the trip captain's instructions, then record it here.";
 
 function overdueMessage(tone: ReminderTone, ctx: OverdueReminderContext): ReminderMessage {
   const amount = formatCurrency(ctx.amountCents);

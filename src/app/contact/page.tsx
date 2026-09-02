@@ -15,7 +15,7 @@ export default function ContactPage() {
         <Container className="max-w-2xl">
           <h1 className="text-3xl sm:text-4xl">Contact us</h1>
           <p className="mt-3 text-sm leading-relaxed text-charcoal-500">
-            Golf Trip Treasurer is in private beta — we&apos;d genuinely like to hear from you,
+            SplitFairway is in private beta — we&apos;d genuinely like to hear from you,
             whether it&apos;s a bug, a confusing screen, or a feature you wish existed.
           </p>
 

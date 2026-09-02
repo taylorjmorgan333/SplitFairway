@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell title="Privacy Policy" updated="private beta — draft">
       <p>
-        Golf Trip Treasurer (&ldquo;we,&rdquo; &ldquo;us&rdquo;) helps golf trip organizers split
+        SplitFairway (&ldquo;we,&rdquo; &ldquo;us&rdquo;) helps golf trip organizers split
         expenses and track who has paid. This page describes, in draft form, what information we
         collect and how we use it.
       </p>
@@ -57,7 +57,7 @@ export default function PrivacyPolicyPage() {
       <section>
         <h2 className="font-serif text-lg text-forest-900">Beta status</h2>
         <p className="mt-2">
-          Golf Trip Treasurer is in private beta. This policy will be reviewed and finalized by
+          SplitFairway is in private beta. This policy will be reviewed and finalized by
           counsel before a public launch, and this page will be updated when that happens.
         </p>
       </section>

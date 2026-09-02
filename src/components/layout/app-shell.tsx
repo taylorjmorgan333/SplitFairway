@@ -21,7 +21,7 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b border-forest-900/[0.06] bg-cream-50/90 backdrop-blur">
         <Container className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/dashboard" aria-label="Golf Trip Treasurer home">
+            <Link href="/dashboard" aria-label="SplitFairway home">
               <Logo className="scale-95" />
             </Link>
             <nav aria-label="Primary" className="hidden items-center gap-6 md:flex">
@@ -73,7 +73,7 @@ export function AppShell({
       <footer className="border-t border-forest-900/[0.06] bg-cream-100/60 py-6">
         <Container>
           <p className="text-xs text-charcoal-400">
-            Golf Trip Treasurer tracks expenses and payments — it doesn&apos;t book travel or
+            SplitFairway tracks expenses and payments — it doesn&apos;t book travel or
             hold your group&apos;s money. Every payment happens outside the app and is only
             reflected here once confirmed by the right person; trip captains remain responsible
             for verifying reservations and balances.{" "}

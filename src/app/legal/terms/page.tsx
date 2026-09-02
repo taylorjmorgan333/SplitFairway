@@ -7,7 +7,7 @@ export default function TermsOfServicePage() {
   return (
     <LegalPageShell title="Terms of Service" updated="private beta — draft">
       <p>
-        These draft terms describe how Golf Trip Treasurer works during the private beta. By
+        These draft terms describe how SplitFairway works during the private beta. By
         using the app you agree to the points below, which will be replaced by finished,
         attorney-reviewed terms before any public launch.
       </p>
@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
       <section>
         <h2 className="font-serif text-lg text-forest-900">What this app does</h2>
         <p className="mt-2">
-          Golf Trip Treasurer is expense-splitting and payment-tracking software for group golf
+          SplitFairway is expense-splitting and payment-tracking software for group golf
           trips. It calculates who owes what and lets golfers report payments they&apos;ve made
           to each other outside the app.
         </p>
@@ -32,7 +32,7 @@ export default function TermsOfServicePage() {
           </li>
           <li>
             <strong>We do not hold or transfer money.</strong> No payment ever passes through
-            Golf Trip Treasurer. Golfers pay each other using Venmo, Zelle, PayPal, cash, check,
+            SplitFairway. Golfers pay each other using Venmo, Zelle, PayPal, cash, check,
             or any other method of their choosing, entirely outside this app, and then record
             that it happened here.
           </li>
@@ -51,7 +51,7 @@ export default function TermsOfServicePage() {
         <p className="mt-2">
           A trip captain (or co-treasurer) is responsible for verifying that reservations
           referenced on a trip are real and paid for through the appropriate vendor, and for
-          reviewing and confirming or rejecting reported payments accurately. Golf Trip Treasurer
+          reviewing and confirming or rejecting reported payments accurately. SplitFairway
           provides the calculations and the record-keeping; it does not verify reservations or
           independently confirm that money changed hands.
         </p>

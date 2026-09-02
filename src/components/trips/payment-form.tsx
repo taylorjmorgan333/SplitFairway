@@ -43,7 +43,7 @@ export function PaymentForm({
         <Alert variant="success">{state.message}</Alert>
       )}
       <p className="rounded-lg bg-cream-100 px-3.5 py-3 text-xs text-charcoal-500">
-        Golf Trip Treasurer tracks payments but does not transfer funds. Complete the payment
+        SplitFairway tracks payments but does not transfer funds. Complete the payment
         using the trip captain&apos;s instructions, then record it here.
       </p>
 

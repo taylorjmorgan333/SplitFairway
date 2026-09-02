@@ -91,7 +91,7 @@ describe("buildReminderMessage", () => {
 
   it("includes the exact required payment disclaimer in financial reminder emails", () => {
     const disclaimer =
-      "Golf Trip Treasurer tracks payments but does not transfer funds. Complete the payment using the trip captain's instructions, then record it here.";
+      "SplitFairway tracks payments but does not transfer funds. Complete the payment using the trip captain's instructions, then record it here.";
     for (const kind of ["overdue", "due_soon", "confirm_payment"] as const) {
       const context = contexts.find((c) => c.name === kind)!.context;
       for (const tone of REMINDER_TONES) {
