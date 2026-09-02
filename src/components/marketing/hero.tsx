@@ -19,9 +19,9 @@ export function Hero() {
             Built for golf trip organizers
           </p>
           <h1 className="text-4xl leading-[1.1] text-cream-50 sm:text-5xl md:text-6xl">
-            Plan the money once.
+            Keep the trip together.
             <br />
-            Stop chasing your golf buddies.
+            Split everything else.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-cream-100/80">
             Split lodging, tee times, rental cars and every other trip
