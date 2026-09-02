@@ -5,6 +5,25 @@
 // user who opens the installed app with no connection sees an on-brand
 // "you're offline" message instead of a browser error page.
 //
+// Explicitly, this worker:
+//  - Never caches Supabase auth responses, API responses, trip/expense/
+//    payment data, balances, or invitation tokens — the only thing ever
+//    written to the Cache API is the static offline.html fallback page
+//    (precached once in "install" below). Every other request, navigate
+//    or not, goes straight to the network with nothing stored.
+//  - Therefore can't leak one signed-in user's data to the next person
+//    on a shared device: there is no cached authenticated HTML or API
+//    response sitting around to serve back to whoever opens the app
+//    next. Supabase's own session cookie (not this worker) is what
+//    scopes a device to one signed-in user at a time.
+//  - Takes over immediately on every deploy: skipWaiting() (below) plus
+//    clients.claim() means a new worker version activates without
+//    waiting for every open tab to close, and the app itself never has
+//    stale page data to begin with since navigations are network-first.
+//    Combined with updateViaCache: "none" at registration (see
+//    service-worker-register.tsx), a deploy is picked up on next visit,
+//    not silently stuck on an old version.
+//
 // It does NOT cache app pages, API responses, or expense/payment data,
 // and it does NOT support offline editing or background sync — trip
 // data always comes from the network. See README.md ("Later phases")

@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    // Identifies this app across reinstalls/start_url changes,
+    // independent of the URL itself — kept stable once set.
+    id: "/",
     name: "SplitFairway",
     short_name: "SplitFairway",
     description:
