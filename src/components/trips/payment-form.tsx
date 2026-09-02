@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { reportPaymentAction } from "@/actions/payments";
 import type { ActionState } from "@/actions/auth";
@@ -33,9 +33,19 @@ export function PaymentForm({
 }) {
   const boundAction = reportPaymentAction.bind(null, tripId, payerMemberId);
   const [state, formAction] = useActionState(boundAction, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Clear the fields once a payment is successfully reported — without
+  // this the amount/note/etc. sat there looking like they still needed
+  // submitting even though the success alert above already confirmed it.
+  useEffect(() => {
+    if (state.status === "success") {
+      formRef.current?.reset();
+    }
+  }, [state.status]);
 
   return (
-    <form action={formAction} className="space-y-4" noValidate>
+    <form ref={formRef} action={formAction} className="space-y-4" noValidate>
       {state.status === "error" && state.message && (
         <Alert variant="error">{state.message}</Alert>
       )}
