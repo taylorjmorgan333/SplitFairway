@@ -4,8 +4,14 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { SupportEmail } from "@/components/ui/support-email";
+import { SUPPORT_EMAIL_CONFIGURED } from "@/lib/config";
 
-export const metadata: Metadata = { title: "Contact" };
+export const metadata: Metadata = {
+  title: "Contact",
+  description: "Get in touch with the SplitFairway team — support, feedback, or a data request.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   return (
@@ -27,16 +33,12 @@ export default function ContactPage() {
                 <CardDescription>For account issues, questions, or anything else.</CardDescription>
               </CardHeader>
               <CardContent>
-                <a
-                  href="mailto:support@golftriptreasurer.example"
-                  className="text-sm font-medium text-forest-800 underline"
-                >
-                  support@golftriptreasurer.example
-                </a>
-                <p className="mt-2 text-xs text-charcoal-400">
-                  Placeholder address for this beta — replace with a real monitored inbox before
-                  launch.
-                </p>
+                <SupportEmail className="text-sm font-medium text-forest-800 underline" />
+                {!SUPPORT_EMAIL_CONFIGURED && (
+                  <p className="mt-2 text-xs text-charcoal-400">
+                    This deployment hasn&apos;t set a monitored support inbox yet.
+                  </p>
+                )}
               </CardContent>
             </Card>
 

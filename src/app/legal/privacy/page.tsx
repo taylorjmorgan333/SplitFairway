@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { LegalPageShell } from "@/components/legal/legal-page-shell";
 
-export const metadata: Metadata = { title: "Privacy Policy (Draft)" };
+export const metadata: Metadata = {
+  title: "Privacy Policy (Draft)",
+  description: "SplitFairway's Privacy Policy — currently a private-beta draft.",
+  alternates: { canonical: "/legal/privacy" },
+  robots: { index: false, follow: true },
+};
 
 export default function PrivacyPolicyPage() {
   return (

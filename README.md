@@ -196,6 +196,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API (anon/public key) | Yes |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API (service role key) | **No — server only** |
 | `NEXT_PUBLIC_SITE_URL` | The URL this app is running at (e.g. `http://localhost:3000`) | Yes |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | A real, monitored support inbox — shown on the Contact and data-deletion pages. **Required before real users see those pages**; until set, they show a visible "not configured" notice instead of a placeholder address. | Yes |
 | `RESEND_API_KEY` | [Resend](https://resend.com/) dashboard → API Keys — **optional** | **No — server only** |
 | `EMAIL_FROM_ADDRESS` | A verified sending address/domain in Resend, e.g. `SplitFairway <reminders@yourdomain.com>` — **optional** | **No — server only** |
 | `FEEDBACK_TO_ADDRESS` | Where the in-app feedback button forwards a copy of each submission (also requires the two Resend vars above) — **optional** | **No — server only** |
@@ -682,10 +683,11 @@ Use this before inviting real beta testers:
 - [ ] The four legal/trust pages (`/legal/privacy`, `/legal/terms`,
       `/legal/data-deletion`, `/contact`) have been reviewed by someone
       qualified to review them — they are explicitly labeled drafts in
-      this repo and are **not** attorney-reviewed. Replace the
-      placeholder support email address in `src/app/contact/page.tsx`
-      and `src/app/legal/data-deletion/page.tsx` with a real, monitored
-      inbox before real users see them if that review hasn't happened yet.
+      this repo and are **not** attorney-reviewed. Set
+      `NEXT_PUBLIC_SUPPORT_EMAIL` to a real, monitored inbox — both the
+      Contact page and the data-deletion page read it from
+      `src/lib/config.ts`, and show a visible "not configured" notice
+      instead of a fake address until it's set.
 - [ ] Confirm who's actually monitoring `beta_feedback` (Supabase
       dashboard → Table Editor, or set `FEEDBACK_TO_ADDRESS`) and the
       support inbox on the Contact page — feedback that's never read

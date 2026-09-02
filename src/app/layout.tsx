@@ -3,13 +3,44 @@ import "./globals.css";
 import { FeedbackButton } from "@/components/layout/feedback-button";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
 
+const SITE_DESCRIPTION =
+  "Split lodging, tee times, rental cars and every other golf trip expense. Everyone sees exactly what they owe and when it's due.";
+
 export const metadata: Metadata = {
+  // Canonical production origin — every relative canonical/OG/Twitter
+  // image URL set on individual pages resolves against this. Deploy
+  // previews and localhost still render fine; this only affects the
+  // absolute URLs put into <link rel="canonical"> and social meta tags.
+  metadataBase: new URL("https://www.splitfairwaygolf.com"),
   title: {
     default: "SplitFairway",
     template: "%s · SplitFairway",
   },
-  description:
-    "Split lodging, tee times, rental cars and every other golf trip expense. Everyone sees exactly what they owe and when it's due.",
+  description: SITE_DESCRIPTION,
+  // Per-page metadata (homepage, contact, legal pages, ...) overrides
+  // these with its own title/description/canonical; this is the
+  // fallback so no page ever falls back to Next's own defaults.
+  openGraph: {
+    siteName: "SplitFairway",
+    type: "website",
+    title: "SplitFairway",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SplitFairway — keep the trip together, split everything else.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SplitFairway",
+    description: SITE_DESCRIPTION,
+    images: ["/og-image.png"],
+  },
   appleWebApp: {
     // Enables "Add to Home Screen" standalone mode on iOS and sets the
     // status-bar style; iOS ignores the manifest's display/theme_color, so

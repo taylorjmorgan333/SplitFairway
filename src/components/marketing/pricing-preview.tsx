@@ -3,7 +3,16 @@ import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-const PLANS = [
+type Plan = {
+  name: string;
+  price: string;
+  cadence: string;
+  description: string;
+  features: string[];
+  featured: boolean;
+} & ({ available: true; cta: string } | { available: false });
+
+const PLANS: Plan[] = [
   {
     name: "One Trip",
     price: "Free",
@@ -14,21 +23,22 @@ const PLANS = [
       "Even or itemized splitting",
       "Payment tracking and reminders",
     ],
+    featured: true,
+    available: true,
     cta: "Create Your Trip",
-    featured: false,
   },
   {
     name: "Annual Organizer",
-    price: "$—",
-    cadence: "/year",
+    price: "Coming later",
+    cadence: "",
     description: "For the person who plans the trip every single year.",
     features: [
       "Everything in One Trip",
       "Unlimited trips, year-round",
       "Saved groups and trip history",
     ],
-    cta: "Create Your Trip",
-    featured: true,
+    featured: false,
+    available: false,
   },
 ];
 
@@ -52,19 +62,32 @@ export function PricingPreview() {
               className={
                 plan.featured
                   ? "relative border-gold-400/60 ring-1 ring-gold-400/60"
-                  : ""
+                  : !plan.available
+                    ? "opacity-70"
+                    : ""
               }
             >
               {plan.featured && (
                 <span className="absolute -top-3 left-6 rounded-full bg-gold-400 px-3 py-1 text-xs font-semibold text-forest-950">
-                  Planned
+                  Available now
+                </span>
+              )}
+              {!plan.available && (
+                <span className="absolute -top-3 left-6 rounded-full bg-cream-200 px-3 py-1 text-xs font-semibold text-charcoal-500">
+                  Coming later
                 </span>
               )}
               <div className="p-7">
                 <h3 className="font-serif text-xl text-forest-900">{plan.name}</h3>
                 <p className="mt-1 text-sm text-charcoal-500">{plan.description}</p>
                 <p className="mt-5 flex items-baseline gap-1">
-                  <span className="font-serif text-3xl text-forest-900">
+                  <span
+                    className={
+                      plan.available
+                        ? "font-serif text-3xl text-forest-900"
+                        : "font-serif text-xl text-charcoal-400"
+                    }
+                  >
                     {plan.price}
                   </span>
                   {plan.cadence && (
@@ -79,13 +102,18 @@ export function PricingPreview() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink
-                  href="/signup"
-                  variant={plan.featured ? "gold" : "outline"}
-                  className="mt-7 w-full"
-                >
-                  {plan.cta}
-                </ButtonLink>
+                {plan.available ? (
+                  <ButtonLink href="/signup" variant="gold" className="mt-7 w-full">
+                    {plan.cta}
+                  </ButtonLink>
+                ) : (
+                  <div
+                    aria-disabled="true"
+                    className="mt-7 flex h-11 w-full items-center justify-center rounded-full border border-charcoal-400/20 text-sm font-medium text-charcoal-400"
+                  >
+                    Not available yet
+                  </div>
+                )}
               </div>
             </Card>
           ))}

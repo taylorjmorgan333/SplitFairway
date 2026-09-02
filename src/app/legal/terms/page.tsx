@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { LegalPageShell } from "@/components/legal/legal-page-shell";
 
-export const metadata: Metadata = { title: "Terms of Service (Draft)" };
+export const metadata: Metadata = {
+  title: "Terms of Service (Draft)",
+  description: "SplitFairway's Terms of Service — currently a private-beta draft.",
+  alternates: { canonical: "/legal/terms" },
+  robots: { index: false, follow: true },
+};
 
 export default function TermsOfServicePage() {
   return (
