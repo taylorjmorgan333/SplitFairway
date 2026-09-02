@@ -48,12 +48,3 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
-
-export const createTripSchema = z.object({
-  name: z.string().trim().min(1, "Trip name is required").max(120),
-  destination: z.string().trim().max(120).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-});
-
-export type CreateTripInput = z.infer<typeof createTripSchema>;

@@ -44,7 +44,13 @@ const config: Config = {
           DEFAULT: "#292722",
           700: "#3D3A33",
           500: "#615C51",
-          400: "#847E70",
+          // Darkened from #847E70 for accessibility — the original hit
+          // only ~3.9:1 against the cream-50 page background, below the
+          // WCAG AA 4.5:1 minimum for normal-size text, and this color
+          // is used everywhere as secondary/hint/timestamp text at
+          // regular sizes. #767164 keeps the same warm gray-brown hue
+          // while reaching ~4.7:1.
+          400: "#767164",
         },
       },
       fontFamily: {

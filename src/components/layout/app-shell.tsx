@@ -69,6 +69,28 @@ export function AppShell({
       <main className="flex-1 py-8 sm:py-10">
         <Container>{children}</Container>
       </main>
+
+      <footer className="border-t border-forest-900/[0.06] bg-cream-100/60 py-6">
+        <Container>
+          <p className="text-xs text-charcoal-400">
+            Golf Trip Treasurer tracks expenses and payments — it doesn&apos;t book travel or
+            hold your group&apos;s money. Every payment happens outside the app and is only
+            reflected here once confirmed by the right person; trip captains remain responsible
+            for verifying reservations and balances.{" "}
+            <Link href="/legal/terms" className="underline hover:text-charcoal-500">
+              Terms
+            </Link>{" "}
+            ·{" "}
+            <Link href="/legal/privacy" className="underline hover:text-charcoal-500">
+              Privacy
+            </Link>{" "}
+            ·{" "}
+            <Link href="/contact" className="underline hover:text-charcoal-500">
+              Contact
+            </Link>
+          </p>
+        </Container>
+      </footer>
     </div>
   );
 }

@@ -20,11 +20,12 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction] = useActionState(loginAction, initialState);
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
+      {next && <input type="hidden" name="next" value={next} />}
       {state.status === "error" && state.message && (
         <Alert variant="error">{state.message}</Alert>
       )}
@@ -64,7 +65,10 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-charcoal-500">
         New here?{" "}
-        <Link href="/signup" className="font-medium text-forest-800 hover:underline">
+        <Link
+          href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+          className="font-medium text-forest-800 hover:underline"
+        >
           Create an account
         </Link>
       </p>

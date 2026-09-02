@@ -1,4 +1,4 @@
-import { Flag } from "lucide-react";
+import { Check, Flag } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 
 export function EmptyState() {
@@ -15,6 +15,25 @@ export function EmptyState() {
       <ButtonLink href="/trips/new" variant="primary" className="mt-6">
         Create New Trip
       </ButtonLink>
+
+      <ol className="mt-8 w-full max-w-xs space-y-2 text-left text-xs text-charcoal-400">
+        <li className="flex items-center gap-2">
+          <Check className="h-3.5 w-3.5 shrink-0 text-forest-600" aria-hidden="true" />
+          <span className="text-charcoal-500 line-through">Create your account</span>
+        </li>
+        <li className="flex items-center gap-2">
+          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-forest-900/25 text-[9px] font-medium text-charcoal-500">
+            2
+          </span>
+          Create your golf trip
+        </li>
+        <li className="flex items-center gap-2 opacity-60">
+          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-forest-900/25 text-[9px] font-medium">
+            3
+          </span>
+          Add your golfers, then an expense, and share the invite link
+        </li>
+      </ol>
     </div>
   );
 }

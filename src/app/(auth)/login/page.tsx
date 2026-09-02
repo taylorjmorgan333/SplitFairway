@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
+import { isSafeRelativePath } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Log in" };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const safeNext = isSafeRelativePath(next) ? next : undefined;
+
   return (
     <div>
       <h1 className="text-2xl">Welcome back</h1>
@@ -11,7 +19,7 @@ export default function LoginPage() {
         Log in to see your trips and balances.
       </p>
       <div className="mt-7">
-        <LoginForm />
+        <LoginForm next={safeNext} />
       </div>
     </div>
   );

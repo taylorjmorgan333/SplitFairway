@@ -13,6 +13,13 @@ const ACCOUNT_LINKS = [
   { href: "/login", label: "Log in" },
 ];
 
+const LEGAL_LINKS = [
+  { href: "/legal/privacy", label: "Privacy Policy" },
+  { href: "/legal/terms", label: "Terms of Service" },
+  { href: "/legal/data-deletion", label: "Data deletion" },
+  { href: "/contact", label: "Contact" },
+];
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-forest-900/[0.06] bg-forest-950 text-cream-100">
@@ -61,13 +68,39 @@ export function SiteFooter() {
             ))}
           </ul>
         </div>
+
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gold-300/90">
+            Legal
+          </h3>
+          <ul className="mt-4 space-y-2.5">
+            {LEGAL_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="text-sm text-cream-100/75 transition-colors hover:text-cream-50"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </Container>
 
       <div className="contour-divider" />
 
-      <Container className="flex flex-col items-center justify-between gap-3 py-6 text-xs text-cream-100/60 sm:flex-row">
-        <p>© {new Date().getFullYear()} Golf Trip Treasurer. All rights reserved.</p>
-        <p>Payment tracking only — we don&apos;t hold or move your money.</p>
+      <Container className="py-6">
+        <ul className="grid gap-x-6 gap-y-1.5 text-xs text-cream-100/60 sm:grid-cols-2">
+          <li>• We don&apos;t book travel — every reservation is made directly with the vendor.</li>
+          <li>• We don&apos;t hold or transfer money — every payment happens outside the app.</li>
+          <li>• Payment records are only real once the right person confirms them.</li>
+          <li>• Trip captains are responsible for verifying reservations and balances.</li>
+        </ul>
+        <p className="mt-4 border-t border-cream-100/10 pt-4 text-xs text-cream-100/50">
+          © {new Date().getFullYear()} Golf Trip Treasurer. All rights reserved. Currently in
+          private beta.
+        </p>
       </Container>
     </footer>
   );

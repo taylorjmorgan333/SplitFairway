@@ -6,11 +6,30 @@
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* Never let one wide element (a long code snippet, an unbroken
+       token, a too-wide table) push the whole page sideways on a phone —
+       every scrollable region should opt in with its own overflow-x. */
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-cream-50 text-charcoal antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-x: hidden;
+  }
+
+  /* iOS Safari auto-zooms the page on focusing any input/select/textarea
+     rendered below 16px. The design uses 14px (text-sm) form controls on
+     desktop, which is fine — but on phone-sized viewports we bump every
+     form control up to 16px so focusing a field never triggers that
+     zoom (a real mobile-usability bug, not just a cosmetic one: it also
+     fights the on-screen keyboard for space). */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
   h1,

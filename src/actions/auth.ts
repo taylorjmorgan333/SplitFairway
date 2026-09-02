@@ -9,12 +9,24 @@ import {
   resetPasswordSchema,
   signUpSchema,
 } from "@/lib/validation/auth";
+import { isSafeRelativePath } from "@/lib/utils";
 
 export type ActionState = {
   status: "idle" | "error" | "success";
   message?: string;
   fieldErrors?: Record<string, string[]>;
 };
+
+/**
+ * Only ever redirect to a same-site relative path after auth. A `next`
+ * value could otherwise come from an attacker-controlled query string
+ * (e.g. a "log in, then redirect to evil.com" link), so anything that
+ * isn't an internal path — no protocol, no `//` (protocol-relative
+ * URL) — is rejected in favor of the safe default.
+ */
+function safeNextPath(next: FormDataEntryValue | null): string {
+  return isSafeRelativePath(next) ? next : "/dashboard";
+}
 
 export async function signUpAction(
   _prevState: ActionState,
@@ -36,13 +48,14 @@ export async function signUpAction(
 
   const supabase = await createClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const next = safeNextPath(formData.get("next"));
 
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -81,7 +94,7 @@ export async function loginAction(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(safeNextPath(formData.get("next")));
 }
 
 export async function signOutAction() {
