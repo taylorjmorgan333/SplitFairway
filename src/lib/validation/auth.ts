@@ -48,3 +48,16 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+// Two independent proofs of deliberate intent, matched separately so the
+// error can point at exactly which one was wrong: the account's current
+// password (re-authentication) and a typed literal "DELETE" (so this can
+// never be triggered by a stray double-click or a pre-filled form).
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, "Enter your current password"),
+  confirmation: z
+    .string()
+    .refine((val) => val === "DELETE", { message: 'Type "DELETE" to confirm' }),
+});
+
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

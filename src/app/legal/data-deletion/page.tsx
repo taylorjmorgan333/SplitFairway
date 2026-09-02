@@ -1,62 +1,64 @@
 import type { Metadata } from "next";
 import { LegalPageShell } from "@/components/legal/legal-page-shell";
+import { SupportEmail } from "@/components/ui/support-email";
 
-export const metadata: Metadata = { title: "Data Deletion Request (Draft)" };
+export const metadata: Metadata = {
+  title: "Data Deletion",
+  description: "How SplitFairway account deletion works, and what happens to your data.",
+  alternates: { canonical: "/legal/data-deletion" },
+};
 
 export default function DataDeletionPage() {
   return (
-    <LegalPageShell title="Data deletion request" updated="private beta — draft">
+    <LegalPageShell title="Data deletion" updated="to describe the self-serve deletion process">
       <p>
-        You can ask us to delete your account and the personal data tied to it. During this
-        private beta, deletion is handled manually by the team rather than through a self-serve
-        button — this page describes what that process covers.
+        You can permanently delete your account and personal data at any time from{" "}
+        <a href="/account" className="text-forest-800 underline">
+          Account settings
+        </a>{" "}
+        — no waiting on the team. It requires re-entering your password and typing a
+        confirmation phrase, and takes effect immediately.
       </p>
 
       <section>
-        <h2 className="font-serif text-lg text-forest-900">How to request deletion</h2>
-        <p className="mt-2">
-          Email{" "}
-          <a href="mailto:support@golftriptreasurer.example" className="text-forest-800 underline">
-            support@golftriptreasurer.example
-          </a>{" "}
-          from the email address on your account with the subject line &ldquo;Delete my
-          account.&rdquo; We&apos;ll confirm your identity against that account before acting on
-          the request.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="font-serif text-lg text-forest-900">What gets deleted</h2>
+        <h2 className="font-serif text-lg text-forest-900">What gets deleted immediately</h2>
         <ul className="mt-2 list-disc space-y-1.5 pl-5">
-          <li>Your profile (name, email, account credentials).</li>
+          <li>Your profile and login — you&apos;re signed out on every device right away.</li>
           <li>
-            Any trip where you are the only captain — the trip and everything on it (expenses,
-            payments, invitations, activity log).
+            Any trip where you&apos;re the only active golfer — the trip and everything on it
+            (expenses, payments, invitations, activity log) is deleted entirely.
           </li>
-          <li>Your own reported payments and roster entry on trips you don&apos;t own.</li>
+          <li>Your beta feedback submissions and product-usage records.</li>
         </ul>
       </section>
 
       <section>
-        <h2 className="font-serif text-lg text-forest-900">What we keep</h2>
+        <h2 className="font-serif text-lg text-forest-900">
+          What&apos;s anonymized instead of deleted
+        </h2>
         <p className="mt-2">
-          On a shared trip where other golfers still need an accurate record of who paid what, we
-          keep the expense and payment records that involve you (so the remaining golfers&apos;
-          balances stay correct), but remove your personally identifying details from your
-          profile and disable your login. Trip captains remain responsible for those trips&apos;
-          records after you leave, per our{" "}
-          <a href="/legal/terms" className="text-forest-800 underline">
-            Terms of Service
-          </a>
-          .
+          On a trip you share with other golfers, deleting your account never deletes their
+          data. Your name and email are replaced with a generic placeholder and your login is
+          disconnected from the trip, but the expenses and payments you were part of stay —
+          otherwise the remaining golfers&apos; balances would stop adding up correctly. If you
+          were the only captain on a shared trip, another active golfer is automatically made
+          captain so the trip doesn&apos;t get stuck with no one able to manage it.
         </p>
       </section>
 
       <section>
         <h2 className="font-serif text-lg text-forest-900">Timeline</h2>
         <p className="mt-2">
-          We aim to process deletion requests within 30 days. This is a beta-stage manual process
-          — a faster, self-serve version is planned before a public launch.
+          Immediate — deletion runs the moment you confirm it, not on a delay or a batch job.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="font-serif text-lg text-forest-900">Can&apos;t access your account?</h2>
+        <p className="mt-2">
+          If you&apos;re locked out and can&apos;t sign in to use the self-serve option, email{" "}
+          <SupportEmail /> from the email address on your account and we&apos;ll process the
+          same deletion by hand after confirming your identity.
         </p>
       </section>
     </LegalPageShell>

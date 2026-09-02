@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/actions/auth";
+import { DeleteAccountForm } from "@/components/account/delete-account-form";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Account settings" };
@@ -68,19 +69,10 @@ export default async function AccountPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Danger zone</CardTitle>
-          <CardDescription>Delete your account and personal data.</CardDescription>
+          <CardDescription>Permanently delete your account and personal data.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-charcoal-600">
-            During this beta, account deletion is handled by the team rather than a self-serve
-            button here.
-          </p>
-          <a
-            href="/legal/data-deletion"
-            className="mt-3 inline-flex h-9 items-center rounded-full border border-red-200 px-3.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50"
-          >
-            Request account deletion
-          </a>
+          <DeleteAccountForm />
         </CardContent>
       </Card>
     </div>
