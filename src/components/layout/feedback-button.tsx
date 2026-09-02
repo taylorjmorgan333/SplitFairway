@@ -76,6 +76,11 @@ export function FeedbackButton() {
             We&apos;re in private beta — bug reports, confusing screens, missing features, all
             welcome.
           </p>
+          <p className="mt-1.5 text-[11px] text-charcoal-400">
+            We&apos;ll include the page you&apos;re on ({pathname}) so we know the context.
+            Nothing else about this trip — no expenses, balances, or other golfers&apos;
+            details — is sent unless you type it below.
+          </p>
 
           <form action={formAction} className="mt-3 space-y-3">
             {state.status === "error" && state.message && (
