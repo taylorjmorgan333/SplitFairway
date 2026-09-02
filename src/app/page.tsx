@@ -16,18 +16,38 @@ const DESCRIPTION =
 // Absolute title — bypasses the root layout's "%s · SplitFairway"
 // template so the homepage reads exactly "SplitFairway | Golf Trip
 // Expense Tracking" instead of doubling up the brand name.
+// Next.js does NOT deep-merge nested metadata objects (openGraph, twitter)
+// across route segments — a page-level `openGraph`/`twitter` block replaces
+// the root layout's entirely, field for field. So even though the layout
+// already sets siteName/type/images, this homepage override has to restate
+// every field it wants to keep, or they silently disappear from the
+// deployed <head> (which is exactly what happened: og:image, twitter:image,
+// og:site_name, og:type, and twitter:card were missing in production until
+// this fix).
+const OG_IMAGE = {
+  url: "/og-image.png",
+  width: 1200,
+  height: 630,
+  alt: "SplitFairway — keep the trip together, split everything else.",
+};
+
 export const metadata: Metadata = {
   title: { absolute: "SplitFairway | Golf Trip Expense Tracking" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
+    siteName: "SplitFairway",
+    type: "website",
     title: "SplitFairway | Golf Trip Expense Tracking",
     description: DESCRIPTION,
     url: "/",
+    images: [OG_IMAGE],
   },
   twitter: {
+    card: "summary_large_image",
     title: "SplitFairway | Golf Trip Expense Tracking",
     description: DESCRIPTION,
+    images: ["/og-image.png"],
   },
 };
 
