@@ -145,7 +145,7 @@ export default async function RoundDetailPage({
 
             {isCaptain && (
               <div className="border-t border-charcoal-400/10 pt-4">
-                <AddRoundPlayerForm roundId={safeRound.id} availableMembers={availableMembers} teeSetNames={teeSetNames} />
+                <AddRoundPlayerForm tripId={tripId} roundId={safeRound.id} availableMembers={availableMembers} teeSetNames={teeSetNames} />
               </div>
             )}
             {!isCaptain && !myPlayerMembership && (

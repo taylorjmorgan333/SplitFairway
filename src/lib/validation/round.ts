@@ -56,3 +56,14 @@ export const updateRoundDetailsSchema = z.object({
 });
 
 export type UpdateRoundDetailsInput = z.infer<typeof updateRoundDetailsSchema>;
+
+export const addNewGolferToRoundSchema = z.object({
+  displayName: z.string().trim().min(1, "Name is required").max(120),
+  email: z
+    .union([z.string().trim().email("Enter a valid email address"), z.literal("")])
+    .optional(),
+  teeSetName: z.string().trim().max(80).optional().or(z.literal("")),
+  playingHandicap: playingHandicapString.optional().or(z.literal("")),
+});
+
+export type AddNewGolferToRoundInput = z.infer<typeof addNewGolferToRoundSchema>;

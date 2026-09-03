@@ -9,6 +9,7 @@ import {
   updateRoundPlayerSchema,
   createRoundGroupSchema,
   updateRoundDetailsSchema,
+  addNewGolferToRoundSchema,
 } from "@/lib/validation/round";
 import type { ActionState } from "@/actions/auth";
 import type { Json } from "@/lib/supabase/database.types";
@@ -461,4 +462,81 @@ export async function updateRoundDetailsAction(
 
   revalidatePath(`/trips/${tripId}/rounds/${roundId}`);
   return { status: "success", message: "Round details saved." };
+}
+
+/**
+ * The round-page equivalent of "Add a golfer manually" on the trip
+ * members page (see addMemberManuallyAction in src/actions/members.ts):
+ * for a golfer who isn't a trip member yet and won't go through an
+ * email invite, this creates them as an active trip member via the
+ * same add_trip_member_manually() RPC (captain-only, rate-limited, no
+ * invitation token) and, in the same action, adds them straight into
+ * this round -- one button instead of leaving the round to add a trip
+ * member and coming back. Since they're brand new, there's no existing
+ * golf_profiles row to snapshot a handicap from, so playingHandicap
+ * here is whatever the captain typed (or null).
+ */
+export async function addNewGolferToRoundAction(
+  tripId: string,
+  roundId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = addNewGolferToRoundSchema.safeParse({
+    displayName: formData.get("displayName"),
+    email: formData.get("email"),
+    teeSetName: formData.get("teeSetName"),
+    playingHandicap: formData.get("playingHandicap"),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: "error", message: "You need to be signed in to do that." };
+  }
+
+  const { displayName, email, teeSetName, playingHandicap } = parsed.data;
+
+  const { data: rpcResult, error: memberError } = await supabase.rpc("add_trip_member_manually", {
+    p_trip_id: tripId,
+    p_display_name: displayName,
+    p_email: email ? email : undefined,
+  });
+
+  if (memberError) {
+    return { status: "error", message: memberError.message };
+  }
+
+  const tripMemberId = (rpcResult as { trip_member_id?: string } | null)?.trip_member_id;
+  if (!tripMemberId) {
+    return { status: "error", message: "Something went wrong adding that golfer. Please try again." };
+  }
+
+  const { error: playerError } = await supabase.from("round_players").insert({
+    round_id: roundId,
+    trip_member_id: tripMemberId,
+    tee_set_name: teeSetName || null,
+    playing_handicap: playingHandicap ? Number(playingHandicap) : null,
+    handicap_entered_by: user.id,
+  });
+
+  if (playerError) {
+    // The trip member was created even though adding them to this round
+    // failed -- surface that plainly rather than a generic error, since
+    // "Add a new golfer" already succeeded from the captain's point of
+    // view and they're now findable on the trip's members list.
+    return {
+      status: "error",
+      message: `${displayName} was added to the trip, but couldn't be added to this round. Add them from the golfer list above.`,
+    };
+  }
+
+  revalidatePath(`/trips`);
+  return { status: "success", message: `${displayName} was added to the trip and to this round.` };
 }
