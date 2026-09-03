@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
-import { MobileScorecard, type SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
+import { MobileScorecard, type SnapshotTeeSet, type ScorecardSideGame } from "@/components/rounds/mobile-scorecard";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +81,32 @@ export default async function ScorePage({
     notFound();
   }
 
+  // Every side game configured for this round (any type), stripped down
+  // to just what the scorecard's game-picker needs to compute and show
+  // its own results live as scores are entered -- skins gets a full
+  // in-place view (see mobile-scorecard.tsx); every other game type
+  // points to the Games/Results tabs rather than re-deriving each
+  // game's own engine (Nassau presses, wolf picks, etc.) here too.
+  const sideGames: ScorecardSideGame[] = SIDE_GAMES_ENABLED
+    ? await (async () => {
+        const { data: gameRows } = await supabase
+          .from("side_games")
+          .select("id, name, game_type, scoring_metric, carryover, is_monetary, dollar_value, side_game_participants(round_player_id)")
+          .eq("round_id", roundId)
+          .order("created_at", { ascending: true });
+        return (gameRows ?? []).map((g) => ({
+          id: g.id,
+          name: g.name,
+          gameType: g.game_type,
+          scoringMetric: g.scoring_metric,
+          carryover: g.carryover,
+          isMonetary: g.is_monetary,
+          dollarValue: g.dollar_value,
+          participantIds: (g.side_game_participants ?? []).map((p) => p.round_player_id),
+        }));
+      })()
+    : [];
+
   return (
     <div className="mx-auto max-w-md">
       <RoundPhaseTabs
@@ -112,6 +138,7 @@ export default async function ScorePage({
         }))}
         currentUserId={user.id}
         isCaptain={isCaptain}
+        sideGames={sideGames}
       />
     </div>
   );

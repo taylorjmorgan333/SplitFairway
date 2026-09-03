@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { saveHoleScoreAction, startRoundAction, lockRoundAction } from "@/actions/scores";
 import { netScore } from "@/lib/golf/handicap";
 import {
@@ -11,6 +12,8 @@ import {
   type PlayerScoreInput,
   type StandingsMetric,
 } from "@/lib/golf/scoring";
+import { computeSkins } from "@/lib/golf/skins";
+import { computeSkinsSettlement, dollarsToCents, formatCents, formatSignedCents } from "@/lib/golf/settlement";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,6 +22,25 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type RoundStatus = Database["public"]["Enums"]["round_status"];
 type ScoreEditScope = Database["public"]["Enums"]["round_score_edit_scope"];
+type SideGameType = Database["public"]["Enums"]["side_game_type"];
+
+// What the scorecard's game-picker needs for any side game configured on
+// this round. Skins gets a full, live-updating view built right from
+// the same scores/state this component already tracks (see
+// SkinsGameStandings below); every other game type falls back to a
+// pointer at the Games/Results tabs rather than re-implementing that
+// game's own engine (Nassau presses, wolf picks, Vegas, quota, etc.) a
+// second time here.
+export type ScorecardSideGame = {
+  id: string;
+  name: string;
+  gameType: SideGameType;
+  scoringMetric: "gross" | "net";
+  carryover: boolean;
+  isMonetary: boolean;
+  dollarValue: number | null;
+  participantIds: string[];
+};
 
 export type ScorecardPlayer = {
   roundPlayerId: string;
@@ -68,6 +90,7 @@ export function MobileScorecard({
   initialScores,
   currentUserId,
   isCaptain,
+  sideGames,
 }: {
   tripId: string;
   roundId: string;
@@ -79,6 +102,7 @@ export function MobileScorecard({
   initialScores: { roundPlayerId: string; holeNumber: number; grossStrokes: number | null }[];
   currentUserId: string;
   isCaptain: boolean;
+  sideGames: ScorecardSideGame[];
 }) {
   const myPlayer = players.find((p) => p.userId === currentUserId) ?? null;
 
@@ -233,6 +257,36 @@ export function MobileScorecard({
   const [standingsMetric, setStandingsMetric] = useState<StandingsMetric>("gross");
   const standings = computeStandings(playerScoreInputs, standingsMetric);
   const standingsById = new Map(players.map((p) => [p.roundPlayerId, p]));
+
+  // Which game the Standings card is showing -- "overall" is the
+  // always-available Gross/Net/Points view above; picking one of
+  // sideGames switches the card over to that game's own results,
+  // computed live from the same `scores` state (no page reload needed
+  // to see a skins pot update as the last score for a hole comes in).
+  const [selectedGameId, setSelectedGameId] = useState<string>("overall");
+  const selectedSideGame = sideGames.find((g) => g.id === selectedGameId) ?? null;
+
+  const skinsView = useMemo(() => {
+    if (!selectedSideGame || selectedSideGame.gameType !== "skins") return null;
+    const game = selectedSideGame;
+    const gameHoleNumbers = Array.from({ length: holeCount }, (_, i) => i + 1);
+    const gamePlayers = playerScoreInputs.filter((p) => game.participantIds.includes(p.roundPlayerId));
+    const result = computeSkins(gamePlayers, gameHoleNumbers, game.scoringMetric, game.carryover);
+    const settlement =
+      game.isMonetary && game.dollarValue != null
+        ? computeSkinsSettlement(result, game.participantIds, dollarsToCents(game.dollarValue))
+        : null;
+    const standings = game.participantIds
+      .map((roundPlayerId) => ({
+        roundPlayerId,
+        displayName: standingsById.get(roundPlayerId)?.displayName ?? "Golfer",
+        skinsWon: result.totalsByPlayer.get(roundPlayerId) ?? 0,
+        netCents: settlement?.netByPlayer.get(roundPlayerId) ?? null,
+      }))
+      .sort((a, b) => b.skinsWon - a.skinsWon);
+    return { game, result, settlement, standings };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSideGame, playerScoreInputs, holeCount]);
 
   const selectedPlayerInput = selectedPlayer
     ? playerScoreInputs.find((p) => p.roundPlayerId === selectedPlayer.roundPlayerId)
@@ -454,43 +508,134 @@ export function MobileScorecard({
 
       {standings.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Standings</p>
-            <div className="flex gap-1">
-              {(["gross", "net", "stableford"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setStandingsMetric(m)}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                    standingsMetric === m ? "bg-forest-800 text-cream-50" : "bg-cream-100 text-charcoal-500",
-                  )}
-                >
-                  {m === "stableford" ? "Points" : m}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">
+              {selectedSideGame ? selectedSideGame.name : "Standings"}
+            </p>
+            {selectedGameId === "overall" && (
+              <div className="flex gap-1">
+                {(["gross", "net", "stableford"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setStandingsMetric(m)}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                      standingsMetric === m ? "bg-forest-800 text-cream-50" : "bg-cream-100 text-charcoal-500",
+                    )}
+                  >
+                    {m === "stableford" ? "Points" : m}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <ul className="mt-2 space-y-1.5">
-            {standings.map((s) => (
-              <li key={s.roundPlayerId} className="flex items-center justify-between text-sm">
-                <span className="text-charcoal-700">
-                  {s.rank}. {standingsById.get(s.roundPlayerId)?.displayName ?? "Golfer"}
-                </span>
-                <span className="font-medium text-forest-900">
-                  {s.value}
-                  {standingsMetric === "stableford" && <span className="text-xs text-charcoal-400"> pts</span>}{" "}
-                  <span className="text-xs text-charcoal-400">thru {s.thru}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-charcoal-400">
-            Net uses each golfer&apos;s playing handicap and stroke index; a golfer with no handicap on
-            file shows their gross score instead. Match play and skins come from Games once they&apos;re
-            set up.
-          </p>
+
+          {/* Game picker -- only shown once a side game exists, so a
+              round with no games configured looks exactly as before. */}
+          {sideGames.length > 0 && (
+            <select
+              value={selectedGameId}
+              onChange={(e) => setSelectedGameId(e.target.value)}
+              className="mt-2 h-9 w-full rounded-lg border border-charcoal-400/25 bg-white px-2.5 text-sm text-charcoal-700 focus:border-forest-600"
+            >
+              <option value="overall">Overall (Gross/Net/Points)</option>
+              {sideGames.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {selectedGameId === "overall" && (
+            <>
+              <ul className="mt-2 space-y-1.5">
+                {standings.map((s) => (
+                  <li key={s.roundPlayerId} className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-700">
+                      {s.rank}. {standingsById.get(s.roundPlayerId)?.displayName ?? "Golfer"}
+                    </span>
+                    <span className="font-medium text-forest-900">
+                      {s.value}
+                      {standingsMetric === "stableford" && <span className="text-xs text-charcoal-400"> pts</span>}{" "}
+                      <span className="text-xs text-charcoal-400">thru {s.thru}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-charcoal-400">
+                Net uses each golfer&apos;s playing handicap and stroke index; a golfer with no handicap on
+                file shows their gross score instead.
+                {sideGames.length > 0 ? " Pick a game above for its own results." : ""}
+              </p>
+            </>
+          )}
+
+          {selectedSideGame && selectedSideGame.gameType === "skins" && skinsView && (
+            <>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-xs text-charcoal-500">
+                  {selectedSideGame.scoringMetric === "net" ? "Net" : "Gross"}
+                  {selectedSideGame.carryover ? " · Carryover on" : " · No carryover"}
+                </p>
+                {selectedSideGame.isMonetary && selectedSideGame.dollarValue != null && (
+                  <Badge variant="gold">{formatCents(dollarsToCents(selectedSideGame.dollarValue))}/skin</Badge>
+                )}
+              </div>
+
+              {skinsView.standings.length === 0 ? (
+                <p className="mt-2 text-sm text-charcoal-400">No skins won yet.</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {skinsView.standings.map((s) => (
+                    <li key={s.roundPlayerId} className="flex items-center justify-between text-sm">
+                      <span className="text-charcoal-700">{s.displayName}</span>
+                      <span className="font-medium text-forest-900">
+                        {s.skinsWon} skin{s.skinsWon === 1 ? "" : "s"}
+                        {s.netCents != null && (
+                          <span
+                            className={cn(
+                              "ml-2 text-xs font-normal",
+                              s.netCents > 0 ? "text-emerald-600" : s.netCents < 0 ? "text-red-600" : "text-charcoal-400",
+                            )}
+                          >
+                            {formatSignedCents(s.netCents)}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {skinsView.result.pendingPot > 1 && (
+                <p className="mt-2 text-xs text-charcoal-400">
+                  Next hole is worth {skinsView.result.pendingPot} skins — {skinsView.result.pendingPot - 1} carried
+                  over from tied holes.
+                </p>
+              )}
+              {skinsView.settlement && skinsView.settlement.pendingCents > 0 && (
+                <p className="mt-1 text-xs text-charcoal-400">
+                  {formatCents(skinsView.settlement.pendingCents)} still riding on tied holes not yet resolved.
+                </p>
+              )}
+            </>
+          )}
+
+          {selectedSideGame && selectedSideGame.gameType !== "skins" && (
+            <p className="mt-2 text-sm text-charcoal-500">
+              {selectedSideGame.name} isn&apos;t shown here yet — see the{" "}
+              <Link href={`/trips/${tripId}/rounds/${roundId}/games`} className="underline">
+                Games
+              </Link>{" "}
+              and{" "}
+              <Link href={`/trips/${tripId}/rounds/${roundId}/results`} className="underline">
+                Results
+              </Link>{" "}
+              tabs for its full breakdown.
+            </p>
+          )}
         </div>
       )}
 
