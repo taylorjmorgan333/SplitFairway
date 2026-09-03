@@ -30,6 +30,21 @@ export function formatDate(iso: string): string {
 }
 
 /**
+ * Format a "HH:MM:SS" (or "HH:MM") tee time as a plain 12-hour clock
+ * reading, e.g. "15:30:00" -> "3:30 PM" -- easier to read at a glance
+ * than the raw 24-hour string other round surfaces show today.
+ */
+export function formatTeeTime(time: string): string {
+  const [hourStr, minuteStr] = time.split(":");
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return time;
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+/**
  * Parse a user-entered dollar amount ("12.5", "$1,250.00") into integer
  * cents. Returns null if the input isn't a valid non-negative amount —
  * callers should treat that as a validation failure, never coerce it to

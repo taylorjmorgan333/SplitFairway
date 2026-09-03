@@ -10,7 +10,12 @@ import type { ActivityRow } from "@/components/trips/activity-feed";
 import { calculateBalances, suggestSettlements } from "@/lib/balances";
 import { formatDate } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
-import { GOLF_SCORING_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
+import {
+  RoundsSection,
+  type RoundSummary,
+  type InProgressSummary,
+} from "@/components/trips/rounds-section";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Trip details" };
@@ -287,6 +292,79 @@ export default async function TripDetailPage({
     invitations: reminderInvitations,
   };
 
+  // Golf rounds for the trip dashboard's "Rounds" section -- gated on
+  // GOLF_SCORING_ENABLED like every other golf surface, and skipped
+  // entirely (not just hidden) when the flag is off so a disabled trip
+  // never pays for these extra queries.
+  let roundSummaries: RoundSummary[] = [];
+  let inProgressSummary: InProgressSummary | null = null;
+
+  if (GOLF_SCORING_ENABLED) {
+    const { data: roundRows } = await supabase
+      .from("rounds")
+      .select("id, name, round_date, start_time, hole_count, status")
+      .eq("trip_id", tripId)
+      .order("round_date", { ascending: true })
+      .order("start_time", { ascending: true, nullsFirst: false });
+
+    const roundsData = roundRows ?? [];
+    const roundIds = roundsData.map((r) => r.id);
+
+    if (roundIds.length > 0) {
+      const [{ data: snapshotRows }, { data: roundPlayerRows }] = await Promise.all([
+        supabase.from("round_course_snapshots").select("round_id, course_name").in("round_id", roundIds),
+        supabase.from("round_players").select("id, round_id").in("round_id", roundIds),
+      ]);
+
+      const courseNameByRound = new Map((snapshotRows ?? []).map((s) => [s.round_id, s.course_name]));
+      const golferCountByRound = new Map<string, number>();
+      for (const p of roundPlayerRows ?? []) {
+        golferCountByRound.set(p.round_id, (golferCountByRound.get(p.round_id) ?? 0) + 1);
+      }
+
+      roundSummaries = roundsData.map((r) => ({
+        id: r.id,
+        name: r.name,
+        courseName: courseNameByRound.get(r.id) ?? "Course",
+        roundDate: r.round_date,
+        startTime: r.start_time,
+        holeCount: r.hole_count,
+        status: r.status,
+        golferCount: golferCountByRound.get(r.id) ?? 0,
+      }));
+
+      // Trip-level "Round in progress" summary -- computed only for the
+      // (normally singular) round actually being played right now, so
+      // this stays cheap even on a trip with a long rounds history. A
+      // hole only counts as "completed" once every golfer in the round
+      // has a score for it, not just whoever's gotten there first.
+      const activeRound = roundsData.find((r) => r.status === "in_progress") ?? null;
+      if (activeRound) {
+        const { data: scoreRows } = await supabase
+          .from("hole_scores")
+          .select("hole_number, gross_strokes")
+          .eq("round_id", activeRound.id)
+          .not("gross_strokes", "is", null);
+
+        const enteredCountByHole = new Map<number, number>();
+        for (const s of scoreRows ?? []) {
+          enteredCountByHole.set(s.hole_number, (enteredCountByHole.get(s.hole_number) ?? 0) + 1);
+        }
+        const activeGolferCount = golferCountByRound.get(activeRound.id) ?? 0;
+        const holesCompleted =
+          activeGolferCount > 0
+            ? [...enteredCountByHole.values()].filter((n) => n >= activeGolferCount).length
+            : 0;
+
+        inProgressSummary = {
+          roundId: activeRound.id,
+          holesCompleted,
+          holeCount: activeRound.hole_count,
+        };
+      }
+    }
+  }
+
   const dateRange =
     trip.start_date && trip.end_date
       ? `${formatDate(trip.start_date)} – ${formatDate(trip.end_date)}`
@@ -317,9 +395,14 @@ export default async function TripDetailPage({
 
       {GOLF_SCORING_ENABLED && (
         <div className="mt-6">
-          <ButtonLink href={`/trips/${trip.id}/rounds`} variant="outline" size="sm">
-            Golf rounds
-          </ButtonLink>
+          <RoundsSection
+            tripId={trip.id}
+            isCaptain={isCaptain}
+            rounds={roundSummaries}
+            inProgress={inProgressSummary}
+            sideGamesEnabled={SIDE_GAMES_ENABLED}
+            leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+          />
         </div>
       )}
 
