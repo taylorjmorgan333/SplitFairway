@@ -943,6 +943,151 @@ export type Database = {
           },
         ]
       }
+      side_game_participants: {
+        Row: {
+          id: string
+          round_player_id: string
+          side: number | null
+          side_game_id: string
+        }
+        Insert: {
+          id?: string
+          round_player_id: string
+          side?: number | null
+          side_game_id: string
+        }
+        Update: {
+          id?: string
+          round_player_id?: string
+          side?: number | null
+          side_game_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "side_game_participants_round_player_id_fkey"
+            columns: ["round_player_id"]
+            isOneToOne: false
+            referencedRelation: "round_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_game_participants_side_game_id_fkey"
+            columns: ["side_game_id"]
+            isOneToOne: false
+            referencedRelation: "side_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      side_game_presses: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          segment: string
+          side_game_id: string
+          starting_hole: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          segment: string
+          side_game_id: string
+          starting_hole: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          segment?: string
+          side_game_id?: string
+          starting_hole?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "side_game_presses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_game_presses_side_game_id_fkey"
+            columns: ["side_game_id"]
+            isOneToOne: false
+            referencedRelation: "side_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      side_games: {
+        Row: {
+          carryover: boolean
+          created_at: string
+          created_by: string | null
+          dollar_value: number | null
+          game_type: Database["public"]["Enums"]["side_game_type"]
+          id: string
+          is_monetary: boolean
+          monetary_accepted_at: string | null
+          monetary_accepted_by: string | null
+          name: string
+          round_id: string
+          scoring_metric: Database["public"]["Enums"]["side_game_scoring_metric"]
+        }
+        Insert: {
+          carryover?: boolean
+          created_at?: string
+          created_by?: string | null
+          dollar_value?: number | null
+          game_type: Database["public"]["Enums"]["side_game_type"]
+          id?: string
+          is_monetary?: boolean
+          monetary_accepted_at?: string | null
+          monetary_accepted_by?: string | null
+          name: string
+          round_id: string
+          scoring_metric?: Database["public"]["Enums"]["side_game_scoring_metric"]
+        }
+        Update: {
+          carryover?: boolean
+          created_at?: string
+          created_by?: string | null
+          dollar_value?: number | null
+          game_type?: Database["public"]["Enums"]["side_game_type"]
+          id?: string
+          is_monetary?: boolean
+          monetary_accepted_at?: string | null
+          monetary_accepted_by?: string | null
+          name?: string
+          round_id?: string
+          scoring_metric?: Database["public"]["Enums"]["side_game_scoring_metric"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "side_games_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_games_monetary_accepted_by_fkey"
+            columns: ["monetary_accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_games_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_invitations: {
         Row: {
           accepted_at: string | null
@@ -1419,6 +1564,8 @@ export type Database = {
       payment_status: "reported" | "confirmed" | "rejected"
       round_score_edit_scope: "per_golfer" | "per_group"
       round_status: "scheduled" | "in_progress" | "completed" | "locked"
+      side_game_scoring_metric: "gross" | "net"
+      side_game_type: "nassau" | "skins"
       split_method: "equal" | "selected" | "custom"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
@@ -1567,6 +1714,8 @@ export const Constants = {
       payment_status: ["reported", "confirmed", "rejected"],
       round_score_edit_scope: ["per_golfer", "per_group"],
       round_status: ["scheduled", "in_progress", "completed", "locked"],
+      side_game_scoring_metric: ["gross", "net"],
+      side_game_type: ["nassau", "skins"],
       split_method: ["equal", "selected", "custom"],
       trip_status: ["planning", "active", "completed", "cancelled"],
     },

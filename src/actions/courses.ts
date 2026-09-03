@@ -7,6 +7,32 @@ import { courseSchema, teeSetSchema, holesFormSchema } from "@/lib/validation/co
 import type { ActionState } from "@/actions/auth";
 
 /**
+ * Deletes a course from the shared library. RLS
+ * (courses_delete_own_or_admin, supabase/migrations/20260903030000_courses.sql)
+ * enforces that only the course's creator or an admin can succeed here.
+ * Safe against rounds already scheduled on this course: rounds.course_id
+ * is a soft reference (on delete set null), and a round's own
+ * round_course_snapshots row already carries its own permanent copy of
+ * the course/tee/hole data from when it was created, so an existing
+ * round keeps working exactly as before -- only the course_id link and
+ * the ability to schedule *new* rounds against this course go away.
+ * Submitted as a real <form> (not called via useTransition) so the
+ * redirect below is a normal Next.js redirect, not something a
+ * try/catch would need to special-case.
+ */
+export async function deleteCourseAction(courseId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("courses").delete().eq("id", courseId);
+
+  if (error) {
+    throw new Error("Couldn't delete this course.");
+  }
+
+  revalidatePath("/courses");
+  redirect("/courses");
+}
+
+/**
  * Creates a course. Always created_by = the caller, status = 'pending'
  * (the courses_insert_own RLS policy in
  * supabase/migrations/20260903030000_courses.sql doesn't let a client

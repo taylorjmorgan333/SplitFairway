@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EditCourseForm } from "@/components/courses/edit-course-form";
 import { AddTeeSetForm } from "@/components/courses/add-tee-set-form";
 import { TeeSetSection } from "@/components/courses/tee-set-section";
+import { CourseDangerZone } from "@/components/courses/course-danger-zone";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Course" };
@@ -124,6 +125,17 @@ export default async function CourseDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {canEdit && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Danger zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CourseDangerZone course={course} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
