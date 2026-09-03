@@ -448,7 +448,7 @@ export default async function ResultsPage({
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{game.name}</CardTitle>
-              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))}/skin</Badge>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))} ante</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -466,12 +466,12 @@ export default async function ResultsPage({
                 ))}
               </ul>
             )}
-            {game.settlement.pendingCents > 0 && (
-              <p className="text-xs text-charcoal-400">
-                {formatCents(game.settlement.pendingCents)} still riding on tied holes not yet resolved — not
-                included above.
-              </p>
-            )}
+            <p className="text-xs text-charcoal-400">
+              {formatCents(game.settlement.potCents)} pot
+              {game.settlement.skinsAwarded > 0
+                ? ` splits across ${game.settlement.skinsAwarded} skin${game.settlement.skinsAwarded === 1 ? "" : "s"}. A golfer with no skins loses exactly their ante — never more.`
+                : " — not yet split, no skins decided."}
+            </p>
           </CardContent>
         </Card>
       ))}

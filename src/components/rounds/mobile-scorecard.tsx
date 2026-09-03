@@ -625,7 +625,7 @@ export function MobileScorecard({
                   {selectedSideGame.carryover ? " · Carryover on" : " · No carryover"}
                 </p>
                 {selectedSideGame.isMonetary && selectedSideGame.dollarValue != null && (
-                  <Badge variant="gold">{formatCents(dollarsToCents(selectedSideGame.dollarValue))}/skin</Badge>
+                  <Badge variant="gold">{formatCents(dollarsToCents(selectedSideGame.dollarValue))} ante</Badge>
                 )}
               </div>
 
@@ -682,9 +682,14 @@ export function MobileScorecard({
                   over from tied holes.
                 </p>
               )}
-              {skinsView.settlement && skinsView.settlement.pendingCents > 0 && (
+              {skinsView.settlement && (
                 <p className="mt-1 text-xs text-charcoal-400">
-                  {formatCents(skinsView.settlement.pendingCents)} still riding on tied holes not yet resolved.
+                  {formatCents(skinsView.settlement.potCents)} pot ({skinsView.game.participantIds.length} golfers
+                  {" "}
+                  &times; {formatCents(skinsView.settlement.potCents / skinsView.game.participantIds.length)} ante)
+                  {skinsView.settlement.skinsAwarded > 0
+                    ? ` splits across ${skinsView.settlement.skinsAwarded} skin${skinsView.settlement.skinsAwarded === 1 ? "" : "s"} so far -- a golfer with none loses exactly their ante, never more.`
+                    : ", not yet split -- no skins decided."}
                 </p>
               )}
               {skinsView.standings.some((s) => s.holesWon.length > 0) && (

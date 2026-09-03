@@ -115,48 +115,97 @@ export interface SkinsHoleSettlement {
   holeNumber: number;
   winnerRoundPlayerId: string;
   skinsWon: number;
+  /** This hole's share of the pot, once the round's per-skin value is known (0 while skinsAwarded is still 0). */
   amountCents: number;
 }
 
 export interface SkinsSettlement {
   holes: SkinsHoleSettlement[];
-  /** Cents owed to (positive) or by (negative) each round_player_id, from resolved holes only. */
+  /** Cents owed to (positive) or by (negative) each round_player_id. Every participant's ante is a fixed cost, so the most anyone can lose is dollarValueCents -- never more, however many skins get won. */
   netByPlayer: Map<string, number>;
-  /** Value still riding on tied/undecided holes at the end -- not reflected in netByPlayer since no one has won it. */
-  pendingCents: number;
+  /** The full pot: dollarValueCents (one golfer's ante) times participantIds.length. */
+  potCents: number;
+  /** How many skins have been decided so far -- the pot splits across exactly this many. 0 means nothing's been won yet, so the pot is still untouched and netByPlayer is all zero. */
+  skinsAwarded: number;
 }
 
 /**
- * dollarValueCents is worth per skin won (matches the "$X/skin" badge
- * already shown on the Games page), funded evenly by every OTHER
- * participant on that hole -- not an ante-per-hole model. A skin worth
- * multiple holes (carryover) is still one payout event at
- * dollarValueCents * skinsWon.
+ * A skins buy-in pot, the way it's actually played at the course: every
+ * participant antes dollarValueCents once, up front, into one shared
+ * pot (dollarValueCents * participantIds.length) -- NOT a per-skin
+ * charge funded hole by hole. Once the round ends, the pot splits
+ * across every skin actually won, proportional to how many skins each
+ * golfer won, using a largest-remainder allocation so it always sums
+ * to exactly potCents. That caps everyone's downside at their own
+ * ante: a golfer with zero skins simply loses their ante, never more,
+ * and the biggest possible win is the pot minus your own ante.
+ *
+ * Computed live from whatever's been scored so far, so before the
+ * round finishes this is a "the pot splits this way if it ended right
+ * now" projection -- the value of each skin can still shift as more
+ * skins get decided.
  */
 export function computeSkinsSettlement(
   result: SkinsResult,
   participantIds: string[],
   dollarValueCents: number,
 ): SkinsSettlement {
-  const netByPlayer = new Map<string, number>(participantIds.map((id) => [id, 0]));
+  const potCents = dollarValueCents * participantIds.length;
+  const skinsAwarded = result.holes.reduce((sum, h) => sum + h.skinsWon, 0);
   const holes: SkinsHoleSettlement[] = [];
 
-  for (const h of result.holes) {
-    if (!h.winnerRoundPlayerId || h.skinsWon <= 0) continue;
-    const amountCents = dollarValueCents * h.skinsWon;
-    const funders = participantIds.filter((id) => id !== h.winnerRoundPlayerId);
-    if (funders.length === 0) continue;
-
-    const shares = splitEqually(amountCents, funders);
-    netByPlayer.set(h.winnerRoundPlayerId, (netByPlayer.get(h.winnerRoundPlayerId) ?? 0) + amountCents);
-    for (const s of shares) netByPlayer.set(s.tripMemberId, (netByPlayer.get(s.tripMemberId) ?? 0) - s.amountOwedCents);
-
-    holes.push({ holeNumber: h.holeNumber, winnerRoundPlayerId: h.winnerRoundPlayerId, skinsWon: h.skinsWon, amountCents });
+  if (skinsAwarded === 0) {
+    // Nobody's won a skin yet, so the pot hasn't been divided --
+    // report everyone flat at zero rather than guessing who'll get it.
+    const netByPlayer = new Map<string, number>(participantIds.map((id) => [id, 0]));
+    for (const h of result.holes) {
+      if (!h.winnerRoundPlayerId || h.skinsWon <= 0) continue;
+      holes.push({ holeNumber: h.holeNumber, winnerRoundPlayerId: h.winnerRoundPlayerId, skinsWon: h.skinsWon, amountCents: 0 });
+    }
+    return { holes, netByPlayer, potCents, skinsAwarded };
   }
 
-  const pendingCents = result.pendingPot > 1 ? dollarValueCents * (result.pendingPot - 1) : 0;
+  // Largest-remainder split of the pot, weighted by skins won -- the
+  // weighted counterpart to splitEqually's remainder handling, so the
+  // shares always add up to exactly potCents with no leftover cents.
+  const winningsByPlayer = new Map<string, number>();
+  const remainderByPlayer = new Map<string, number>();
+  let allocatedCents = 0;
+  for (const id of participantIds) {
+    const skinsWon = result.totalsByPlayer.get(id) ?? 0;
+    const exact = (potCents * skinsWon) / skinsAwarded;
+    const floor = Math.floor(exact);
+    winningsByPlayer.set(id, floor);
+    remainderByPlayer.set(id, exact - floor);
+    allocatedCents += floor;
+  }
+  let leftoverCents = potCents - allocatedCents;
+  const byRemainder = [...participantIds].sort((a, b) => {
+    const diff = (remainderByPlayer.get(b) ?? 0) - (remainderByPlayer.get(a) ?? 0);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
+  for (const id of byRemainder) {
+    if (leftoverCents <= 0) break;
+    winningsByPlayer.set(id, (winningsByPlayer.get(id) ?? 0) + 1);
+    leftoverCents -= 1;
+  }
 
-  return { holes, netByPlayer, pendingCents };
+  const netByPlayer = new Map<string, number>(
+    participantIds.map((id) => [id, (winningsByPlayer.get(id) ?? 0) - dollarValueCents]),
+  );
+
+  const perSkinCents = potCents / skinsAwarded;
+  for (const h of result.holes) {
+    if (!h.winnerRoundPlayerId || h.skinsWon <= 0) continue;
+    holes.push({
+      holeNumber: h.holeNumber,
+      winnerRoundPlayerId: h.winnerRoundPlayerId,
+      skinsWon: h.skinsWon,
+      amountCents: Math.round(perSkinCents * h.skinsWon),
+    });
+  }
+
+  return { holes, netByPlayer, potCents, skinsAwarded };
 }
 
 /** Merges any number of per-game net maps into one round-wide total per player. */

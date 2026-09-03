@@ -207,7 +207,7 @@ function SkinsGameCard({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {game.isMonetary && <Badge variant="gold">{formatDollars(game.dollarValue)}/skin</Badge>}
+          {game.isMonetary && <Badge variant="gold">{formatDollars(game.dollarValue)} ante</Badge>}
           {isCaptain && <DeleteGameButton roundId={roundId} tripId={tripId} gameId={game.id} gameName={game.name} />}
         </div>
       </div>
@@ -398,6 +398,12 @@ export function CreateSkinsForm({
 
       <MonetaryToggle monetaryEnabled={monetaryEnabled} isMonetary={isMonetary} onChange={setIsMonetary} />
       <MonetarySection show={monetaryEnabled && isMonetary} />
+      {monetaryEnabled && isMonetary && (
+        <p className="text-xs text-charcoal-500">
+          Every golfer antes this amount into one pot; the pot splits across whoever won skins once the round
+          ends, so the most anyone can lose is their own ante.
+        </p>
+      )}
 
       {state.status === "error" && state.message && <Alert variant="error">{state.message}</Alert>}
       {state.status === "error" && state.fieldErrors && (
