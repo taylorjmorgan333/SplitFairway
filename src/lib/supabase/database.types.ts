@@ -949,18 +949,21 @@ export type Database = {
           round_player_id: string
           side: number | null
           side_game_id: string
+          wolf_order: number | null
         }
         Insert: {
           id?: string
           round_player_id: string
           side?: number | null
           side_game_id: string
+          wolf_order?: number | null
         }
         Update: {
           id?: string
           round_player_id?: string
           side?: number | null
           side_game_id?: string
+          wolf_order?: number | null
         }
         Relationships: [
           {
@@ -1014,6 +1017,58 @@ export type Database = {
           },
           {
             foreignKeyName: "side_game_presses_side_game_id_fkey"
+            columns: ["side_game_id"]
+            isOneToOne: false
+            referencedRelation: "side_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      side_game_wolf_picks: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hole_number: number
+          id: string
+          is_lone_wolf: boolean
+          partner_round_player_id: string | null
+          side_game_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hole_number: number
+          id?: string
+          is_lone_wolf?: boolean
+          partner_round_player_id?: string | null
+          side_game_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hole_number?: number
+          id?: string
+          is_lone_wolf?: boolean
+          partner_round_player_id?: string | null
+          side_game_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "side_game_wolf_picks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_game_wolf_picks_partner_round_player_id_fkey"
+            columns: ["partner_round_player_id"]
+            isOneToOne: false
+            referencedRelation: "round_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "side_game_wolf_picks_side_game_id_fkey"
             columns: ["side_game_id"]
             isOneToOne: false
             referencedRelation: "side_games"
@@ -1565,7 +1620,14 @@ export type Database = {
       round_score_edit_scope: "per_golfer" | "per_group"
       round_status: "scheduled" | "in_progress" | "completed" | "locked"
       side_game_scoring_metric: "gross" | "net"
-      side_game_type: "nassau" | "skins"
+      side_game_type:
+        | "nassau"
+        | "skins"
+        | "wolf"
+        | "vegas"
+        | "quota"
+        | "nines"
+        | "twos"
       split_method: "equal" | "selected" | "custom"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
@@ -1715,7 +1777,15 @@ export const Constants = {
       round_score_edit_scope: ["per_golfer", "per_group"],
       round_status: ["scheduled", "in_progress", "completed", "locked"],
       side_game_scoring_metric: ["gross", "net"],
-      side_game_type: ["nassau", "skins"],
+      side_game_type: [
+        "nassau",
+        "skins",
+        "wolf",
+        "vegas",
+        "quota",
+        "nines",
+        "twos",
+      ],
       split_method: ["equal", "selected", "custom"],
       trip_status: ["planning", "active", "completed", "cancelled"],
     },

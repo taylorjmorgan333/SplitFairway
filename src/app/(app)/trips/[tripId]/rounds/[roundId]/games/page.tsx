@@ -9,9 +9,30 @@ import {
   type Segment,
 } from "@/lib/golf/nassau";
 import { computeSkins } from "@/lib/golf/skins";
+import { computeWolfHoles, type WolfHoleResult, type WolfOrderedParticipant } from "@/lib/golf/wolf";
+import { computeVegas } from "@/lib/golf/vegas";
+import { computeQuota } from "@/lib/golf/quota";
+import { computeNines } from "@/lib/golf/nines";
+import { computeTwos } from "@/lib/golf/twos";
 import type { PlayerScoreInput, HoleSpec } from "@/lib/golf/scoring";
 import { SideGamesSection, type NassauGameView, type SkinsGameView } from "@/components/rounds/side-games-section";
+import { WolfSection, type WolfGameView, type WolfHoleView } from "@/components/rounds/wolf-section";
+import { VegasSection, type VegasGameView } from "@/components/rounds/vegas-section";
+import { QuotaSection, type QuotaGameView } from "@/components/rounds/quota-section";
+import { NinesSection, type NinesGameView } from "@/components/rounds/nines-section";
+import { TwosSection, type TwosGameView } from "@/components/rounds/twos-section";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
+
+function wolfOutcomeLabel(h: WolfHoleResult, nameById: Map<string, string>): string {
+  if (!h.wolfRoundPlayerId || h.outcome == null) return "Not decided yet";
+  if (h.outcome === "halved") return "Halved";
+  const wolfName = nameById.get(h.wolfRoundPlayerId) ?? "Wolf";
+  if (h.isLoneWolf) {
+    return h.outcome === "wolfSide" ? `${wolfName} wins (lone wolf)` : `${wolfName} loses (lone wolf)`;
+  }
+  const partnerName = h.partnerRoundPlayerId ? (nameById.get(h.partnerRoundPlayerId) ?? "Partner") : "Partner";
+  return h.outcome === "wolfSide" ? `${wolfName} & ${partnerName} win` : `${wolfName} & ${partnerName} lose`;
+}
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Games" };
@@ -120,12 +141,18 @@ export default async function GamesPage({
 
   const { data: gameRows } = await supabase
     .from("side_games")
-    .select("*, side_game_participants(*), side_game_presses(*)")
+    .select("*, side_game_participants(*), side_game_presses(*), side_game_wolf_picks(*)")
     .eq("round_id", roundId)
     .order("created_at", { ascending: true });
 
   const nassauGames: NassauGameView[] = [];
   const skinsGames: SkinsGameView[] = [];
+  const wolfGames: WolfGameView[] = [];
+  const vegasGames: VegasGameView[] = [];
+  const quotaGames: QuotaGameView[] = [];
+  const ninesGames: NinesGameView[] = [];
+  const twosGames: TwosGameView[] = [];
+  const overallHoleNumbers = segmentHoleNumbers("overall", round.hole_count);
 
   for (const game of gameRows ?? []) {
     const participants = game.side_game_participants ?? [];
@@ -164,10 +191,9 @@ export default async function GamesPage({
         segments,
         presses,
       });
-    } else {
+    } else if (game.game_type === "skins") {
       const gamePlayers = participants.map((p) => scoreInputById.get(p.round_player_id)).filter((p): p is PlayerScoreInput => !!p);
-      const holeNumbers = segmentHoleNumbers("overall", round.hole_count);
-      const result = computeSkins(gamePlayers, holeNumbers, metric, game.carryover);
+      const result = computeSkins(gamePlayers, overallHoleNumbers, metric, game.carryover);
 
       const standings = Array.from(result.totalsByPlayer.entries())
         .map(([roundPlayerId, skinsWon]) => ({
@@ -193,6 +219,137 @@ export default async function GamesPage({
         })),
         pendingPot: result.pendingPot,
       });
+    } else if (game.game_type === "wolf") {
+      const order: WolfOrderedParticipant[] = participants
+        .filter((p) => p.wolf_order != null)
+        .map((p) => ({ roundPlayerId: p.round_player_id, wolfOrder: p.wolf_order! }))
+        .sort((a, b) => a.wolfOrder - b.wolfOrder);
+      const orderPlayers = order.map((o) => scoreInputById.get(o.roundPlayerId)).filter((p): p is PlayerScoreInput => !!p);
+      const picks = (game.side_game_wolf_picks ?? []).map((pk) => ({
+        holeNumber: pk.hole_number,
+        partnerRoundPlayerId: pk.partner_round_player_id,
+        isLoneWolf: pk.is_lone_wolf,
+      }));
+      const holeResults = computeWolfHoles(order, picks, orderPlayers, overallHoleNumbers, metric);
+
+      const holes: WolfHoleView[] = holeResults.map((h) => ({
+        holeNumber: h.holeNumber,
+        wolfRoundPlayerId: h.wolfRoundPlayerId,
+        wolfName: h.wolfRoundPlayerId ? (displayNameById.get(h.wolfRoundPlayerId) ?? "Golfer") : null,
+        partnerName: h.partnerRoundPlayerId ? (displayNameById.get(h.partnerRoundPlayerId) ?? "Golfer") : null,
+        isLoneWolf: h.isLoneWolf,
+        outcomeLabel: wolfOutcomeLabel(h, displayNameById),
+        decided: h.outcome != null,
+      }));
+
+      wolfGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        order: order.map((o) => ({ roundPlayerId: o.roundPlayerId, displayName: displayNameById.get(o.roundPlayerId) ?? "Golfer" })),
+        holes,
+      });
+    } else if (game.game_type === "vegas") {
+      const side1Ids = participants.filter((p) => p.side === 1).map((p) => p.round_player_id);
+      const side2Ids = participants.filter((p) => p.side === 2).map((p) => p.round_player_id);
+      const side1 = side1Ids.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const side2 = side2Ids.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeVegas(side1, side2, overallHoleNumbers, metric);
+
+      let runningDiff = 0;
+      for (const h of result.holes) {
+        if (h.winner === 1) runningDiff += h.diff;
+        else if (h.winner === 2) runningDiff -= h.diff;
+      }
+      const runningLabel =
+        result.holesPlayed === 0
+          ? "Not started"
+          : runningDiff === 0
+            ? `All square thru ${result.holesPlayed}`
+            : `Team ${runningDiff > 0 ? 1 : 2} up ${Math.abs(runningDiff)} pts thru ${result.holesPlayed}`;
+
+      vegasGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: side1Ids.map((id) => displayNameById.get(id) ?? "Golfer"),
+        side2Names: side2Ids.map((id) => displayNameById.get(id) ?? "Golfer"),
+        holes: result.holes.map((h) => ({
+          holeNumber: h.holeNumber,
+          side1Number: h.side1Number,
+          side2Number: h.side2Number,
+          winnerLabel: h.winner == null ? "Not decided yet" : h.winner === "halved" ? "Halved" : `Team ${h.winner} by ${h.diff}`,
+        })),
+        runningLabel,
+      });
+    } else if (game.game_type === "quota") {
+      const participantIds = participants.map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const results = computeQuota(gamePlayers, overallHoleNumbers);
+
+      quotaGames.push({
+        id: game.id,
+        name: game.name,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        players: results
+          .map((r) => ({
+            roundPlayerId: r.roundPlayerId,
+            displayName: displayNameById.get(r.roundPlayerId) ?? "Golfer",
+            target: r.target,
+            points: r.points,
+            differential: r.differential,
+            holesCompleted: r.holesCompleted,
+          }))
+          .sort((a, b) => b.differential - a.differential),
+      });
+    } else if (game.game_type === "nines") {
+      const participantIds = participants.map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeNines(gamePlayers, overallHoleNumbers, metric);
+
+      ninesGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        standings: Array.from(result.totalsByPlayer.entries())
+          .map(([roundPlayerId, points]) => ({
+            roundPlayerId,
+            displayName: displayNameById.get(roundPlayerId) ?? "Golfer",
+            points,
+          }))
+          .sort((a, b) => b.points - a.points),
+        holesPlayed: result.holes.length,
+      });
+    } else if (game.game_type === "twos") {
+      const participantIds = participants.map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeTwos(gamePlayers, overallHoleNumbers, metric);
+
+      twosGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        standings: Array.from(result.totalsByPlayer.entries())
+          .map(([roundPlayerId, twosMade]) => ({
+            roundPlayerId,
+            displayName: displayNameById.get(roundPlayerId) ?? "Golfer",
+            twosMade,
+          }))
+          .sort((a, b) => b.twosMade - a.twosMade),
+        holes: result.holes.map((h) => ({
+          holeNumber: h.holeNumber,
+          winnerNames: h.winnerRoundPlayerIds.map((id) => displayNameById.get(id) ?? "Golfer"),
+        })),
+      });
     }
   }
 
@@ -215,6 +372,50 @@ export default async function GamesPage({
         skinsGames={skinsGames}
         monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
       />
+
+      <div className="mt-6 space-y-6">
+        <WolfSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          myRoundPlayerId={myRoundPlayerId}
+          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          games={wolfGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+        <VegasSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          games={vegasGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+        <QuotaSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          games={quotaGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+        <NinesSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          games={ninesGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+        <TwosSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          games={twosGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+      </div>
     </div>
   );
 }

@@ -8,9 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { computeStandings, computePlayerTotals, type PlayerScoreInput, type StandingsMetric, type HoleSpec } from "@/lib/golf/scoring";
 import { computeSkins } from "@/lib/golf/skins";
 import { segmentHoleNumbers, type Segment } from "@/lib/golf/nassau";
+import { computeWolfHoles, type WolfOrderedParticipant } from "@/lib/golf/wolf";
+import { computeVegas } from "@/lib/golf/vegas";
+import { computeQuota } from "@/lib/golf/quota";
+import { computeNines } from "@/lib/golf/nines";
+import { computeTwos } from "@/lib/golf/twos";
 import {
   computeNassauSettlement,
   computeSkinsSettlement,
+  computeWolfSettlement,
+  computeVegasSettlement,
+  computeQuotaSettlement,
+  computeNinesSettlement,
+  computeTwosSettlement,
   mergeNetMaps,
   dollarsToCents,
   formatCents,
@@ -118,11 +128,12 @@ export default async function ResultsPage({
 
   const { data: gameRows } = await supabase
     .from("side_games")
-    .select("*, side_game_participants(*), side_game_presses(*)")
+    .select("*, side_game_participants(*), side_game_presses(*), side_game_wolf_picks(*)")
     .eq("round_id", roundId)
     .order("created_at", { ascending: true });
 
   const netMaps: Map<string, number>[] = [];
+  const overallHoleNumbers = segmentHoleNumbers("overall", round.hole_count);
 
   const nassauSections = (gameRows ?? [])
     .filter((g) => g.game_type === "nassau" && g.is_monetary && g.dollar_value != null)
@@ -174,9 +185,116 @@ export default async function ResultsPage({
     .map((game) => {
       const participantIds = (game.side_game_participants ?? []).map((p) => p.round_player_id);
       const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
-      const holeNumbers = segmentHoleNumbers("overall", round.hole_count);
-      const result = computeSkins(gamePlayers, holeNumbers, game.scoring_metric, game.carryover);
+      const result = computeSkins(gamePlayers, overallHoleNumbers, game.scoring_metric, game.carryover);
       const settlement = computeSkinsSettlement(result, participantIds, dollarsToCents(game.dollar_value!));
+      netMaps.push(settlement.netByPlayer);
+
+      return {
+        id: game.id,
+        name: game.name,
+        dollarValue: game.dollar_value!,
+        settlement,
+      };
+    });
+
+  const wolfSections = (gameRows ?? [])
+    .filter((g) => g.game_type === "wolf" && g.is_monetary && g.dollar_value != null)
+    .map((game) => {
+      const participants = game.side_game_participants ?? [];
+      const order: WolfOrderedParticipant[] = participants
+        .filter((p) => p.wolf_order != null)
+        .map((p) => ({ roundPlayerId: p.round_player_id, wolfOrder: p.wolf_order! }))
+        .sort((a, b) => a.wolfOrder - b.wolfOrder);
+      const orderPlayers = order.map((o) => scoreInputById.get(o.roundPlayerId)).filter((p): p is PlayerScoreInput => !!p);
+      const picks = (game.side_game_wolf_picks ?? []).map((pk) => ({
+        holeNumber: pk.hole_number,
+        partnerRoundPlayerId: pk.partner_round_player_id,
+        isLoneWolf: pk.is_lone_wolf,
+      }));
+      const holeResults = computeWolfHoles(order, picks, orderPlayers, overallHoleNumbers, game.scoring_metric);
+      const settlement = computeWolfSettlement(holeResults, order, dollarsToCents(game.dollar_value!));
+      netMaps.push(settlement.netByPlayer);
+
+      return {
+        id: game.id,
+        name: game.name,
+        dollarValue: game.dollar_value!,
+        orderNames: order.map((o) => displayNameById.get(o.roundPlayerId) ?? "Golfer"),
+        settlement,
+      };
+    });
+
+  const vegasSections = (gameRows ?? [])
+    .filter((g) => g.game_type === "vegas" && g.is_monetary && g.dollar_value != null)
+    .map((game) => {
+      const participants = game.side_game_participants ?? [];
+      const side1Ids = participants.filter((p) => p.side === 1).map((p) => p.round_player_id);
+      const side2Ids = participants.filter((p) => p.side === 2).map((p) => p.round_player_id);
+      const side1 = side1Ids.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const side2 = side2Ids.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeVegas(side1, side2, overallHoleNumbers, game.scoring_metric);
+      const settlement = computeVegasSettlement(result, side1Ids, side2Ids, dollarsToCents(game.dollar_value!));
+      netMaps.push(settlement.netByPlayer);
+
+      return {
+        id: game.id,
+        name: game.name,
+        dollarValue: game.dollar_value!,
+        side1Names: side1Ids.map((id) => displayNameById.get(id) ?? "Golfer"),
+        side2Names: side2Ids.map((id) => displayNameById.get(id) ?? "Golfer"),
+        settlement,
+      };
+    });
+
+  const quotaSections = (gameRows ?? [])
+    .filter((g) => g.game_type === "quota" && g.is_monetary && g.dollar_value != null)
+    .map((game) => {
+      const participantIds = (game.side_game_participants ?? []).map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const results = computeQuota(gamePlayers, overallHoleNumbers);
+      const settlement = computeQuotaSettlement(results, overallHoleNumbers.length, dollarsToCents(game.dollar_value!));
+      netMaps.push(settlement.netByPlayer);
+
+      return {
+        id: game.id,
+        name: game.name,
+        dollarValue: game.dollar_value!,
+        settlement,
+      };
+    });
+
+  const ninesSections = (gameRows ?? [])
+    .filter((g) => g.game_type === "nines" && g.is_monetary && g.dollar_value != null)
+    .map((game) => {
+      const participantIds = (game.side_game_participants ?? []).map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeNines(gamePlayers, overallHoleNumbers, game.scoring_metric);
+      const settlement = computeNinesSettlement(result, participantIds, dollarsToCents(game.dollar_value!));
+      netMaps.push(settlement.netByPlayer);
+
+      return {
+        id: game.id,
+        name: game.name,
+        dollarValue: game.dollar_value!,
+        settlement,
+        players: participantIds
+          .map((id) => ({
+            roundPlayerId: id,
+            displayName: displayNameById.get(id) ?? "Golfer",
+            points: settlement.totalsByPlayer.get(id) ?? 0,
+            netCents: settlement.netByPlayer.get(id) ?? 0,
+          }))
+          .sort((a, b) => b.points - a.points),
+      };
+    });
+
+  const twosSections = (gameRows ?? [])
+    .filter((g) => g.game_type === "twos" && g.is_monetary && g.dollar_value != null)
+    .map((game) => {
+      const participantIds = (game.side_game_participants ?? []).map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const result = computeTwos(gamePlayers, overallHoleNumbers, game.scoring_metric);
+      const settlement = computeTwosSettlement(result, participantIds, dollarsToCents(game.dollar_value!));
       netMaps.push(settlement.netByPlayer);
 
       return {
@@ -194,7 +312,14 @@ export default async function ResultsPage({
 
   const standings = computeStandings(allScoreInputs, "net");
   const totalsById = new Map(allScoreInputs.map((p) => [p.roundPlayerId, computePlayerTotals(p)]));
-  const hasAnyMonetaryGame = nassauSections.length > 0 || skinsSections.length > 0;
+  const hasAnyMonetaryGame =
+    nassauSections.length > 0 ||
+    skinsSections.length > 0 ||
+    wolfSections.length > 0 ||
+    vegasSections.length > 0 ||
+    quotaSections.length > 0 ||
+    ninesSections.length > 0 ||
+    twosSections.length > 0;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -338,6 +463,173 @@ export default async function ResultsPage({
                 {formatCents(game.settlement.pendingCents)} still riding on tied holes not yet resolved — not
                 included above.
               </p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {wolfSections.map((game) => (
+        <Card className="mt-6" key={game.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{game.name}</CardTitle>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))}/hole</Badge>
+            </div>
+            <CardDescription>{game.orderNames.join(" → ")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {game.settlement.holes.every((h) => h.outcome == null) ? (
+              <p className="text-sm text-charcoal-400">No holes decided yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {game.settlement.holes
+                  .filter((h) => h.outcome != null)
+                  .map((h) => {
+                    const wolfName = h.wolfRoundPlayerId ? (displayNameById.get(h.wolfRoundPlayerId) ?? "Golfer") : "Wolf";
+                    const partnerName = h.partnerRoundPlayerId ? (displayNameById.get(h.partnerRoundPlayerId) ?? "Golfer") : null;
+                    const wolfSideLabel = partnerName ? `${wolfName} & ${partnerName}` : wolfName;
+                    return (
+                      <li key={h.holeNumber} className="flex items-center justify-between text-sm text-charcoal-700">
+                        <span>Hole {h.holeNumber}</span>
+                        <span className="text-charcoal-500">
+                          {h.outcome === "halved"
+                            ? "Halved"
+                            : h.outcome === "wolfSide"
+                              ? `${wolfSideLabel} win ${formatCents(h.amountCents!)}`
+                              : `${wolfSideLabel} lose ${formatCents(h.amountCents!)}`}
+                        </span>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
+            {game.settlement.holesDecided < game.settlement.holesTotal && (
+              <p className="text-xs text-charcoal-400">
+                {game.settlement.holesTotal - game.settlement.holesDecided} hole(s) not decided yet — not reflected above.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {vegasSections.map((game) => (
+        <Card className="mt-6" key={game.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{game.name}</CardTitle>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))}/point</Badge>
+            </div>
+            <CardDescription>
+              {game.side1Names.join(" & ") || "Team 1"} vs {game.side2Names.join(" & ") || "Team 2"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {game.settlement.holes.length === 0 ? (
+              <p className="text-sm text-charcoal-400">No holes settled yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {game.settlement.holes.map((h) => (
+                  <li key={h.holeNumber} className="flex items-center justify-between text-sm text-charcoal-700">
+                    <span>Hole {h.holeNumber}</span>
+                    <span className="text-charcoal-500">
+                      {h.winner == null || h.winner === "halved" || h.amountCents === 0
+                        ? "Halved"
+                        : `Team ${h.winner} wins ${formatCents(h.amountCents)}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {quotaSections.map((game) => (
+        <Card className="mt-6" key={game.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{game.name}</CardTitle>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))} ante</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!game.settlement.fullyDecided ? (
+              <p className="text-sm text-charcoal-400">
+                Not settled yet — every golfer needs to finish all their holes.
+              </p>
+            ) : game.settlement.players.every((p) => !p.beatQuota) ? (
+              <p className="text-sm text-charcoal-400">
+                No one beat their quota — the pot is returned, nothing changes hands.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {game.settlement.players
+                  .filter((p) => p.beatQuota)
+                  .map((p) => (
+                    <li key={p.roundPlayerId} className="flex items-center justify-between text-sm text-charcoal-700">
+                      <span>{displayNameById.get(p.roundPlayerId) ?? "Golfer"}</span>
+                      <span className="text-charcoal-500">+{p.differential} pts</span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {ninesSections.map((game) => (
+        <Card className="mt-6" key={game.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{game.name}</CardTitle>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))}/point</Badge>
+            </div>
+            <CardDescription>Settled against the 3-point-per-hole average.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {game.players.length === 0 ? (
+              <p className="text-sm text-charcoal-400">No points yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {game.players.map((p) => (
+                  <li key={p.roundPlayerId} className="flex items-center justify-between text-sm text-charcoal-700">
+                    <span>{p.displayName}</span>
+                    <span className={p.netCents > 0 ? "text-emerald-700" : p.netCents < 0 ? "text-red-700" : "text-charcoal-500"}>
+                      {formatSignedCents(p.netCents)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {twosSections.map((game) => (
+        <Card className="mt-6" key={game.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{game.name}</CardTitle>
+              <Badge variant="gold">{formatCents(dollarsToCents(game.dollarValue))}/two</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {game.settlement.holes.every((h) => h.winnerRoundPlayerIds.length === 0) ? (
+              <p className="text-sm text-charcoal-400">No 2s made yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {game.settlement.holes
+                  .filter((h) => h.winnerRoundPlayerIds.length > 0)
+                  .map((h) => (
+                    <li key={h.holeNumber} className="flex items-center justify-between text-sm text-charcoal-700">
+                      <span>Hole {h.holeNumber}</span>
+                      <span className="text-charcoal-500">
+                        {h.winnerRoundPlayerIds.map((id) => displayNameById.get(id) ?? "Golfer").join(" & ")} win{" "}
+                        {formatCents(h.amountCents)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
             )}
           </CardContent>
         </Card>
