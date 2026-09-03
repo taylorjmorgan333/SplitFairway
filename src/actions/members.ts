@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { inviteMemberSchema, transferOwnershipSchema } from "@/lib/validation/trip";
+import { addMemberManuallySchema, inviteMemberSchema, transferOwnershipSchema } from "@/lib/validation/trip";
 import { trackEvent } from "@/lib/analytics";
 import type { ActionState } from "@/actions/auth";
 import type { Enums } from "@/lib/supabase/database.types";
@@ -64,6 +64,52 @@ export async function inviteMemberAction(
     status: "success",
     message: `Invitation created for ${parsed.data.email}. Copy the link below to send it — this is the only time it's shown.`,
     inviteLink: token ? `${siteUrl()}/invite/${token}` : undefined,
+  };
+}
+
+export async function addMemberManuallyAction(
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = addMemberManuallySchema.safeParse({
+    displayName: formData.get("displayName"),
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  // add_trip_member_manually() checks is_trip_captain() internally and
+  // inserts the golfer straight in as status='active' with no
+  // invitation token — for someone who won't check an inbox, the
+  // captain can get them tracked (scores, expenses, splits) right now.
+  // If they want that golfer to actually log in later, the normal
+  // "Invite a golfer" flow above still works on the same person —
+  // it's keyed off email, not this action.
+  const { error } = await supabase.rpc("add_trip_member_manually", {
+    p_trip_id: tripId,
+    p_display_name: parsed.data.displayName,
+    p_email: parsed.data.email ? parsed.data.email : undefined,
+  });
+
+  if (error) {
+    return { status: "error", message: error.message };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    await trackEvent(supabase, user.id, "golfer_added_manually", {}, tripId);
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return {
+    status: "success",
+    message: `${parsed.data.displayName} was added to the trip and is active now.`,
   };
 }
 

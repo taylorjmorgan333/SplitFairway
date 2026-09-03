@@ -196,8 +196,17 @@ export default async function TripDetailPage({
     }
   }
 
+  // Members added manually (no invite email) may have no email on
+  // file — the reminder center only makes sense for someone reachable
+  // by email, so they're simply left out of these two lists rather
+  // than surfaced with a blank/broken "send" target.
   const reminderOverdue: ReminderData["overdue"] = activeMembers
-    .filter((m) => overdueDueDateByMember.has(m.id) && (balanceByMemberId.get(m.id)?.amountOwedCents ?? 0) > 0)
+    .filter(
+      (m): m is typeof m & { email: string } =>
+        m.email !== null &&
+        overdueDueDateByMember.has(m.id) &&
+        (balanceByMemberId.get(m.id)?.amountOwedCents ?? 0) > 0,
+    )
     .map((m) => ({
       memberId: m.id,
       displayName: m.display_name,
@@ -207,7 +216,12 @@ export default async function TripDetailPage({
     }));
 
   const reminderDueSoon: ReminderData["dueSoon"] = activeMembers
-    .filter((m) => dueSoonDueDateByMember.has(m.id) && (balanceByMemberId.get(m.id)?.amountOwedCents ?? 0) > 0)
+    .filter(
+      (m): m is typeof m & { email: string } =>
+        m.email !== null &&
+        dueSoonDueDateByMember.has(m.id) &&
+        (balanceByMemberId.get(m.id)?.amountOwedCents ?? 0) > 0,
+    )
     .map((m) => ({
       memberId: m.id,
       displayName: m.display_name,
@@ -246,16 +260,20 @@ export default async function TripDetailPage({
       (pendingInvitations ?? []).map((inv) => [inv.email.toLowerCase(), inv]),
     );
     reminderInvitations = memberRows
-      .filter((m) => m.status === "invited")
+      .filter((m) => m.status === "invited" && m.email !== null)
       .map((m) => {
-        const invitation = invitationByEmail.get(m.email.toLowerCase());
+        // Guaranteed non-null by the filter above (an "invited" row is
+        // always created with an email — see invite_trip_member), but
+        // the column type is nullable overall so TS still needs this.
+        const email = m.email as string;
+        const invitation = invitationByEmail.get(email.toLowerCase());
         if (!invitation) return null;
         const expiresAt = new Date(invitation.expires_at).getTime();
         if (expiresAt <= now) return null;
         return {
           tripMemberId: m.id,
           displayName: m.display_name,
-          email: m.email,
+          email,
           daysUntilExpiry: Math.max(1, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000))),
         };
       })

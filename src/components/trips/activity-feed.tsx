@@ -16,6 +16,8 @@ function describe(activity: ActivityRow): string {
       return `${actor} created the trip "${asString(data.name)}"`;
     case "member_invited":
       return `${actor} invited ${asString(data.email)} as ${asString(data.role) === "captain" ? "a co-treasurer" : "a golfer"}`;
+    case "member_added_manually":
+      return `${actor} added ${asString(data.display_name) || "a golfer"} manually`;
     case "member_joined":
       return `${asString(data.email)} joined the trip`;
     case "member_role_changed":

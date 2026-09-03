@@ -206,7 +206,9 @@ function MemberRowItem({
             {member.display_name}
             {isSelf && <span className="text-charcoal-400"> (you)</span>}
           </p>
-          <p className="text-xs text-charcoal-400">{member.email}</p>
+          <p className="text-xs text-charcoal-400">
+            {member.email ?? <span className="italic">No email on file</span>}
+          </p>
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>
 

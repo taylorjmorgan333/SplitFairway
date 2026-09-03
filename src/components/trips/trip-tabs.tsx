@@ -11,6 +11,7 @@ import { PaymentForm } from "@/components/trips/payment-form";
 import { PaymentsList, type PaymentRow } from "@/components/trips/payments-list";
 import { MemberList, type MemberRow } from "@/components/trips/member-list";
 import { InviteMemberForm } from "@/components/trips/invite-member-form";
+import { AddMemberManuallyForm } from "@/components/trips/add-member-manually-form";
 import { EditTripForm } from "@/components/trips/edit-trip-form";
 import { TripDangerZone } from "@/components/trips/trip-danger-zone";
 import {
@@ -240,6 +241,19 @@ export function TripTabs({
                     captain access.
                   </p>
                   <InviteMemberForm tripId={trip.id} />
+                </div>
+              )}
+
+              {isCaptain && (
+                <div className="border-t border-forest-900/[0.06] pt-6">
+                  <h4 className="mb-3 font-serif text-base text-forest-900">Add a golfer manually</h4>
+                  <p className="mb-3 text-xs text-charcoal-400">
+                    Skip the invitation for golfers who won&apos;t check email — just enter a
+                    name and they&apos;re active immediately, ready to be scored and included in
+                    expenses. Email is optional; you can still send them a real invite later if
+                    they want their own login.
+                  </p>
+                  <AddMemberManuallyForm tripId={trip.id} />
                 </div>
               )}
             </CardContent>

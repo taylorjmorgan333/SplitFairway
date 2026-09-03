@@ -31,6 +31,20 @@ export const inviteMemberSchema = z.object({
 
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 
+// Unlike inviteMemberSchema, email is optional here — this is the
+// no-invitation path for a golfer who won't check an inbox (or has
+// none to give): the captain just types a name and the golfer is
+// active immediately, no token, no email required. A blank string
+// from the form is treated the same as "not provided."
+export const addMemberManuallySchema = z.object({
+  displayName: z.string().trim().min(1, "Name is required").max(120),
+  email: z
+    .union([z.string().trim().email("Enter a valid email address"), z.literal("")])
+    .optional(),
+});
+
+export type AddMemberManuallyInput = z.infer<typeof addMemberManuallySchema>;
+
 // Ownership transfer is irreversible-feeling enough (it hands over the
 // trip's primary administrative designation) that the form requires
 // typing a literal confirmation word rather than just clicking a

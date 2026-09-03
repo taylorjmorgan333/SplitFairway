@@ -1349,7 +1349,7 @@ export type Database = {
         Row: {
           created_at: string
           display_name: string
-          email: string
+          email: string | null
           id: string
           joined_at: string | null
           role: Database["public"]["Enums"]["member_role"]
@@ -1360,7 +1360,7 @@ export type Database = {
         Insert: {
           created_at?: string
           display_name: string
-          email: string
+          email?: string | null
           id?: string
           joined_at?: string | null
           role?: Database["public"]["Enums"]["member_role"]
@@ -1371,7 +1371,7 @@ export type Database = {
         Update: {
           created_at?: string
           display_name?: string
-          email?: string
+          email?: string | null
           id?: string
           joined_at?: string | null
           role?: Database["public"]["Enums"]["member_role"]
@@ -1469,7 +1469,7 @@ export type Database = {
         Returns: {
           created_at: string
           display_name: string
-          email: string
+          email: string | null
           id: string
           joined_at: string | null
           role: Database["public"]["Enums"]["member_role"]
@@ -1483,6 +1483,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      add_trip_member_manually: {
+        Args: { p_display_name: string; p_email?: string; p_trip_id: string }
+        Returns: Json
       }
       can_edit_round_score: {
         Args: { p_round_player_id: string }
@@ -1670,7 +1674,7 @@ export type Database = {
         Returns: {
           created_at: string
           display_name: string
-          email: string
+          email: string | null
           id: string
           joined_at: string | null
           role: Database["public"]["Enums"]["member_role"]
