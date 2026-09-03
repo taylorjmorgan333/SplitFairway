@@ -117,6 +117,9 @@ export default async function RoundDetailPage({
               Games
             </ButtonLink>
           )}
+          <ButtonLink href={`/trips/${tripId}/rounds/${round.id}/results`} variant="outline" size="sm">
+            Results
+          </ButtonLink>
         </div>
       )}
 
