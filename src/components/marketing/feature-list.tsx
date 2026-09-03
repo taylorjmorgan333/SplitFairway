@@ -1,4 +1,4 @@
-import { Calculator, Bell, Users, ListChecks, ShieldCheck, Smartphone } from "lucide-react";
+import { Calculator, Bell, Users, ListChecks, ShieldCheck, Smartphone, Trophy } from "lucide-react";
 import { Container } from "@/components/ui/container";
 
 const FEATURES = [
@@ -28,9 +28,14 @@ const FEATURES = [
     body: "We track who paid whom outside the app — Venmo, Zelle, PayPal, cash, check. We never hold your funds.",
   },
   {
+    icon: Trophy,
+    title: "Scores & side games",
+    body: "Track scores, follow live standings and let SplitFairway handle the math for skins, Nassau and other group games.",
+  },
+  {
     icon: Smartphone,
-    title: "Works from the cart",
-    body: "A clean, mobile-first design built for checking balances between holes, not at a desk.",
+    title: "Made for round day",
+    body: "An easy, mobile-first scorecard designed for quick updates between shots.",
   },
 ];
 
@@ -39,10 +44,10 @@ export function FeatureList() {
     <section className="bg-forest-50 py-20 sm:py-28">
       <Container>
         <div className="max-w-2xl">
-          <h2 className="text-3xl sm:text-4xl">Everything the treasurer needs</h2>
+          <h2 className="text-3xl sm:text-4xl">Everything your golf trip needs</h2>
           <p className="mt-4 text-lg text-charcoal-500">
-            Nothing you don&apos;t. This is trip-expense software, not a
-            wallet.
+            From the first deposit to the final scorecard, the entire trip
+            stays together.
           </p>
         </div>
 

@@ -26,9 +26,8 @@ export function Hero() {
               Split everything else.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-cream-100/80">
-              Split lodging, tee times, rental cars and every other trip
-              expense. Everyone sees exactly what they owe and when it&apos;s
-              due.
+              Organize the trip, split every expense, and keep your rounds,
+              scores and side games together in one place.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <ButtonLink href="/signup" variant="gold" size="lg">

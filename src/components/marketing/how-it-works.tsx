@@ -4,22 +4,22 @@ const STEPS = [
   {
     number: "01",
     title: "Build the trip",
-    body: "Add lodging, tee times, carts and any other cost. Assign who's in on each one.",
+    body: "Add your golfers, lodging, tee times, transportation and other trip details.",
   },
   {
     number: "02",
     title: "Split it fairly",
-    body: "We calculate exactly what each golfer owes — even split, or itemized by who actually used what.",
+    body: "We calculate what each golfer owes — even when rooms, rounds and expenses aren't shared evenly.",
   },
   {
     number: "03",
-    title: "Track who's paid",
-    body: "Record payments made by Venmo, Zelle, PayPal, cash or check. Everyone sees a live tally.",
+    title: "Play the rounds",
+    body: "Keep hole-by-hole scores, follow the leaderboard and track the group's side games.",
   },
   {
     number: "04",
-    title: "Send a nudge, not a lecture",
-    body: "Automatic reminders go out for what's still owed, so you don't have to be the bad guy.",
+    title: "Settle everything",
+    body: "See the final trip balances, record payments and send a friendly reminder when needed.",
   },
 ];
 

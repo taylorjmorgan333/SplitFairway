@@ -27,9 +27,8 @@ export function SiteFooter() {
         <div className="sm:col-span-2 md:col-span-2">
           <Logo variant="light" />
           <p className="mt-4 max-w-sm text-sm text-cream-100/70">
-            Payment tracking for golf trip organizers. We help you split
-            costs and see who&apos;s paid — we never hold or move your
-            group&apos;s money.
+            Golf trip planning, expense splitting, scorekeeping and game
+            tracking—all in one place.
           </p>
         </div>
 
