@@ -6,6 +6,7 @@ import { GOLF_SCORING_ENABLED } from "@/lib/config";
 import { Card, CardContent } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CourseListDeleteButton } from "@/components/courses/course-list-delete-button";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Courses" };
@@ -68,25 +69,24 @@ export default async function CoursesPage() {
             const badge = STATUS_BADGE[course.status];
             const isOwn = course.created_by === user.id;
             return (
-              <Link key={course.id} href={`/courses/${course.id}`}>
-                <Card className="transition-shadow hover:shadow-md">
-                  <CardContent className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-forest-900">{course.name}</p>
-                      <p className="mt-0.5 text-xs text-charcoal-400">
-                        {[course.city, course.state].filter(Boolean).join(", ") || "Location not set"}
-                        {" · "}
-                        {course.hole_count} holes
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isOwn && course.status !== "approved" && (
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <Card key={course.id} className="transition-shadow hover:shadow-md">
+                <CardContent className="flex items-center justify-between gap-3">
+                  <Link href={`/courses/${course.id}`} className="min-w-0 flex-1">
+                    <p className="font-medium text-forest-900">{course.name}</p>
+                    <p className="mt-0.5 text-xs text-charcoal-400">
+                      {[course.city, course.state].filter(Boolean).join(", ") || "Location not set"}
+                      {" · "}
+                      {course.hole_count} holes
+                    </p>
+                  </Link>
+                  <div className="flex items-center gap-3">
+                    {isOwn && course.status !== "approved" && (
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                    )}
+                    {isOwn && <CourseListDeleteButton courseId={course.id} courseName={course.name} />}
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
