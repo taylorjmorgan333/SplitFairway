@@ -257,6 +257,7 @@ export type Database = {
           created_at: string
           dominant_hand: Database["public"]["Enums"]["dominant_hand"] | null
           ghin_number: string | null
+          ghin_screenshot_path: string | null
           ghin_screenshot_retained: boolean
           golf_association: string | null
           handicap_index: number | null
@@ -273,6 +274,7 @@ export type Database = {
           created_at?: string
           dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
           ghin_number?: string | null
+          ghin_screenshot_path?: string | null
           ghin_screenshot_retained?: boolean
           golf_association?: string | null
           handicap_index?: number | null
@@ -289,6 +291,7 @@ export type Database = {
           created_at?: string
           dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
           ghin_number?: string | null
+          ghin_screenshot_path?: string | null
           ghin_screenshot_retained?: boolean
           golf_association?: string | null
           handicap_index?: number | null

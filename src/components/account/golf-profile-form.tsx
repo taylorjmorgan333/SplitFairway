@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateGolfProfileAction, removeGhinNumberAction } from "@/actions/golf";
+import { deleteGhinScreenshotAction } from "@/actions/golf-ghin-import";
 import type { ActionState } from "@/actions/auth";
 import type { Tables } from "@/lib/supabase/database.types";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { HandicapHistoryList } from "@/components/account/handicap-history-list";
+import { GhinImportForm } from "@/components/account/ghin-import-form";
 import { formatDate } from "@/lib/utils";
 
 const initialState: ActionState = { status: "idle" };
@@ -48,15 +50,30 @@ function RemoveGhinButton() {
  * otherwise — see the fixed disclaimer text below and
  * src/lib/validation/golf.ts / src/actions/golf.ts for how it's saved.
  */
+function DeleteScreenshotButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" variant="ghost" disabled={pending} className="text-xs text-charcoal-500">
+      {pending ? "Removing…" : "Delete saved screenshot"}
+    </Button>
+  );
+}
+
 export function GolfProfileForm({
   profile,
   history,
+  ghinImportEnabled,
 }: {
   profile: Tables<"golf_profiles"> | null;
   history: Tables<"handicap_history">[];
+  ghinImportEnabled: boolean;
 }) {
   const [state, formAction] = useActionState(updateGolfProfileAction, initialState);
   const [removeState, removeAction] = useActionState(removeGhinNumberAction, initialState);
+  const [deleteScreenshotState, deleteScreenshotAction] = useActionState(
+    deleteGhinScreenshotAction,
+    initialState,
+  );
 
   const sourceLabel =
     profile?.handicap_index == null
@@ -195,14 +212,32 @@ export function GolfProfileForm({
 
       <HandicapHistoryList entries={history} />
 
-      <div className="rounded-lg border border-dashed border-charcoal-400/25 p-4">
-        <p className="text-sm text-charcoal-700">Import from a GHIN screenshot</p>
-        <p className="mt-1 text-xs text-charcoal-400">
-          Coming soon — photograph or upload your own GHIN profile screen and review every
-          extracted value before anything is saved. SplitFairway will never connect to GHIN
-          directly.
-        </p>
-      </div>
+      {profile?.ghin_screenshot_retained && (
+        <div className="flex items-center justify-between rounded-lg bg-cream-100 px-4 py-2.5">
+          <p className="text-xs text-charcoal-500">
+            A GHIN screenshot is saved on your account (private, visible only to you).
+          </p>
+          {deleteScreenshotState.status === "error" && deleteScreenshotState.message && (
+            <Alert variant="error">{deleteScreenshotState.message}</Alert>
+          )}
+          <form action={deleteScreenshotAction}>
+            <DeleteScreenshotButton />
+          </form>
+        </div>
+      )}
+
+      {ghinImportEnabled ? (
+        <GhinImportForm profile={profile} />
+      ) : (
+        <div className="rounded-lg border border-dashed border-charcoal-400/25 p-4">
+          <p className="text-sm text-charcoal-700">Import from a GHIN screenshot</p>
+          <p className="mt-1 text-xs text-charcoal-400">
+            Coming soon — photograph or upload your own GHIN profile screen and review every
+            extracted value before anything is saved. SplitFairway will never connect to GHIN
+            directly.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { GolfProfileForm } from "@/components/account/golf-profile-form";
+import { GHIN_SCREENSHOT_IMPORT_ENABLED } from "@/lib/config";
 
 /**
  * Server-fetches the signed-in user's own golf_profiles row and recent
@@ -33,7 +34,11 @@ export async function GolfProfileSection({ userId }: { userId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <GolfProfileForm profile={profile ?? null} history={history ?? []} />
+        <GolfProfileForm
+          profile={profile ?? null}
+          history={history ?? []}
+          ghinImportEnabled={GHIN_SCREENSHOT_IMPORT_ENABLED}
+        />
       </CardContent>
     </Card>
   );
