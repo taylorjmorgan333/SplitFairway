@@ -70,6 +70,73 @@ export function MonetaryToggle({
   );
 }
 
+/**
+ * The "Side 1" / "Side 2" golfer-picker grid -- originally written
+ * inline, separately, in Nassau's and Vegas's create forms; pulled out
+ * here once Batch 1's dozen new two-sided formats (team-stroke-section.tsx,
+ * team-prize-section.tsx, match-play-section.tsx) needed the exact same
+ * grid, differing only in labels and whether a side is a multi-checkbox
+ * list or (match play, Lone Ranger's side 1) a single-golfer dropdown.
+ */
+export function TwoSidedPlayerPicker({
+  players,
+  side1Label,
+  side2Label,
+  side1Mode = "checkbox",
+  side2Mode = "checkbox",
+}: {
+  players: PlayerOption[];
+  side1Label: string;
+  side2Label: string;
+  side1Mode?: "checkbox" | "select";
+  side2Mode?: "checkbox" | "select";
+}) {
+  function renderSide(name: string, mode: "checkbox" | "select") {
+    if (mode === "select") {
+      return (
+        <select
+          name={name}
+          required
+          defaultValue=""
+          className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal focus:border-forest-600"
+        >
+          <option value="" disabled>
+            Choose golfer
+          </option>
+          {players.map((p) => (
+            <option key={p.roundPlayerId} value={p.roundPlayerId}>
+              {p.displayName}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    return (
+      <div className="space-y-1">
+        {players.map((p) => (
+          <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
+            <input type="checkbox" name={name} value={p.roundPlayerId} />
+            {p.displayName}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <p className="text-xs font-medium text-charcoal-500">{side1Label}</p>
+        <div className="mt-1">{renderSide("side1PlayerIds", side1Mode)}</div>
+      </div>
+      <div>
+        <p className="text-xs font-medium text-charcoal-500">{side2Label}</p>
+        <div className="mt-1">{renderSide("side2PlayerIds", side2Mode)}</div>
+      </div>
+    </div>
+  );
+}
+
 export function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
   return (

@@ -11,9 +11,26 @@ import {
   createQuotaGameSchema,
   createNinesGameSchema,
   createTwosGameSchema,
+  createMatchPlayGameSchema,
+  createStrokePlayGameSchema,
+  createStablefordGameSchema,
+  createBestBallGameSchema,
+  createWorstBallGameSchema,
+  createShambleGameSchema,
+  createTeamAverageGameSchema,
+  createLoneRangerGameSchema,
+  createChaChaChaGameSchema,
+  createOneGrossOneNetGameSchema,
+  createLowBallHighBallGameSchema,
+  createLowBallLowTotalGameSchema,
+  createLowHandicapHighHandicapGameSchema,
   wolfPickSchema,
 } from "@/lib/validation/side-game";
 import type { ActionState } from "@/actions/auth";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SideGameType = Database["public"]["Enums"]["side_game_type"];
+type ScoringMetric = Database["public"]["Enums"]["side_game_scoring_metric"];
 
 /**
  * Creates a Nassau game: one side_games row plus one side_game_participants
@@ -568,4 +585,562 @@ export async function setWolfPickAction(
 
   revalidatePath(`/trips/${tripId}/rounds/${roundId}/games`);
   return { ok: true };
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Shared insert logic for Batch 1's 13 new formula-based game types
+ * (games/game-type-picker.tsx, src/lib/golf/team-formats.ts) -- every
+ * one of them otherwise repeats the nassau/vegas/quota/etc. actions
+ * above verbatim (parse -> insert side_games -> insert participants ->
+ * roll back the game row if participants fail), so factoring it once
+ * here instead of pasting it 13 more times keeps that shape from
+ * drifting per-format by accident.
+ */
+async function insertGameRow(
+  supabase: SupabaseServerClient,
+  roundId: string,
+  gameType: SideGameType,
+  name: string,
+  scoringMetric: ScoringMetric,
+  isMonetary: boolean,
+  dollarValue: number | null,
+  userId: string,
+): Promise<string | null> {
+  const { data: game, error } = await supabase
+    .from("side_games")
+    .insert({
+      round_id: roundId,
+      game_type: gameType,
+      name,
+      scoring_metric: scoringMetric,
+      is_monetary: isMonetary,
+      dollar_value: isMonetary ? dollarValue : null,
+      monetary_accepted_by: isMonetary ? userId : null,
+      monetary_accepted_at: isMonetary ? new Date().toISOString() : null,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error || !game) return null;
+  return game.id;
+}
+
+interface TwoSidedGameData {
+  name: string;
+  /** Defaults to "gross" for the one format that doesn't offer a metric choice (one_gross_one_net always uses both; the stored value is never read back for it). */
+  scoringMetric?: "gross" | "net";
+  side1PlayerIds: string[];
+  side2PlayerIds: string[];
+  isMonetary: boolean;
+  dollarValue: number | null;
+}
+
+/** Inserts a side_games row plus side 1/side 2 participants -- the shape every two-sided Batch 1 format shares with nassau/vegas. */
+async function createTwoSidedGame(
+  gameType: SideGameType,
+  roundId: string,
+  tripId: string,
+  data: TwoSidedGameData,
+  successMessage: string,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: "error", message: "You need to be signed in." };
+  }
+
+  const gameId = await insertGameRow(
+    supabase,
+    roundId,
+    gameType,
+    data.name,
+    data.scoringMetric ?? "gross",
+    data.isMonetary,
+    data.dollarValue,
+    user.id,
+  );
+  if (!gameId) {
+    return { status: "error", message: "Couldn't create this game — make sure you're the trip captain." };
+  }
+
+  const participants = [
+    ...data.side1PlayerIds.map((id) => ({ side_game_id: gameId, round_player_id: id, side: 1 })),
+    ...data.side2PlayerIds.map((id) => ({ side_game_id: gameId, round_player_id: id, side: 2 })),
+  ];
+  const { error: participantsError } = await supabase.from("side_game_participants").insert(participants);
+
+  if (participantsError) {
+    await supabase.from("side_games").delete().eq("id", gameId);
+    return { status: "error", message: "Couldn't add golfers to this game. Please try again." };
+  }
+
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}/games`);
+  return { status: "success", message: successMessage };
+}
+
+interface SideLessGameData {
+  name: string;
+  scoringMetric?: "gross" | "net";
+  playerIds: string[];
+  isMonetary: boolean;
+  dollarValue: number | null;
+}
+
+/** Inserts a side_games row plus one side-less participant per golfer -- the shape stroke play and Stableford share with skins/quota/nines/twos. */
+async function createSideLessGame(
+  gameType: SideGameType,
+  roundId: string,
+  tripId: string,
+  data: SideLessGameData,
+  successMessage: string,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: "error", message: "You need to be signed in." };
+  }
+
+  const gameId = await insertGameRow(
+    supabase,
+    roundId,
+    gameType,
+    data.name,
+    data.scoringMetric ?? "gross",
+    data.isMonetary,
+    data.dollarValue,
+    user.id,
+  );
+  if (!gameId) {
+    return { status: "error", message: "Couldn't create this game — make sure you're the trip captain." };
+  }
+
+  const { error: participantsError } = await supabase
+    .from("side_game_participants")
+    .insert(data.playerIds.map((id) => ({ side_game_id: gameId, round_player_id: id, side: null })));
+
+  if (participantsError) {
+    await supabase.from("side_games").delete().eq("id", gameId);
+    return { status: "error", message: "Couldn't add golfers to this game. Please try again." };
+  }
+
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}/games`);
+  return { status: "success", message: successMessage };
+}
+
+export async function createMatchPlayGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createMatchPlayGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "match_play",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Match play game created.",
+  );
+}
+
+export async function createStrokePlayGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createStrokePlayGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    playerIds: formData.getAll("playerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createSideLessGame(
+    "stroke_play",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      playerIds: parsed.data.playerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Stroke play game created.",
+  );
+}
+
+/** scoring_metric is always stored as "net" -- Stableford points are always computed against net score (scoring.ts), so there's no metric choice in this create form, same reasoning quota.ts's action uses. */
+export async function createStablefordGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createStablefordGameSchema.safeParse({
+    name: formData.get("name"),
+    playerIds: formData.getAll("playerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createSideLessGame(
+    "stableford",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: "net",
+      playerIds: parsed.data.playerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Stableford game created.",
+  );
+}
+
+export async function createBestBallGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createBestBallGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "best_ball",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Best ball game created.",
+  );
+}
+
+export async function createWorstBallGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createWorstBallGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "worst_ball",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Worst ball game created.",
+  );
+}
+
+export async function createShambleGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createShambleGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "shamble",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Shamble game created.",
+  );
+}
+
+export async function createTeamAverageGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createTeamAverageGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "team_average",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Team average game created.",
+  );
+}
+
+/** Side 1 is always the single designated Lone Ranger; side 2 the rest of the group -- see createLoneRangerGameSchema. */
+export async function createLoneRangerGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createLoneRangerGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "lone_ranger",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Lone Ranger game created.",
+  );
+}
+
+export async function createChaChaChaGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createChaChaChaGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "cha_cha_cha",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Cha Cha Cha game created.",
+  );
+}
+
+/** No scoringMetric in the form -- team-formats.ts#computeOneGrossOneNet always combines both a gross-best and a net-best per hole. */
+export async function createOneGrossOneNetGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createOneGrossOneNetGameSchema.safeParse({
+    name: formData.get("name"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "one_gross_one_net",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "One Gross One Net game created.",
+  );
+}
+
+export async function createLowBallHighBallGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createLowBallHighBallGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "low_ball_high_ball",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Low Ball High Ball game created.",
+  );
+}
+
+export async function createLowBallLowTotalGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createLowBallLowTotalGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "low_ball_low_total",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Low Ball Low Total game created.",
+  );
+}
+
+export async function createLowHandicapHighHandicapGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createLowHandicapHighHandicapGameSchema.safeParse({
+    name: formData.get("name"),
+    scoringMetric: formData.get("scoringMetric"),
+    side1PlayerIds: formData.getAll("side1PlayerIds"),
+    side2PlayerIds: formData.getAll("side2PlayerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+  if (!parsed.success) return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  return createTwoSidedGame(
+    "low_handicap_high_handicap",
+    roundId,
+    tripId,
+    {
+      name: parsed.data.name,
+      scoringMetric: parsed.data.scoringMetric,
+      side1PlayerIds: parsed.data.side1PlayerIds,
+      side2PlayerIds: parsed.data.side2PlayerIds,
+      isMonetary: parsed.data.isMonetary,
+      dollarValue: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+    },
+    "Low Handicap High Handicap game created.",
+  );
 }

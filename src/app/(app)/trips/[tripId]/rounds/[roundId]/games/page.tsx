@@ -14,6 +14,18 @@ import { computeVegas } from "@/lib/golf/vegas";
 import { computeQuota } from "@/lib/golf/quota";
 import { computeNines } from "@/lib/golf/nines";
 import { computeTwos } from "@/lib/golf/twos";
+import { computeStandings } from "@/lib/golf/scoring";
+import {
+  computeTeamStrokeFormat,
+  computeOneGrossOneNet,
+  computeTeamAverage,
+  computeLowBallHighBall,
+  computeLowBallLowTotal,
+  computeLowHandicapHighHandicap,
+  bestBallFormula,
+  worstBallFormula,
+  chaChaChaFormula,
+} from "@/lib/golf/team-formats";
 import type { PlayerScoreInput, HoleSpec } from "@/lib/golf/scoring";
 import { SideGamesSection, type NassauGameView, type SkinsGameView } from "@/components/rounds/side-games-section";
 import { WolfSection, type WolfGameView, type WolfHoleView } from "@/components/rounds/wolf-section";
@@ -21,6 +33,20 @@ import { VegasSection, type VegasGameView } from "@/components/rounds/vegas-sect
 import { QuotaSection, type QuotaGameView } from "@/components/rounds/quota-section";
 import { NinesSection, type NinesGameView } from "@/components/rounds/nines-section";
 import { TwosSection, type TwosGameView } from "@/components/rounds/twos-section";
+import { MatchPlaySection, type MatchPlayGameView } from "@/components/rounds/match-play-section";
+import {
+  StrokePlaySection,
+  type StrokePlayGameView,
+  type StablefordGameView,
+} from "@/components/rounds/stroke-play-section";
+import { TeamStrokeGamesSection, type TeamStrokeGameView } from "@/components/rounds/team-stroke-section";
+import {
+  TeamPrizeGamesSection,
+  type TeamAverageGameView,
+  type LowBallLowTotalGameView,
+  type LowHighHandicapGameView,
+  type LowHighBallGameView,
+} from "@/components/rounds/team-prize-section";
 import { GameTypePicker } from "@/components/rounds/game-type-picker";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
@@ -153,7 +179,31 @@ export default async function GamesPage({
   const quotaGames: QuotaGameView[] = [];
   const ninesGames: NinesGameView[] = [];
   const twosGames: TwosGameView[] = [];
+  const matchPlayGames: MatchPlayGameView[] = [];
+  const strokePlayGames: StrokePlayGameView[] = [];
+  const stablefordGames: StablefordGameView[] = [];
+  const bestBallGames: TeamStrokeGameView[] = [];
+  const worstBallGames: TeamStrokeGameView[] = [];
+  const shambleGames: TeamStrokeGameView[] = [];
+  const loneRangerGames: TeamStrokeGameView[] = [];
+  const chaChaChaGames: TeamStrokeGameView[] = [];
+  const oneGrossOneNetGames: TeamStrokeGameView[] = [];
+  const teamAverageGames: TeamAverageGameView[] = [];
+  const lowBallLowTotalGames: LowBallLowTotalGameView[] = [];
+  const lowHighHandicapGames: LowHighHandicapGameView[] = [];
+  const lowHighBallGames: LowHighBallGameView[] = [];
   const overallHoleNumbers = segmentHoleNumbers("overall", round.hole_count);
+
+  /** Shared by every two-sided Batch 1 format below (team-formats.ts) -- same side-filtering nassau/vegas already do above, factored once since 11 more game types need it. */
+  function sidePlayers(participants: { round_player_id: string; side: number | null }[], side: 1 | 2): PlayerScoreInput[] {
+    return participants
+      .filter((p) => p.side === side)
+      .map((p) => scoreInputById.get(p.round_player_id))
+      .filter((p): p is PlayerScoreInput => !!p);
+  }
+  function sideNames(participants: { round_player_id: string; side: number | null }[], side: 1 | 2): string[] {
+    return participants.filter((p) => p.side === side).map((p) => displayNameById.get(p.round_player_id) ?? "Golfer");
+  }
 
   for (const game of gameRows ?? []) {
     const participants = game.side_game_participants ?? [];
@@ -351,6 +401,182 @@ export default async function GamesPage({
           winnerNames: h.winnerRoundPlayerIds.map((id) => displayNameById.get(id) ?? "Golfer"),
         })),
       });
+    } else if (game.game_type === "match_play") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const status = computeMatchStatus(side1, side2, overallHoleNumbers, metric);
+      const side1Names = sideNames(participants, 1);
+      const side2Names = sideNames(participants, 2);
+
+      matchPlayGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Name: side1Names[0] ?? "Golfer 1",
+        side2Name: side2Names[0] ?? "Golfer 2",
+        label: status.label,
+        clinched: status.clinched,
+      });
+    } else if (game.game_type === "stroke_play") {
+      const participantIds = participants.map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const standings = computeStandings(gamePlayers, metric);
+
+      strokePlayGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        standings: standings.map((s) => ({
+          roundPlayerId: s.roundPlayerId,
+          displayName: displayNameById.get(s.roundPlayerId) ?? "Golfer",
+          rank: s.rank,
+          value: s.value,
+          thru: s.thru,
+        })),
+      });
+    } else if (game.game_type === "stableford") {
+      const participantIds = participants.map((p) => p.round_player_id);
+      const gamePlayers = participantIds.map((id) => scoreInputById.get(id)).filter((p): p is PlayerScoreInput => !!p);
+      const standings = computeStandings(gamePlayers, "stableford");
+
+      stablefordGames.push({
+        id: game.id,
+        name: game.name,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        standings: standings.map((s) => ({
+          roundPlayerId: s.roundPlayerId,
+          displayName: displayNameById.get(s.roundPlayerId) ?? "Golfer",
+          rank: s.rank,
+          value: s.value,
+          thru: s.thru,
+        })),
+      });
+    } else if (
+      game.game_type === "best_ball" ||
+      game.game_type === "worst_ball" ||
+      game.game_type === "shamble" ||
+      game.game_type === "lone_ranger" ||
+      game.game_type === "cha_cha_cha"
+    ) {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const formula =
+        game.game_type === "worst_ball" ? worstBallFormula : game.game_type === "cha_cha_cha" ? chaChaChaFormula : bestBallFormula;
+      const result = computeTeamStrokeFormat(side1, side2, overallHoleNumbers, metric, formula);
+
+      const view: TeamStrokeGameView = {
+        id: game.id,
+        name: game.name,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        holes: result.holes,
+        side1Total: result.side1Total,
+        side2Total: result.side2Total,
+        metricLabel: metric === "net" ? "Net" : "Gross",
+      };
+
+      if (game.game_type === "best_ball") bestBallGames.push(view);
+      else if (game.game_type === "worst_ball") worstBallGames.push(view);
+      else if (game.game_type === "shamble") shambleGames.push(view);
+      else if (game.game_type === "lone_ranger") loneRangerGames.push(view);
+      else chaChaChaGames.push(view);
+    } else if (game.game_type === "one_gross_one_net") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const result = computeOneGrossOneNet(side1, side2, overallHoleNumbers);
+
+      oneGrossOneNetGames.push({
+        id: game.id,
+        name: game.name,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        holes: result.holes,
+        side1Total: result.side1Total,
+        side2Total: result.side2Total,
+        metricLabel: null,
+      });
+    } else if (game.game_type === "team_average") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const result = computeTeamAverage(side1, side2, metric);
+
+      teamAverageGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        side1Average: result.side1Average,
+        side2Average: result.side2Average,
+      });
+    } else if (game.game_type === "low_ball_low_total") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const result = computeLowBallLowTotal(side1, side2, metric);
+
+      lowBallLowTotalGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        lowBallWinnerSide: result.lowBallWinnerSide,
+        side1BestIndividual: result.side1BestIndividual,
+        side2BestIndividual: result.side2BestIndividual,
+        lowTotalWinnerSide: result.lowTotalWinnerSide,
+        side1Total: result.side1Total,
+        side2Total: result.side2Total,
+      });
+    } else if (game.game_type === "low_handicap_high_handicap") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const result = computeLowHandicapHighHandicap(side1, side2, metric);
+
+      lowHighHandicapGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        lowHandicapWinnerSide: result.lowHandicapWinnerSide,
+        side1LowHandicapTotal: result.side1LowHandicapTotal,
+        side2LowHandicapTotal: result.side2LowHandicapTotal,
+        highHandicapWinnerSide: result.highHandicapWinnerSide,
+        side1HighHandicapTotal: result.side1HighHandicapTotal,
+        side2HighHandicapTotal: result.side2HighHandicapTotal,
+      });
+    } else if (game.game_type === "low_ball_high_ball") {
+      const side1 = sidePlayers(participants, 1);
+      const side2 = sidePlayers(participants, 2);
+      const result = computeLowBallHighBall(side1, side2, overallHoleNumbers, metric);
+
+      lowHighBallGames.push({
+        id: game.id,
+        name: game.name,
+        scoringMetric: metric,
+        isMonetary: game.is_monetary,
+        dollarValue: game.dollar_value,
+        side1Names: sideNames(participants, 1),
+        side2Names: sideNames(participants, 2),
+        side1Points: result.side1Points,
+        side2Points: result.side2Points,
+        holesPlayed: result.holesPlayed,
+      });
     }
   }
 
@@ -362,7 +588,20 @@ export default async function GamesPage({
     vegasGames.length > 0 ||
     quotaGames.length > 0 ||
     ninesGames.length > 0 ||
-    twosGames.length > 0;
+    twosGames.length > 0 ||
+    matchPlayGames.length > 0 ||
+    strokePlayGames.length > 0 ||
+    stablefordGames.length > 0 ||
+    bestBallGames.length > 0 ||
+    worstBallGames.length > 0 ||
+    shambleGames.length > 0 ||
+    loneRangerGames.length > 0 ||
+    chaChaChaGames.length > 0 ||
+    oneGrossOneNetGames.length > 0 ||
+    teamAverageGames.length > 0 ||
+    lowBallLowTotalGames.length > 0 ||
+    lowHighHandicapGames.length > 0 ||
+    lowHighBallGames.length > 0;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -438,6 +677,34 @@ export default async function GamesPage({
           players={playerOptions}
           games={twosGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
+        <MatchPlaySection tripId={tripId} roundId={roundId} isCaptain={isCaptain} games={matchPlayGames} />
+        <StrokePlaySection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          strokePlayGames={strokePlayGames}
+          stablefordGames={stablefordGames}
+        />
+        <TeamStrokeGamesSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          bestBallGames={bestBallGames}
+          worstBallGames={worstBallGames}
+          shambleGames={shambleGames}
+          loneRangerGames={loneRangerGames}
+          chaChaChaGames={chaChaChaGames}
+          oneGrossOneNetGames={oneGrossOneNetGames}
+        />
+        <TeamPrizeGamesSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          teamAverageGames={teamAverageGames}
+          lowBallLowTotalGames={lowBallLowTotalGames}
+          lowHighHandicapGames={lowHighHandicapGames}
+          lowHighBallGames={lowHighBallGames}
         />
       </div>
     </div>

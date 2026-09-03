@@ -1779,6 +1779,19 @@ export type Database = {
         | "quota"
         | "nines"
         | "twos"
+        | "match_play"
+        | "stroke_play"
+        | "stableford"
+        | "best_ball"
+        | "worst_ball"
+        | "shamble"
+        | "team_average"
+        | "low_ball_high_ball"
+        | "low_ball_low_total"
+        | "low_handicap_high_handicap"
+        | "one_gross_one_net"
+        | "lone_ranger"
+        | "cha_cha_cha"
       split_method: "equal" | "selected" | "custom"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
@@ -1936,6 +1949,19 @@ export const Constants = {
         "quota",
         "nines",
         "twos",
+        "match_play",
+        "stroke_play",
+        "stableford",
+        "best_ball",
+        "worst_ball",
+        "shamble",
+        "team_average",
+        "low_ball_high_ball",
+        "low_ball_low_total",
+        "low_handicap_high_handicap",
+        "one_gross_one_net",
+        "lone_ranger",
+        "cha_cha_cha",
       ],
       split_method: ["equal", "selected", "custom"],
       trip_status: ["planning", "active", "completed", "cancelled"],

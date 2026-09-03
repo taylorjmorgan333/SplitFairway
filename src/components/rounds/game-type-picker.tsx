@@ -9,8 +9,44 @@ import { CreateVegasForm } from "@/components/rounds/vegas-section";
 import { CreateQuotaForm } from "@/components/rounds/quota-section";
 import { CreateNinesForm } from "@/components/rounds/nines-section";
 import { CreateTwosForm } from "@/components/rounds/twos-section";
+import { CreateMatchPlayForm } from "@/components/rounds/match-play-section";
+import { CreateStrokePlayForm, CreateStablefordForm } from "@/components/rounds/stroke-play-section";
+import {
+  CreateBestBallForm,
+  CreateWorstBallForm,
+  CreateShambleForm,
+  CreateLoneRangerForm,
+  CreateChaChaChaForm,
+  CreateOneGrossOneNetForm,
+} from "@/components/rounds/team-stroke-section";
+import {
+  CreateTeamAverageForm,
+  CreateLowBallLowTotalForm,
+  CreateLowHandicapHighHandicapForm,
+  CreateLowBallHighBallForm,
+} from "@/components/rounds/team-prize-section";
 
-type GameTypeId = "nassau" | "skins" | "wolf" | "vegas" | "quota" | "nines" | "twos";
+type GameTypeId =
+  | "nassau"
+  | "skins"
+  | "wolf"
+  | "vegas"
+  | "quota"
+  | "nines"
+  | "twos"
+  | "match_play"
+  | "stroke_play"
+  | "stableford"
+  | "best_ball"
+  | "worst_ball"
+  | "shamble"
+  | "team_average"
+  | "lone_ranger"
+  | "cha_cha_cha"
+  | "one_gross_one_net"
+  | "low_ball_high_ball"
+  | "low_ball_low_total"
+  | "low_handicap_high_handicap";
 
 interface GameTypeDef {
   id: GameTypeId;
@@ -36,8 +72,21 @@ const GAME_TYPES: GameTypeDef[] = [
   { id: "quota", name: "Quota", category: "individual", playerHint: "2+ players", minPlayers: 2 },
   { id: "nines", name: "Nines", category: "individual", playerHint: "Exactly 3 players", minPlayers: 3 },
   { id: "twos", name: "Twos Club", category: "individual", playerHint: "2+ players", minPlayers: 2 },
+  { id: "match_play", name: "Match Play", category: "individual", playerHint: "2 players", minPlayers: 2 },
+  { id: "stroke_play", name: "Stroke Play", category: "individual", playerHint: "2+ players", minPlayers: 2 },
+  { id: "stableford", name: "Stableford", category: "individual", playerHint: "2+ players", minPlayers: 2 },
   { id: "nassau", name: "Nassau", category: "team", playerHint: "2 sides", minPlayers: 2 },
   { id: "vegas", name: "Vegas", category: "team", playerHint: "2 vs 2", minPlayers: 4 },
+  { id: "best_ball", name: "Best Ball", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "worst_ball", name: "Worst Ball", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "shamble", name: "Shamble", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "team_average", name: "Team Average", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "lone_ranger", name: "Lone Ranger", category: "team", playerHint: "1 vs the rest", minPlayers: 3 },
+  { id: "cha_cha_cha", name: "Cha Cha Cha", category: "team", playerHint: "2 sides, 2+ each", minPlayers: 4 },
+  { id: "one_gross_one_net", name: "One Gross One Net", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "low_ball_high_ball", name: "Low Ball High Ball", category: "team", playerHint: "2 vs 2", minPlayers: 4 },
+  { id: "low_ball_low_total", name: "Low Ball Low Total", category: "team", playerHint: "2 sides", minPlayers: 2 },
+  { id: "low_handicap_high_handicap", name: "Low Handicap High Handicap", category: "team", playerHint: "2 vs 2", minPlayers: 4 },
 ];
 
 export function GameTypePicker({
@@ -87,6 +136,64 @@ export function GameTypePicker({
       case "twos":
         return (
           <CreateTwosForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "match_play":
+        return (
+          <CreateMatchPlayForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "stroke_play":
+        return (
+          <CreateStrokePlayForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "stableford":
+        return (
+          <CreateStablefordForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "best_ball":
+        return (
+          <CreateBestBallForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "worst_ball":
+        return (
+          <CreateWorstBallForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "shamble":
+        return (
+          <CreateShambleForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "team_average":
+        return (
+          <CreateTeamAverageForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "lone_ranger":
+        return (
+          <CreateLoneRangerForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "cha_cha_cha":
+        return (
+          <CreateChaChaChaForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "one_gross_one_net":
+        return (
+          <CreateOneGrossOneNetForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "low_ball_high_ball":
+        return (
+          <CreateLowBallHighBallForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "low_ball_low_total":
+        return (
+          <CreateLowBallLowTotalForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} onSuccess={onSuccess} />
+        );
+      case "low_handicap_high_handicap":
+        return (
+          <CreateLowHandicapHighHandicapForm
+            roundId={roundId}
+            tripId={tripId}
+            players={players}
+            monetaryEnabled={monetaryEnabled}
+            onSuccess={onSuccess}
+          />
         );
     }
   }
