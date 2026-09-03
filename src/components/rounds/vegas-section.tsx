@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createVegasGameAction } from "@/actions/side-games";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,23 +84,30 @@ function VegasGameCard({
   );
 }
 
-function CreateVegasForm({
+export function CreateVegasForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createVegasGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New Vegas game</p>
 
       <div>
@@ -163,9 +170,7 @@ export function VegasSection({
   tripId,
   roundId,
   isCaptain,
-  players,
   games,
-  monetaryEnabled,
 }: {
   tripId: string;
   roundId: string;
@@ -174,7 +179,7 @@ export function VegasSection({
   games: VegasGameView[];
   monetaryEnabled: boolean;
 }) {
-  const canCreate = isCaptain && players.length >= 4;
+  if (games.length === 0) return null;
 
   return (
     <Card>
@@ -183,16 +188,9 @@ export function VegasSection({
         <CardDescription>Two 2-player teams append their scores into one number — low number wins.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {games.length === 0 && <p className="text-sm text-charcoal-400">No Vegas games yet.</p>}
         {games.map((game) => (
           <VegasGameCard key={game.id} roundId={roundId} tripId={tripId} game={game} isCaptain={isCaptain} />
         ))}
-        {canCreate && (
-          <CreateVegasForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-        )}
-        {isCaptain && players.length > 0 && players.length < 4 && (
-          <p className="text-xs text-charcoal-400">Vegas needs at least four golfers in this round.</p>
-        )}
       </CardContent>
     </Card>
   );

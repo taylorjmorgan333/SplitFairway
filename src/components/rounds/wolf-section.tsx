@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { createWolfGameAction, setWolfPickAction } from "@/actions/side-games";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,23 +165,30 @@ function WolfGameCard({
   );
 }
 
-function CreateWolfForm({
+export function CreateWolfForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createWolfGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New wolf game</p>
 
       <div>
@@ -244,9 +251,7 @@ export function WolfSection({
   roundId,
   isCaptain,
   myRoundPlayerId,
-  players,
   games,
-  monetaryEnabled,
 }: {
   tripId: string;
   roundId: string;
@@ -256,7 +261,7 @@ export function WolfSection({
   games: WolfGameView[];
   monetaryEnabled: boolean;
 }) {
-  const canCreate = isCaptain && players.length >= 4;
+  if (games.length === 0) return null;
 
   return (
     <Card>
@@ -265,7 +270,6 @@ export function WolfSection({
         <CardDescription>4 players, rotating captain each hole — pick a partner or go it alone.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {games.length === 0 && <p className="text-sm text-charcoal-400">No wolf games yet.</p>}
         {games.map((game) => (
           <WolfGameCard
             key={game.id}
@@ -276,12 +280,6 @@ export function WolfSection({
             myRoundPlayerId={myRoundPlayerId}
           />
         ))}
-        {canCreate && (
-          <CreateWolfForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-        )}
-        {isCaptain && players.length > 0 && players.length < 4 && (
-          <p className="text-xs text-charcoal-400">Wolf needs at least four golfers in this round.</p>
-        )}
       </CardContent>
     </Card>
   );

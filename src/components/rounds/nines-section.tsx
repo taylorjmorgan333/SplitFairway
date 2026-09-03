@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createNinesGameAction } from "@/actions/side-games";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,23 +84,30 @@ function NinesGameCard({
   );
 }
 
-function CreateNinesForm({
+export function CreateNinesForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createNinesGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New nines game</p>
 
       <div>
@@ -150,9 +157,7 @@ export function NinesSection({
   tripId,
   roundId,
   isCaptain,
-  players,
   games,
-  monetaryEnabled,
 }: {
   tripId: string;
   roundId: string;
@@ -161,7 +166,7 @@ export function NinesSection({
   games: NinesGameView[];
   monetaryEnabled: boolean;
 }) {
-  const canCreate = isCaptain && players.length >= 3;
+  if (games.length === 0) return null;
 
   return (
     <Card>
@@ -170,16 +175,9 @@ export function NinesSection({
         <CardDescription>3-player points game, aka Hollywood — best score each hole earns the most.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {games.length === 0 && <p className="text-sm text-charcoal-400">No nines games yet.</p>}
         {games.map((game) => (
           <NinesGameCard key={game.id} roundId={roundId} tripId={tripId} game={game} isCaptain={isCaptain} />
         ))}
-        {canCreate && (
-          <CreateNinesForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-        )}
-        {isCaptain && players.length > 0 && players.length < 3 && (
-          <p className="text-xs text-charcoal-400">Nines needs exactly three golfers.</p>
-        )}
       </CardContent>
     </Card>
   );

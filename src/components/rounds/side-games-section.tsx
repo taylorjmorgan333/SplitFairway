@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import {
   createNassauGameAction,
   createSkinsGameAction,
@@ -250,23 +250,30 @@ function SkinsGameCard({
   );
 }
 
-function CreateNassauForm({
+export function CreateNassauForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createNassauGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New Nassau game</p>
 
       <div>
@@ -327,23 +334,30 @@ function CreateNassauForm({
   );
 }
 
-function CreateSkinsForm({
+export function CreateSkinsForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createSkinsGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New skins game</p>
 
       <div>
@@ -402,10 +416,8 @@ export function SideGamesSection({
   roundId,
   isCaptain,
   myRoundPlayerId,
-  players,
   nassauGames,
   skinsGames,
-  monetaryEnabled,
 }: {
   tripId: string;
   roundId: string;
@@ -416,51 +428,44 @@ export function SideGamesSection({
   skinsGames: SkinsGameView[];
   monetaryEnabled: boolean;
 }) {
-  const canCreate = isCaptain && players.length > 0;
+  if (nassauGames.length === 0 && skinsGames.length === 0) return null;
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nassau</CardTitle>
-          <CardDescription>Match play between two sides, with player-started presses.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {nassauGames.length === 0 && <p className="text-sm text-charcoal-400">No Nassau games yet.</p>}
-          {nassauGames.map((game) => (
-            <NassauGameCard
-              key={game.id}
-              roundId={roundId}
-              tripId={tripId}
-              game={game}
-              isCaptain={isCaptain}
-              myRoundPlayerId={myRoundPlayerId}
-            />
-          ))}
-          {canCreate && (
-            <CreateNassauForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-          )}
-          {isCaptain && players.length === 0 && (
-            <p className="text-xs text-charcoal-400">Add golfers to this round before starting a game.</p>
-          )}
-        </CardContent>
-      </Card>
+      {nassauGames.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Nassau</CardTitle>
+            <CardDescription>Match play between two sides, with player-started presses.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {nassauGames.map((game) => (
+              <NassauGameCard
+                key={game.id}
+                roundId={roundId}
+                tripId={tripId}
+                game={game}
+                isCaptain={isCaptain}
+                myRoundPlayerId={myRoundPlayerId}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Skins</CardTitle>
-          <CardDescription>Best score on a hole wins it outright — ties win nothing.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {skinsGames.length === 0 && <p className="text-sm text-charcoal-400">No skins games yet.</p>}
-          {skinsGames.map((game) => (
-            <SkinsGameCard key={game.id} roundId={roundId} tripId={tripId} game={game} isCaptain={isCaptain} />
-          ))}
-          {canCreate && (
-            <CreateSkinsForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-          )}
-        </CardContent>
-      </Card>
+      {skinsGames.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Skins</CardTitle>
+            <CardDescription>Best score on a hole wins it outright — ties win nothing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {skinsGames.map((game) => (
+              <SkinsGameCard key={game.id} roundId={roundId} tripId={tripId} game={game} isCaptain={isCaptain} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

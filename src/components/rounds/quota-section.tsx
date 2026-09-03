@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { createQuotaGameAction } from "@/actions/side-games";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,23 +81,30 @@ function QuotaGameCard({
   );
 }
 
-function CreateQuotaForm({
+export function CreateQuotaForm({
   roundId,
   tripId,
   players,
   monetaryEnabled,
+  onSuccess,
 }: {
   roundId: string;
   tripId: string;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  onSuccess?: () => void;
 }) {
   const action = createQuotaGameAction.bind(null, roundId, tripId);
   const [state, formAction] = useActionState(action, initialState);
   const [isMonetary, setIsMonetary] = useState(false);
 
+  useEffect(() => {
+    if (state.status === "success") onSuccess?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status]);
+
   return (
-    <form action={formAction} className="space-y-3 border-t border-charcoal-400/10 pt-4">
+    <form action={formAction} className="space-y-3">
       <p className="text-xs font-medium text-charcoal-500">New quota game</p>
 
       <div>
@@ -134,9 +141,7 @@ export function QuotaSection({
   tripId,
   roundId,
   isCaptain,
-  players,
   games,
-  monetaryEnabled,
 }: {
   tripId: string;
   roundId: string;
@@ -145,7 +150,7 @@ export function QuotaSection({
   games: QuotaGameView[];
   monetaryEnabled: boolean;
 }) {
-  const canCreate = isCaptain && players.length > 0;
+  if (games.length === 0) return null;
 
   return (
     <Card>
@@ -154,13 +159,9 @@ export function QuotaSection({
         <CardDescription>Each golfer&apos;s target comes from their handicap — beat it or don&apos;t.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {games.length === 0 && <p className="text-sm text-charcoal-400">No quota games yet.</p>}
         {games.map((game) => (
           <QuotaGameCard key={game.id} roundId={roundId} tripId={tripId} game={game} isCaptain={isCaptain} />
         ))}
-        {canCreate && (
-          <CreateQuotaForm roundId={roundId} tripId={tripId} players={players} monetaryEnabled={monetaryEnabled} />
-        )}
       </CardContent>
     </Card>
   );

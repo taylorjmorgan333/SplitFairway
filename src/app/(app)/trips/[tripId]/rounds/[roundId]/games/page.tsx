@@ -21,6 +21,7 @@ import { VegasSection, type VegasGameView } from "@/components/rounds/vegas-sect
 import { QuotaSection, type QuotaGameView } from "@/components/rounds/quota-section";
 import { NinesSection, type NinesGameView } from "@/components/rounds/nines-section";
 import { TwosSection, type TwosGameView } from "@/components/rounds/twos-section";
+import { GameTypePicker } from "@/components/rounds/game-type-picker";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 function wolfOutcomeLabel(h: WolfHoleResult, nameById: Map<string, string>): string {
@@ -353,6 +354,16 @@ export default async function GamesPage({
     }
   }
 
+  const playerOptions = players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }));
+  const hasAnyGames =
+    nassauGames.length > 0 ||
+    skinsGames.length > 0 ||
+    wolfGames.length > 0 ||
+    vegasGames.length > 0 ||
+    quotaGames.length > 0 ||
+    ninesGames.length > 0 ||
+    twosGames.length > 0;
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
@@ -362,24 +373,37 @@ export default async function GamesPage({
         </ButtonLink>
       </div>
 
-      <SideGamesSection
-        tripId={tripId}
+      <GameTypePicker
         roundId={roundId}
+        tripId={tripId}
         isCaptain={isCaptain}
-        myRoundPlayerId={myRoundPlayerId}
-        players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
-        nassauGames={nassauGames}
-        skinsGames={skinsGames}
+        players={playerOptions}
         monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
       />
 
+      {!hasAnyGames && (
+        <p className="mt-6 text-sm text-charcoal-400">
+          No games started yet{isCaptain ? " — pick a format above to get one going." : " for this round."}
+        </p>
+      )}
+
       <div className="mt-6 space-y-6">
+        <SideGamesSection
+          tripId={tripId}
+          roundId={roundId}
+          isCaptain={isCaptain}
+          myRoundPlayerId={myRoundPlayerId}
+          players={playerOptions}
+          nassauGames={nassauGames}
+          skinsGames={skinsGames}
+          monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+        />
         <WolfSection
           tripId={tripId}
           roundId={roundId}
           isCaptain={isCaptain}
           myRoundPlayerId={myRoundPlayerId}
-          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          players={playerOptions}
           games={wolfGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
         />
@@ -387,7 +411,7 @@ export default async function GamesPage({
           tripId={tripId}
           roundId={roundId}
           isCaptain={isCaptain}
-          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          players={playerOptions}
           games={vegasGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
         />
@@ -395,7 +419,7 @@ export default async function GamesPage({
           tripId={tripId}
           roundId={roundId}
           isCaptain={isCaptain}
-          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          players={playerOptions}
           games={quotaGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
         />
@@ -403,7 +427,7 @@ export default async function GamesPage({
           tripId={tripId}
           roundId={roundId}
           isCaptain={isCaptain}
-          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          players={playerOptions}
           games={ninesGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
         />
@@ -411,7 +435,7 @@ export default async function GamesPage({
           tripId={tripId}
           roundId={roundId}
           isCaptain={isCaptain}
-          players={players.map((p) => ({ roundPlayerId: p.roundPlayerId, displayName: p.displayName }))}
+          players={playerOptions}
           games={twosGames}
           monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
         />
