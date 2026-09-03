@@ -11,7 +11,8 @@ import { AddRoundPlayerForm } from "@/components/rounds/add-round-player-form";
 import { RoundPlayerRow } from "@/components/rounds/round-player-row";
 import { CourseTeesDisclosure } from "@/components/rounds/course-tees-disclosure";
 import { EditRoundDetailsForm } from "@/components/rounds/edit-round-details-form";
-import { SetupStepNav, RoundPhaseTabs, phaseForStatus } from "@/components/rounds/round-nav";
+import { SetupStepNav, RoundPhaseTabs } from "@/components/rounds/round-nav";
+import { phaseForStatus } from "@/components/rounds/round-phase";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 export const dynamic = "force-dynamic";

@@ -3,23 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { Database } from "@/lib/supabase/database.types";
+import { phaseForStatus, type RoundStatus } from "@/components/rounds/round-phase";
 
-type RoundStatus = Database["public"]["Enums"]["round_status"];
-export type RoundPhase = "setup" | "play" | "finish";
-
-/**
- * The round lifecycle only ever moves scheduled -> in_progress -> locked
- * in this codebase today ('completed' exists in the DB enum but no
- * action ever sets it) -- this maps that lifecycle onto the redesign's
- * three phases. 'completed' is handled defensively alongside 'locked'
- * so nothing breaks if that transition is wired up later.
- */
-export function phaseForStatus(status: RoundStatus): RoundPhase {
-  if (status === "scheduled") return "setup";
-  if (status === "in_progress") return "play";
-  return "finish";
-}
+// phaseForStatus/RoundPhase live in ./round-phase (no "use client"),
+// deliberately NOT re-exported from here: this file has "use client",
+// and Next.js treats every export of a "use client" module as a client
+// reference. A Server Component (the round detail page) must import
+// phaseForStatus from "@/components/rounds/round-phase" directly, or it
+// throws "Attempted to call phaseForStatus() from the server but
+// phaseForStatus is on the client."
 
 const SETUP_STEPS = ["Course", "Players", "Games", "Review"] as const;
 
