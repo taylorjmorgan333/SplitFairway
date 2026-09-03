@@ -16,5 +16,11 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <AppShell email={user.email ?? "Your account"}>{children}</AppShell>;
+  const { data: isAdmin } = await supabase.rpc("is_app_admin");
+
+  return (
+    <AppShell email={user.email ?? "Your account"} isAdmin={Boolean(isAdmin)}>
+      {children}
+    </AppShell>
+  );
 }

@@ -1,4 +1,4 @@
-import type { GolfCourseApiCourse, GolfCourseApiTeeBox } from "@/lib/golf/golfcourseapi";
+import type { CourseDetail, TeeSetDetail } from "@/lib/golf/course-provider";
 
 export interface MappedHole {
   holeNumber: number;
@@ -9,6 +9,11 @@ export interface MappedHole {
 
 export interface MappedTeeSet {
   name: string;
+  color: string | null;
+  category: "male" | "female" | "unisex" | null;
+  courseRating: number | null;
+  slopeRating: number | null;
+  totalYards: number | null;
   holes: MappedHole[];
 }
 
@@ -27,70 +32,63 @@ export class UnusableCourseDataError extends Error {
   }
 }
 
-function mapHoles(teeBox: GolfCourseApiTeeBox): MappedHole[] {
-  return teeBox.holes.map((h, i) => ({
-    holeNumber: i + 1,
+function mapHoles(teeSet: TeeSetDetail): MappedHole[] {
+  return teeSet.holes.map((h) => ({
+    holeNumber: h.holeNumber,
     // GolfCourseAPI's par is required on every hole in practice; fall
     // back to 4 (the single most common par) rather than dropping the
     // hole entirely if a provider record is ever missing it, since
     // course_holes.par is NOT NULL.
     par: h.par ?? 4,
-    yardage: h.yardage ?? null,
-    strokeIndex: h.handicap ?? null,
+    yardage: h.yardage,
+    strokeIndex: h.strokeIndex,
   }));
 }
 
 /**
- * Maps a GolfCourseAPI course (full detail, from getGolfCourse) onto our
- * own courses/course_tee_sets/course_holes shape. Only tee boxes with
- * exactly 9 or 18 holes are usable, since course_holes.hole_number is
- * constrained 1-18 and courses.hole_count only allows 9 or 18
- * (supabase/migrations/20260903030000_courses.sql) — a provider tee box
+ * Maps a provider's normalized course detail (from
+ * CourseProvider#getCourseDetails -- vendor-neutral, already flattened
+ * out of GolfCourseAPI's male/female split by course-provider.ts) onto
+ * this app's own courses/course_tee_sets/course_holes shape. Only tee
+ * sets with exactly 9 or 18 holes are usable, since course_holes.hole_number
+ * is constrained 1-18 and courses.hole_count only allows 9 or 18
+ * (supabase/migrations/20260903030000_courses.sql) -- a provider tee set
  * with a partial or unusual hole count is skipped rather than imported
- * half-broken.
+ * half-broken. Multi-course facilities (GolfCourseAPI models each course
+ * at a club as its own record with its own id) are handled naturally
+ * here: mapExternalCourse is called once per selected course id, never
+ * once per club, so nothing needs to disambiguate multiple courses at one
+ * facility -- the user already picked a specific course from the search
+ * results before this function ever runs.
  */
-export function mapExternalCourse(course: GolfCourseApiCourse): MappedCourse {
-  const allTees: { gender: "male" | "female"; tee: GolfCourseApiTeeBox }[] = [
-    ...(course.tees?.male ?? []).map((tee) => ({ gender: "male" as const, tee })),
-    ...(course.tees?.female ?? []).map((tee) => ({ gender: "female" as const, tee })),
-  ];
-
-  const usable = allTees.filter(
-    ({ tee }) => tee.holes?.length === 9 || tee.holes?.length === 18,
-  );
+export function mapExternalCourse(course: CourseDetail): MappedCourse {
+  const usable = course.teeSets.filter((tee) => tee.holes.length === 9 || tee.holes.length === 18);
 
   if (usable.length === 0) {
     throw new UnusableCourseDataError();
   }
 
-  // Disambiguate a tee name that's reused across both gender arrays with
-  // different data (e.g. a "Blue" tee for both men and women) so the
-  // imported library doesn't show two identically-named tee sets.
-  const nameCounts = new Map<string, number>();
-  for (const { tee } of usable) {
-    nameCounts.set(tee.tee_name, (nameCounts.get(tee.tee_name) ?? 0) + 1);
-  }
-
-  const teeSets: MappedTeeSet[] = usable.map(({ gender, tee }) => ({
-    name:
-      (nameCounts.get(tee.tee_name) ?? 0) > 1
-        ? `${tee.tee_name} (${gender === "male" ? "Men's" : "Women's"})`
-        : tee.tee_name,
+  const teeSets: MappedTeeSet[] = usable.map((tee) => ({
+    name: tee.name,
+    color: tee.color,
+    category: tee.category,
+    courseRating: tee.courseRating,
+    slopeRating: tee.slopeRating,
+    totalYards: tee.totalYards,
     holes: mapHoles(tee),
   }));
 
-  const holeCount: 9 | 18 = usable.some(({ tee }) => tee.holes.length === 18) ? 18 : 9;
+  const holeCount: 9 | 18 = usable.some((tee) => tee.holes.length === 18) ? 18 : 9;
 
-  const location = course.location ?? {};
   const name =
-    course.course_name && course.course_name.trim().toLowerCase() !== course.club_name.trim().toLowerCase()
-      ? `${course.club_name} – ${course.course_name}`
-      : course.club_name;
+    course.courseName && course.courseName.trim().toLowerCase() !== course.clubName.trim().toLowerCase()
+      ? `${course.clubName} – ${course.courseName}`
+      : course.clubName;
 
   return {
     name,
-    city: location.city?.trim() || null,
-    state: location.state?.trim() || null,
+    city: course.city?.trim() || null,
+    state: course.state?.trim() || null,
     holeCount,
     teeSets,
   };

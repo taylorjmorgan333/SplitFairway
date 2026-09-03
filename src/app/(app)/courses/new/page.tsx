@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED } from "@/lib/config";
+import {
+  GOLF_SCORING_ENABLED,
+  GOLFCOURSE_API_ENABLED,
+  GOLFCOURSE_API_SEARCH_ENABLED,
+  MANUAL_COURSE_ENTRY_ENABLED,
+} from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CreateCourseForm } from "@/components/courses/create-course-form";
 import { ExternalCourseSearch } from "@/components/courses/external-course-search";
@@ -29,30 +34,39 @@ export default async function NewCoursePage() {
         Search for a course, or enter one from memory or a scorecard.
       </p>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Search for a course</CardTitle>
-          <CardDescription>
-            Imported courses are ready to use right away — no admin review needed.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ExternalCourseSearch />
-        </CardContent>
-      </Card>
+      {GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_SEARCH_ENABLED && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Search for a course</CardTitle>
+            <CardDescription>
+              Imported courses are ready to use right away — no admin review needed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExternalCourseSearch />
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Or add a course manually</CardTitle>
-          <CardDescription>
-            Can&apos;t find it above? Enter it by hand — it&apos;s yours to use immediately, and
-            becomes visible to other golfers once an admin approves it.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CreateCourseForm />
-        </CardContent>
-      </Card>
+      {MANUAL_COURSE_ENTRY_ENABLED && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>
+              {GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_SEARCH_ENABLED
+                ? "Or add a course manually"
+                : "Add a course"}
+            </CardTitle>
+            <CardDescription>
+              {GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_SEARCH_ENABLED
+                ? "Can't find it above? Enter it by hand — it's yours to use immediately, and becomes visible to other golfers once an admin approves it."
+                : "Enter a course by hand — it's yours to use immediately, and becomes visible to other golfers once an admin approves it."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CreateCourseForm />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -163,6 +163,86 @@ export type Database = {
           },
         ]
       }
+      course_corrections: {
+        Row: {
+          course_id: string
+          created_at: string
+          current_value: string | null
+          hole_number: number | null
+          id: string
+          issue_type: string
+          proposed_value: string | null
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string | null
+          tee_set_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          current_value?: string | null
+          hole_number?: number | null
+          id?: string
+          issue_type: string
+          proposed_value?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          tee_set_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          current_value?: string | null
+          hole_number?: number | null
+          id?: string
+          issue_type?: string
+          proposed_value?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          tee_set_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_corrections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_corrections_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_corrections_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_corrections_tee_set_id_fkey"
+            columns: ["tee_set_id"]
+            isOneToOne: false
+            referencedRelation: "course_tee_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_holes: {
         Row: {
           hole_number: number
@@ -198,24 +278,86 @@ export type Database = {
           },
         ]
       }
+      course_provider_requests: {
+        Row: {
+          cache_hit: boolean
+          created_at: string
+          external_course_id: string | null
+          id: string
+          normalized_query_hash: string | null
+          operation: string
+          provider: string
+          sanitized_error_code: string | null
+          status_code: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cache_hit?: boolean
+          created_at?: string
+          external_course_id?: string | null
+          id?: string
+          normalized_query_hash?: string | null
+          operation: string
+          provider?: string
+          sanitized_error_code?: string | null
+          status_code?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cache_hit?: boolean
+          created_at?: string
+          external_course_id?: string | null
+          id?: string
+          normalized_query_hash?: string | null
+          operation?: string
+          provider?: string
+          sanitized_error_code?: string | null
+          status_code?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_provider_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_tee_sets: {
         Row: {
+          category: string | null
+          color: string | null
           course_id: string
+          course_rating: number | null
           created_at: string
           id: string
           name: string
+          slope_rating: number | null
+          total_yards: number | null
         }
         Insert: {
+          category?: string | null
+          color?: string | null
           course_id: string
+          course_rating?: number | null
           created_at?: string
           id?: string
           name: string
+          slope_rating?: number | null
+          total_yards?: number | null
         }
         Update: {
+          category?: string | null
+          color?: string | null
           course_id?: string
+          course_rating?: number | null
           created_at?: string
           id?: string
           name?: string
+          slope_rating?: number | null
+          total_yards?: number | null
         }
         Relationships: [
           {
@@ -236,6 +378,7 @@ export type Database = {
           external_source: string | null
           hole_count: number
           id: string
+          last_fetched_at: string | null
           name: string
           state: string | null
           status: Database["public"]["Enums"]["course_status"]
@@ -249,6 +392,7 @@ export type Database = {
           external_source?: string | null
           hole_count: number
           id?: string
+          last_fetched_at?: string | null
           name: string
           state?: string | null
           status?: Database["public"]["Enums"]["course_status"]
@@ -262,6 +406,7 @@ export type Database = {
           external_source?: string | null
           hole_count?: number
           id?: string
+          last_fetched_at?: string | null
           name?: string
           state?: string | null
           status?: Database["public"]["Enums"]["course_status"]
@@ -663,6 +808,8 @@ export type Database = {
           created_at: string
           hole_count: number
           id: string
+          provider: string | null
+          provider_course_id: string | null
           round_id: string
           tee_sets: Json
         }
@@ -673,6 +820,8 @@ export type Database = {
           created_at?: string
           hole_count: number
           id?: string
+          provider?: string | null
+          provider_course_id?: string | null
           round_id: string
           tee_sets?: Json
         }
@@ -683,6 +832,8 @@ export type Database = {
           created_at?: string
           hole_count?: number
           id?: string
+          provider?: string | null
+          provider_course_id?: string | null
           round_id?: string
           tee_sets?: Json
         }

@@ -22,8 +22,36 @@ export const courseSchema = z.object({
 
 export type CourseInput = z.infer<typeof courseSchema>;
 
+export const TEE_CATEGORY_VALUES = ["male", "female", "unisex"] as const;
+
+/**
+ * A manually-entered tee set. Only `name` is required -- color, gender
+ * category, rating and slope are all optional, same as a provider-imported
+ * tee set can be missing them, since not every golfer entering a course
+ * from memory will have a rating/slope card on hand.
+ */
 export const teeSetSchema = z.object({
   name: z.string().trim().min(1, "Enter a tee name").max(80),
+  color: z
+    .union([z.string().trim().max(40), z.literal(""), z.undefined()])
+    .optional()
+    .transform((v) => (v ? v : null)),
+  category: z
+    .union([z.enum(TEE_CATEGORY_VALUES), z.literal(""), z.undefined()])
+    .optional()
+    .transform((v) => (v ? v : null)),
+  courseRating: z
+    .union([z.coerce.number().min(50).max(100), z.literal(""), z.undefined(), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
+  slopeRating: z
+    .union([z.coerce.number().int().min(1).max(200), z.literal(""), z.undefined(), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
+  totalYards: z
+    .union([z.coerce.number().int().positive(), z.literal(""), z.undefined(), z.null()])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
 });
 
 export type TeeSetInput = z.infer<typeof teeSetSchema>;

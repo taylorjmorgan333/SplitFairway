@@ -35,7 +35,19 @@ export type SnapshotHole = {
   stroke_index: number | null;
 };
 
-export type SnapshotTeeSet = { name: string; holes: SnapshotHole[] };
+export type SnapshotTeeSet = {
+  name: string;
+  holes: SnapshotHole[];
+  // Present when this round's course came from a provider (or a manual
+  // entry with rating/slope filled in) -- display-only, same as the rest
+  // of this file: scoring (netScore/strokesReceivedByHole/computeStandings)
+  // only ever reads par and stroke_index off each hole, never these.
+  color?: string | null;
+  category?: "male" | "female" | "unisex" | null;
+  course_rating?: number | null;
+  slope_rating?: number | null;
+  total_yards?: number | null;
+};
 
 type SyncStatus = "synced" | "pending" | "error";
 type ScoreKey = string;

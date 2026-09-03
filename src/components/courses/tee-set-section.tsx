@@ -42,7 +42,29 @@ export function TeeSetSection({
   return (
     <div className="rounded-lg border border-charcoal-400/15 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-medium text-forest-900">{teeSet.name}</h3>
+        <div>
+          <h3 className="font-medium text-forest-900">
+            {teeSet.color ? `${teeSet.name} (${teeSet.color})` : teeSet.name}
+          </h3>
+          {(teeSet.course_rating || teeSet.slope_rating || teeSet.total_yards) && (
+            <p className="text-xs text-charcoal-400">
+              {[
+                teeSet.course_rating ? `Rating ${teeSet.course_rating}` : null,
+                teeSet.slope_rating ? `Slope ${teeSet.slope_rating}` : null,
+                teeSet.total_yards ? `${teeSet.total_yards} yds` : null,
+                teeSet.category === "male"
+                  ? "Men's"
+                  : teeSet.category === "female"
+                    ? "Women's"
+                    : teeSet.category === "unisex"
+                      ? "Unisex"
+                      : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
         {canEdit && (
           <Button
             variant="ghost"

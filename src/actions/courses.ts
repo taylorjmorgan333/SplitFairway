@@ -147,7 +147,14 @@ export async function createTeeSetAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = teeSetSchema.safeParse({ name: formData.get("name") });
+  const parsed = teeSetSchema.safeParse({
+    name: formData.get("name"),
+    color: formData.get("color"),
+    category: formData.get("category"),
+    courseRating: formData.get("courseRating"),
+    slopeRating: formData.get("slopeRating"),
+    totalYards: formData.get("totalYards"),
+  });
 
   if (!parsed.success) {
     return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
@@ -157,6 +164,11 @@ export async function createTeeSetAction(
   const { error } = await supabase.from("course_tee_sets").insert({
     course_id: courseId,
     name: parsed.data.name,
+    color: parsed.data.color,
+    category: parsed.data.category,
+    course_rating: parsed.data.courseRating,
+    slope_rating: parsed.data.slopeRating,
+    total_yards: parsed.data.totalYards,
   });
 
   if (error) {

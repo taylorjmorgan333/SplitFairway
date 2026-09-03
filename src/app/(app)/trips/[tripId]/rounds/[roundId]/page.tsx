@@ -23,6 +23,9 @@ const STATUS_BADGE = {
 type SnapshotTeeSet = {
   name: string;
   holes: { hole_number: number; par: number; yardage: number | null; stroke_index: number | null }[];
+  course_rating?: number | null;
+  slope_rating?: number | null;
+  total_yards?: number | null;
 };
 
 export default async function RoundDetailPage({

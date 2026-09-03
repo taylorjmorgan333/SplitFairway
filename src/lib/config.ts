@@ -41,3 +41,24 @@ export const GHIN_SCREENSHOT_IMPORT_ENABLED = flagEnabled(
   process.env.GHIN_SCREENSHOT_IMPORT_ENABLED,
 );
 export const LIVE_LEADERBOARD_ENABLED = flagEnabled(process.env.LIVE_LEADERBOARD_ENABLED);
+
+/**
+ * GolfCourseAPI (external course-data provider) feature flags. Layered on
+ * top of the existing "is GOLFCOURSEAPI_KEY set" check in
+ * src/lib/golf/golfcourseapi.ts, not a replacement for it — a flag can be
+ * true while the key is still missing (shows a controlled setup message,
+ * never a stack trace) and the key can be set while a flag is off (search
+ * is server-blocked regardless). MANUAL_COURSE_ENTRY_ENABLED defaults ON
+ * (inverted convention, deliberately) since manual entry is the app's
+ * original course-data path and must keep working even if every provider
+ * flag above it is off — see src/app/(app)/courses/new/page.tsx.
+ */
+export const GOLFCOURSE_API_ENABLED = flagEnabled(process.env.GOLFCOURSE_API_ENABLED);
+export const GOLFCOURSE_API_SEARCH_ENABLED = flagEnabled(process.env.GOLFCOURSE_API_SEARCH_ENABLED);
+export const GOLFCOURSE_API_REFRESH_ENABLED = flagEnabled(process.env.GOLFCOURSE_API_REFRESH_ENABLED);
+export const MANUAL_COURSE_ENTRY_ENABLED = process.env.MANUAL_COURSE_ENTRY_ENABLED !== "false";
+
+/** Free-tier GolfCourseAPI daily request ceiling (see golfcourseapi.com/pricing). Shared across all SplitFairway users — one API key for the whole app. */
+export const GOLFCOURSE_API_DAILY_REQUEST_LIMIT = Number(
+  process.env.GOLFCOURSE_API_DAILY_REQUEST_LIMIT || 50,
+);

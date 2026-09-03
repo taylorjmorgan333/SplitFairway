@@ -8,6 +8,9 @@ import { EditCourseForm } from "@/components/courses/edit-course-form";
 import { AddTeeSetForm } from "@/components/courses/add-tee-set-form";
 import { TeeSetSection } from "@/components/courses/tee-set-section";
 import { CourseDangerZone } from "@/components/courses/course-danger-zone";
+import { CourseCorrectionForm } from "@/components/courses/course-correction-form";
+import { RefreshCourseButton } from "@/components/courses/refresh-course-button";
+import { GOLFCOURSE_API_ENABLED, GOLFCOURSE_API_REFRESH_ENABLED } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Course" };
@@ -65,16 +68,25 @@ export default async function CourseDetailPage({
       : { data: [] };
 
   const holeRows = holes ?? [];
-  const canEdit = course.created_by === user.id;
+  const { data: isAdmin } = await supabase.rpc("is_app_admin");
+  const isProviderSourced = Boolean(course.external_source);
+  // Provider-sourced course data may only be edited directly by an
+  // admin (via a refresh from the provider, or a manual correction) --
+  // never by whichever golfer happened to import it. A manually-entered
+  // course keeps the original "creator or admin" rule.
+  const canEdit = isProviderSourced ? Boolean(isAdmin) : course.created_by === user.id || Boolean(isAdmin);
   const badge = STATUS_BADGE[course.status];
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-2xl">{course.name}</h1>
-        {canEdit && course.status !== "approved" && (
+        {!isProviderSourced && course.created_by === user.id && course.status !== "approved" && (
           <Badge variant={badge.variant}>{badge.label}</Badge>
         )}
+        <Badge variant={isProviderSourced ? "success" : "neutral"}>
+          {isProviderSourced ? "GolfCourseAPI" : "Added by SplitFairway user"}
+        </Badge>
       </div>
       <p className="mt-1.5 text-sm text-charcoal-500">
         {[course.city, course.state].filter(Boolean).join(", ") || "Location not set"}
@@ -82,11 +94,27 @@ export default async function CourseDetailPage({
         {course.hole_count} holes
       </p>
 
-      {canEdit && (
+      {isProviderSourced && isAdmin && GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_REFRESH_ENABLED && (
+        <div className="mt-4">
+          <RefreshCourseButton courseId={course.id} />
+        </div>
+      )}
+
+      {!canEdit && (
+        <div className="mt-4">
+          <CourseCorrectionForm courseId={course.id} />
+        </div>
+      )}
+
+      {!isProviderSourced && (course.created_by === user.id || isAdmin) && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Course details</CardTitle>
-            <CardDescription>Entered by you — visible to everyone once approved.</CardDescription>
+            <CardDescription>
+              {course.created_by === user.id
+                ? "Entered by you — visible to everyone once approved."
+                : "Entered by another user."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <EditCourseForm course={course} />

@@ -49,9 +49,11 @@ const MOBILE_TABS = [
 
 export function AppShell({
   email,
+  isAdmin = false,
   children,
 }: {
   email: string;
+  isAdmin?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -72,6 +74,14 @@ export function AppShell({
                   {link.label}
                 </Link>
               ))}
+              {isAdmin && GOLF_SCORING_ENABLED && (
+                <Link
+                  href="/admin/golfcourseapi"
+                  className="text-sm font-medium text-charcoal-700 transition-colors hover:text-forest-800"
+                >
+                  Admin
+                </Link>
+              )}
             </nav>
           </div>
 

@@ -50,7 +50,7 @@ export async function createRoundAction(
 
   const { data: course } = await supabase
     .from("courses")
-    .select("id, name, city, state")
+    .select("id, name, city, state, external_source, external_id")
     .eq("id", courseId)
     .maybeSingle();
 
@@ -60,7 +60,7 @@ export async function createRoundAction(
 
   const { data: teeSets } = await supabase
     .from("course_tee_sets")
-    .select("id, name")
+    .select("id, name, color, category, course_rating, slope_rating, total_yards")
     .eq("course_id", courseId);
 
   const teeSetRows = teeSets ?? [];
@@ -76,8 +76,21 @@ export async function createRoundAction(
       : { data: [] };
   const holeRows = holes ?? [];
 
+  // Everything the scorecard, the game engine, and every game-results
+  // page read for the life of this round -- see the comment on
+  // round_course_snapshots in supabase/migrations/20260903040000_rounds.sql.
+  // Rating/slope/color/category are included for display and any future
+  // course-handicap conversion; today's scoring/game math only reads
+  // par and stroke_index (see src/lib/golf/*.ts), same as before this
+  // provider integration -- adding these fields here doesn't change what
+  // any existing calculation reads.
   const teeSetsSnapshot = teeSetRows.map((teeSet) => ({
     name: teeSet.name,
+    color: teeSet.color,
+    category: teeSet.category,
+    course_rating: teeSet.course_rating,
+    slope_rating: teeSet.slope_rating,
+    total_yards: teeSet.total_yards,
     holes: holeRows
       .filter((h) => h.tee_set_id === teeSet.id)
       .sort((a, b) => a.hole_number - b.hole_number)
@@ -117,6 +130,8 @@ export async function createRoundAction(
     course_state: course.state,
     hole_count: holeCount,
     tee_sets: teeSetsSnapshot as unknown as Json,
+    provider: course.external_source,
+    provider_course_id: course.external_id,
   });
 
   if (snapshotError) {
@@ -322,6 +337,55 @@ export async function createRoundGroupAction(
 
   revalidatePath(`/trips`);
   return { status: "success", message: "Group added." };
+}
+
+/**
+ * Lets the organizer fix a wrong par/yardage/stroke-index directly in
+ * *this round's own* snapshot -- before the round starts, without
+ * waiting on admin review. This intentionally never touches the shared
+ * courses/course_tee_sets/course_holes rows (that's what
+ * submitCourseCorrectionAction, a separate admin-reviewed path, is for)
+ * -- it only fixes what this one round will use. Restricted to
+ * status = 'scheduled' so a fix can never retroactively change a round
+ * that's already in progress or completed, matching the "immutable once
+ * play starts" rule the snapshot exists to enforce in the first place.
+ */
+export async function updateRoundSnapshotAction(
+  roundId: string,
+  teeSets: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "You need to be signed in to do that." };
+  }
+
+  const { data: round } = await supabase
+    .from("rounds")
+    .select("id, status, trip_id")
+    .eq("id", roundId)
+    .maybeSingle();
+
+  if (!round) {
+    return { ok: false, error: "That round couldn't be found." };
+  }
+  if (round.status !== "scheduled") {
+    return { ok: false, error: "This round has already started — it can no longer be edited here." };
+  }
+
+  const { error } = await supabase
+    .from("round_course_snapshots")
+    .update({ tee_sets: teeSets as Json })
+    .eq("round_id", roundId);
+
+  if (error) {
+    return { ok: false, error: "Couldn't save that change. Make sure you're this trip's captain." };
+  }
+
+  revalidatePath(`/trips/${round.trip_id}/rounds/${roundId}`);
+  return { ok: true };
 }
 
 export async function deleteRoundGroupAction(groupId: string): Promise<void> {
