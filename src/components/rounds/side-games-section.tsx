@@ -379,7 +379,7 @@ export function CreateSkinsForm({
           </select>
         </div>
         <label className="flex items-center gap-2 self-end pb-2.5 text-sm text-charcoal-700">
-          <input type="checkbox" name="carryover" defaultChecked />
+          <input type="checkbox" name="carryover" />
           Carry over ties
         </label>
       </div>

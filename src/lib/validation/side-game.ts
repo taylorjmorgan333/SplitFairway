@@ -38,7 +38,7 @@ export const createSkinsGameSchema = z
   .object({
     name: z.string().trim().min(1, "Give this game a name").max(120),
     scoringMetric: z.enum(SCORING_METRIC_VALUES),
-    carryover: z.coerce.boolean().default(true),
+    carryover: z.coerce.boolean().default(false),
     playerIds: z.array(z.string().uuid()).min(2, "Skins needs at least two golfers"),
   })
   .merge(monetaryFields)
