@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { FullScorecardTable } from "@/components/rounds/full-scorecard-table";
 import type { Database } from "@/lib/supabase/database.types";
 
 type RoundStatus = Database["public"]["Enums"]["round_status"];
@@ -100,6 +101,7 @@ export function MobileScorecard({
     myPlayer?.roundPlayerId ?? editablePlayers[0]?.roundPlayerId ?? players[0]?.roundPlayerId ?? "",
   );
   const [currentHole, setCurrentHole] = useState(1);
+  const [viewMode, setViewMode] = useState<"hole" | "full">("hole");
 
   const [scores, setScores] = useState<Map<ScoreKey, number | null>>(() => {
     const map = new Map<ScoreKey, number | null>();
@@ -269,11 +271,51 @@ export function MobileScorecard({
         <Badge variant="neutral">This round is {roundStatus === "locked" ? "locked" : "completed"} — scores can no longer be edited.</Badge>
       )}
 
+      {/* Entry vs. full-scorecard toggle. Entering scores one hole at a
+          time (below) is what's actually fast on a phone mid-round; the
+          full scorecard is the "see everything at once, like a printed
+          card" view someone reaches for at the turn or after the round. */}
+      <div className="flex gap-1 rounded-full bg-cream-100 p-1">
+        {(
+          [
+            { key: "hole", label: "Enter score" },
+            { key: "full", label: "Full scorecard" },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setViewMode(opt.key)}
+            className={cn(
+              "flex-1 rounded-full py-1.5 text-sm font-medium transition-colors",
+              viewMode === opt.key ? "bg-forest-800 text-cream-50" : "text-charcoal-600",
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "full" && (
+        <FullScorecardTable
+          holeCount={holeCount}
+          teeSets={teeSets}
+          players={players}
+          playerScoreInputs={playerScoreInputs}
+          editableIds={editableIds}
+          onCellSelect={(roundPlayerId, holeNumber) => {
+            setSelectedPlayerId(roundPlayerId);
+            setCurrentHole(holeNumber);
+            setViewMode("hole");
+          }}
+        />
+      )}
+
       {/* Player switcher — a horizontal, thumb-scrollable row rather than
           a dropdown, since the whole point of the mobile scorecard is
           minimal taps: whoever's entering (often the captain, for a
           whole group) just taps a name instead of opening a menu. */}
-      {players.length > 1 && (
+      {viewMode === "hole" && players.length > 1 && (
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           {players.map((p) => (
             <button
@@ -293,7 +335,7 @@ export function MobileScorecard({
         </div>
       )}
 
-      {selectedPlayer && (
+      {viewMode === "hole" && selectedPlayer && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
           <div className="flex items-center justify-between">
             <button
