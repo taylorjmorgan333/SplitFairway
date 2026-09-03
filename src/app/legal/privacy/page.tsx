@@ -3,7 +3,10 @@ import { LegalPageShell } from "@/components/legal/legal-page-shell";
 import { SupportEmail } from "@/components/ui/support-email";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · SplitFairway",
+  // The root layout's title template already appends " · SplitFairway" —
+  // setting the suffix here too would double it up in the rendered
+  // <title> (confirmed: it did, in production, before this fix).
+  title: "Privacy Policy",
   description:
     "Learn how SplitFairway collects, uses, shares, protects, and deletes personal information.",
   alternates: { canonical: "https://www.splitfairwaygolf.com/legal/privacy" },
