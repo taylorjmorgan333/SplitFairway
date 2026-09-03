@@ -102,6 +102,14 @@ export default async function RoundDetailPage({
         {round.hole_count} holes
       </p>
 
+      {playerRows.length > 0 && (
+        <div className="mt-4">
+          <ButtonLink href={`/trips/${tripId}/rounds/${round.id}/score`} variant="primary" size="sm">
+            Enter scores
+          </ButtonLink>
+        </div>
+      )}
+
       {teeSets.length > 0 && (
         <p className="mt-1.5 text-xs text-charcoal-400">
           Tees: {teeSetNames.join(", ")} — copied from the course library when this round was

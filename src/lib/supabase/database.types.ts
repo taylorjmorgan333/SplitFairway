@@ -480,6 +480,61 @@ export type Database = {
           },
         ]
       }
+      hole_scores: {
+        Row: {
+          created_at: string
+          entered_by: string | null
+          gross_strokes: number | null
+          hole_number: number
+          id: string
+          round_id: string
+          round_player_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entered_by?: string | null
+          gross_strokes?: number | null
+          hole_number: number
+          id?: string
+          round_id: string
+          round_player_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entered_by?: string | null
+          gross_strokes?: number | null
+          hole_number?: number
+          id?: string
+          round_id?: string
+          round_player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hole_scores_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hole_scores_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hole_scores_round_player_id_fkey"
+            columns: ["round_player_id"]
+            isOneToOne: false
+            referencedRelation: "round_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -817,6 +872,71 @@ export type Database = {
           },
         ]
       }
+      score_change_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          hole_number: number
+          hole_score_id: string
+          id: string
+          new_gross_strokes: number | null
+          previous_gross_strokes: number | null
+          round_id: string
+          round_player_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          hole_number: number
+          hole_score_id: string
+          id?: string
+          new_gross_strokes?: number | null
+          previous_gross_strokes?: number | null
+          round_id: string
+          round_player_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          hole_number?: number
+          hole_score_id?: string
+          id?: string
+          new_gross_strokes?: number | null
+          previous_gross_strokes?: number | null
+          round_id?: string
+          round_player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_change_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_change_history_hole_score_id_fkey"
+            columns: ["hole_score_id"]
+            isOneToOne: false
+            referencedRelation: "hole_scores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_change_history_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "score_change_history_round_player_id_fkey"
+            columns: ["round_player_id"]
+            isOneToOne: false
+            referencedRelation: "round_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_invitations: {
         Row: {
           accepted_at: string | null
@@ -1006,6 +1126,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      can_edit_round_score: {
+        Args: { p_round_player_id: string }
+        Returns: boolean
+      }
+      can_view_round_score: {
+        Args: { p_round_player_id: string }
+        Returns: boolean
       }
       confirm_payment: {
         Args: { p_payment_id: string }
