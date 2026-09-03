@@ -54,6 +54,11 @@ const config: Config = {
         },
       },
       fontFamily: {
+        // The wordmark's own display face (src/components/ui/logo.tsx
+        // only) — see the next/font/google setup in src/app/layout.tsx.
+        // Falls back to the system serif stack below if the variable
+        // isn't set for some reason (e.g. an isolated test render).
+        wordmark: ["var(--font-wordmark)", "Georgia", "serif"],
         serif: [
           "Iowan Old Style",
           "Palatino Linotype",

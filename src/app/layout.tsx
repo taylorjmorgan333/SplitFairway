@@ -1,7 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Libre_Caslon_Display } from "next/font/google";
 import "./globals.css";
 import { FeedbackButton } from "@/components/layout/feedback-button";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
+
+// Wordmark-only display face (src/components/ui/logo.tsx) — a bold,
+// wide-tracked all-caps serif, distinct from the app's regular
+// system-font "serif" stack (tailwind.config.ts) used everywhere else
+// (headings, the mobile scorecard's hole number, etc.). Self-hosted by
+// Next at build time via next/font, so there's no runtime request to
+// Google Fonts and no layout shift.
+const libreCaslonDisplay = Libre_Caslon_Display({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-wordmark",
+  display: "swap",
+});
 
 const SITE_DESCRIPTION =
   "Split lodging, tee times, rental cars and every other golf trip expense. Everyone sees exactly what they owe and when it's due.";
@@ -71,7 +85,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={libreCaslonDisplay.variable}>
       <body className="font-sans">
         {children}
         <FeedbackButton />

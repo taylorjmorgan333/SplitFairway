@@ -27,7 +27,7 @@ export function Logo({
         className="h-10 w-auto shrink-0"
         priority
       />
-      <span className={cn("font-serif text-lg tracking-tightish", textColor)}>
+      <span className={cn("font-wordmark text-base uppercase tracking-wider", textColor)}>
         SplitFairway
       </span>
     </span>
