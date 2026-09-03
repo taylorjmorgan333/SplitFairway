@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,10 +103,15 @@ export default async function RoundDetailPage({
       </p>
 
       {playerRows.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <ButtonLink href={`/trips/${tripId}/rounds/${round.id}/score`} variant="primary" size="sm">
             Enter scores
           </ButtonLink>
+          {LIVE_LEADERBOARD_ENABLED && (
+            <ButtonLink href={`/trips/${tripId}/rounds/${round.id}/leaderboard`} variant="outline" size="sm">
+              Leaderboard
+            </ButtonLink>
+          )}
         </div>
       )}
 
