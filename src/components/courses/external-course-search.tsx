@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 
 const MIN_QUERY_LENGTH = 3;
-const DEBOUNCE_MS = 450;
+const DEBOUNCE_MS = 200;
 
 type SearchState =
   | { phase: "idle" }
@@ -32,7 +32,7 @@ type SearchState =
  * daily limit is reached) is still just as easy to add by hand below --
  * that fallback never depends on any of this working.
  *
- * Debounces at 450ms and requires 3+ characters before ever calling the
+ * Debounces at 200ms and requires 3+ characters before ever calling the
  * server, so this never fires a request per keystroke; a request ref
  * guards against a slow, stale response overwriting a newer one, and
  * every fetch is guarded against overlapping with the previous one so a
