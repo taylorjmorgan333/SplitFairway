@@ -10,6 +10,7 @@ import type { ActivityRow } from "@/components/trips/activity-feed";
 import { calculateBalances, suggestSettlements } from "@/lib/balances";
 import { formatDate } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
+import { GOLF_SCORING_ENABLED } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Trip details" };
@@ -295,6 +296,14 @@ export default async function TripDetailPage({
           {isCaptain && <Badge variant="gold">You&apos;re a captain</Badge>}
         </div>
       </div>
+
+      {GOLF_SCORING_ENABLED && (
+        <div className="mt-6">
+          <ButtonLink href={`/trips/${trip.id}/rounds`} variant="outline" size="sm">
+            Golf rounds
+          </ButtonLink>
+        </div>
+      )}
 
       <div className="mt-8">
         <TripTabs

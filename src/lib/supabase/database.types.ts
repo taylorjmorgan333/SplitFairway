@@ -594,6 +594,229 @@ export type Database = {
         }
         Relationships: []
       }
+      round_course_snapshots: {
+        Row: {
+          course_city: string | null
+          course_name: string
+          course_state: string | null
+          created_at: string
+          hole_count: number
+          id: string
+          round_id: string
+          tee_sets: Json
+        }
+        Insert: {
+          course_city?: string | null
+          course_name: string
+          course_state?: string | null
+          created_at?: string
+          hole_count: number
+          id?: string
+          round_id: string
+          tee_sets?: Json
+        }
+        Update: {
+          course_city?: string | null
+          course_name?: string
+          course_state?: string | null
+          created_at?: string
+          hole_count?: number
+          id?: string
+          round_id?: string
+          tee_sets?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_course_snapshots_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: true
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      round_groups: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          round_id: string
+          sort_order: number
+          starting_hole: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          round_id: string
+          sort_order?: number
+          starting_hole?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          round_id?: string
+          sort_order?: number
+          starting_hole?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_groups_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      round_players: {
+        Row: {
+          created_at: string
+          group_id: string | null
+          handicap_entered_by: string | null
+          id: string
+          playing_handicap: number | null
+          profile_handicap_index: number | null
+          profile_handicap_revision_date: string | null
+          profile_handicap_source:
+            | Database["public"]["Enums"]["handicap_source"]
+            | null
+          round_id: string
+          tee_set_name: string | null
+          trip_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id?: string | null
+          handicap_entered_by?: string | null
+          id?: string
+          playing_handicap?: number | null
+          profile_handicap_index?: number | null
+          profile_handicap_revision_date?: string | null
+          profile_handicap_source?:
+            | Database["public"]["Enums"]["handicap_source"]
+            | null
+          round_id: string
+          tee_set_name?: string | null
+          trip_member_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string | null
+          handicap_entered_by?: string | null
+          id?: string
+          playing_handicap?: number | null
+          profile_handicap_index?: number | null
+          profile_handicap_revision_date?: string | null
+          profile_handicap_source?:
+            | Database["public"]["Enums"]["handicap_source"]
+            | null
+          round_id?: string
+          tee_set_name?: string | null
+          trip_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_players_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "round_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_players_handicap_entered_by_fkey"
+            columns: ["handicap_entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_players_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_players_trip_member_id_fkey"
+            columns: ["trip_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rounds: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          hole_count: number
+          id: string
+          live_score_visibility: boolean
+          name: string | null
+          round_date: string
+          score_edit_scope: Database["public"]["Enums"]["round_score_edit_scope"]
+          start_time: string | null
+          status: Database["public"]["Enums"]["round_status"]
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hole_count: number
+          id?: string
+          live_score_visibility?: boolean
+          name?: string | null
+          round_date: string
+          score_edit_scope?: Database["public"]["Enums"]["round_score_edit_scope"]
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["round_status"]
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          hole_count?: number
+          id?: string
+          live_score_visibility?: boolean
+          name?: string | null
+          round_date?: string
+          score_edit_scope?: Database["public"]["Enums"]["round_score_edit_scope"]
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["round_status"]
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rounds_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_invitations: {
         Row: {
           accepted_at: string | null
@@ -1060,6 +1283,8 @@ export type Database = {
       member_status: "invited" | "active" | "declined" | "removed"
       payment_method: "venmo" | "zelle" | "paypal" | "cash" | "check" | "other"
       payment_status: "reported" | "confirmed" | "rejected"
+      round_score_edit_scope: "per_golfer" | "per_group"
+      round_status: "scheduled" | "in_progress" | "completed" | "locked"
       split_method: "equal" | "selected" | "custom"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
@@ -1206,6 +1431,8 @@ export const Constants = {
       member_status: ["invited", "active", "declined", "removed"],
       payment_method: ["venmo", "zelle", "paypal", "cash", "check", "other"],
       payment_status: ["reported", "confirmed", "rejected"],
+      round_score_edit_scope: ["per_golfer", "per_group"],
+      round_status: ["scheduled", "in_progress", "completed", "locked"],
       split_method: ["equal", "selected", "custom"],
       trip_status: ["planning", "active", "completed", "cancelled"],
     },
