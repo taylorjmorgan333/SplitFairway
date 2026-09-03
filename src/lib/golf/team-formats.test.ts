@@ -86,9 +86,11 @@ describe("computeOneGrossOneNet", () => {
     const result = computeOneGrossOneNet(side1, side2, [1, 2, 3]);
 
     // side1 per hole: best gross = min(5,6) = 5; best net = min(4,6) = 4; team score = 9.
-    expect(result.holes[0]).toEqual({ holeNumber: 1, side1Score: 9, side2Score: 15 });
+    // side2 per hole: both p3 and p4 have handicap 0, so net = gross for
+    // both; best gross = min(7,8) = 7, best net = min(7,8) = 7 too -> 14.
+    expect(result.holes[0]).toEqual({ holeNumber: 1, side1Score: 9, side2Score: 14 });
     expect(result.side1Total).toBe(27);
-    expect(result.side2Total).toBe(45);
+    expect(result.side2Total).toBe(42);
   });
 });
 
