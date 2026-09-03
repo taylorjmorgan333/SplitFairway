@@ -381,8 +381,21 @@ export function MobileScorecard({
               type="number"
               inputMode="numeric"
               disabled={!canEditSelected}
-              value={currentGross ?? ""}
-              placeholder={String(holeInfo?.par ?? "")}
+              value={currentGross ?? holeInfo?.par ?? ""}
+              onFocus={(e) => {
+                // Show a real number (par, when nothing's been entered yet)
+                // instead of a grayed-out placeholder, so the field always
+                // reads as ready-to-go rather than empty -- tapping it is a
+                // single, deliberate action (unlike just paging past a hole
+                // with the </> arrows) that confirms that par as the actual
+                // score. Text is selected so typing a different score
+                // overwrites it in one go, and +/- still work normally from
+                // here (base par +/-1 is already a single tap each).
+                if (selectedPlayer && canEditSelected && currentGross == null && holeInfo?.par != null) {
+                  setScore(selectedPlayer.roundPlayerId, currentHole, holeInfo.par);
+                }
+                e.target.select();
+              }}
               onChange={(e) => {
                 if (!selectedPlayer) return;
                 const v = e.target.value === "" ? null : Number(e.target.value);
