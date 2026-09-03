@@ -91,6 +91,14 @@ describe("mapExternalCourse", () => {
   });
 
   it("falls back a hole's missing par to 4 (course_holes.par is NOT NULL)", () => {
+    // A full 18-hole tee set (matching a real provider response) with
+    // just hole 1's par missing -- a tee set with only one hole would be
+    // rejected by the 9/18-hole usability filter before ever reaching
+    // the per-hole par fallback this test is checking.
+    const eighteenHoles = holes(18);
+    // @ts-expect-error -- simulating a provider response missing par
+    eighteenHoles[0].par = undefined;
+
     const mapped = mapExternalCourse(
       baseCourse({
         teeSets: [
@@ -102,15 +110,13 @@ describe("mapExternalCourse", () => {
             slopeRating: null,
             totalYards: null,
             parTotal: null,
-            holes: [
-              // @ts-expect-error -- simulating a provider response missing par
-              { holeNumber: 1, par: undefined, yardage: 350, strokeIndex: 5 },
-            ],
+            holes: eighteenHoles,
           },
         ],
       }),
     );
     expect(mapped.teeSets[0].holes[0].par).toBe(4);
+    expect(mapped.teeSets[0].holes).toHaveLength(18);
   });
 
   it("skips a tee set with an unusual hole count and throws only if none are usable", () => {
