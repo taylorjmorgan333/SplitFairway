@@ -3,9 +3,14 @@ import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
 import { UserMenu } from "@/components/layout/user-menu";
+import { GOLF_SCORING_ENABLED } from "@/lib/config";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
+  // Golf scoring is still mid-build behind GOLF_SCORING_ENABLED — this
+  // link only appears once that flag is on, same as the Account page's
+  // golf profile section.
+  ...(GOLF_SCORING_ENABLED ? [{ href: "/courses", label: "Courses" }] : []),
   { href: "/account", label: "Account" },
 ];
 

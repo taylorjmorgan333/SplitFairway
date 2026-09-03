@@ -98,6 +98,29 @@ export type Database = {
           },
         ]
       }
+      app_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_admins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beta_feedback: {
         Row: {
           created_at: string
@@ -134,6 +157,114 @@ export type Database = {
           {
             foreignKeyName: "beta_feedback_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_holes: {
+        Row: {
+          hole_number: number
+          id: string
+          par: number
+          stroke_index: number | null
+          tee_set_id: string
+          yardage: number | null
+        }
+        Insert: {
+          hole_number: number
+          id?: string
+          par: number
+          stroke_index?: number | null
+          tee_set_id: string
+          yardage?: number | null
+        }
+        Update: {
+          hole_number?: number
+          id?: string
+          par?: number
+          stroke_index?: number | null
+          tee_set_id?: string
+          yardage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_holes_tee_set_id_fkey"
+            columns: ["tee_set_id"]
+            isOneToOne: false
+            referencedRelation: "course_tee_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_tee_sets: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_tee_sets_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          city: string | null
+          created_at: string
+          created_by: string | null
+          hole_count: number
+          id: string
+          name: string
+          state: string | null
+          status: Database["public"]["Enums"]["course_status"]
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          hole_count: number
+          id?: string
+          name: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["course_status"]
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          hole_count?: number
+          id?: string
+          name?: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["course_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -778,6 +909,7 @@ export type Database = {
         }
         Returns: Json
       }
+      is_app_admin: { Args: never; Returns: boolean }
       is_trip_captain: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       log_reminder_sent: {
@@ -912,6 +1044,7 @@ export type Database = {
       }
     }
     Enums: {
+      course_status: "pending" | "approved" | "rejected"
       dominant_hand: "right" | "left"
       expense_category:
         | "lodging"
@@ -1056,6 +1189,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      course_status: ["pending", "approved", "rejected"],
       dominant_hand: ["right", "left"],
       expense_category: [
         "lodging",
