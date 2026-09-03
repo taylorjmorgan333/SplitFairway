@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,6 +28,7 @@ import {
   type NassauBetSpec,
 } from "@/lib/golf/settlement";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
+import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Results" };
@@ -323,6 +324,13 @@ export default async function ResultsPage({
 
   return (
     <div className="mx-auto max-w-2xl">
+      <RoundPhaseTabs
+        tripId={tripId}
+        roundId={roundId}
+        status={round.status}
+        sideGamesEnabled={SIDE_GAMES_ENABLED}
+        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+      />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl">{round.name || "Results"}</h1>
         <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">

@@ -15,8 +15,8 @@ const initialState: ActionState = { status: "idle" };
 function CreateButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Scheduling…" : "Schedule round"}
+    <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+      {pending ? "Creating round…" : "Continue to Players"}
     </Button>
   );
 }

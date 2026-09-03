@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
 import {
   computeMatchStatus,
@@ -48,6 +48,7 @@ import {
   type LowHighBallGameView,
 } from "@/components/rounds/team-prize-section";
 import { GameTypePicker } from "@/components/rounds/game-type-picker";
+import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 function wolfOutcomeLabel(h: WolfHoleResult, nameById: Map<string, string>): string {
@@ -605,6 +606,13 @@ export default async function GamesPage({
 
   return (
     <div className="mx-auto max-w-2xl">
+      <RoundPhaseTabs
+        tripId={tripId}
+        roundId={roundId}
+        status={round.status}
+        sideGamesEnabled={SIDE_GAMES_ENABLED}
+        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+      />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl">Games</h1>
         <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">

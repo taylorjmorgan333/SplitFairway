@@ -48,3 +48,11 @@ export const createRoundGroupSchema = z.object({
 });
 
 export type CreateRoundGroupInput = z.infer<typeof createRoundGroupSchema>;
+
+export const updateRoundDetailsSchema = z.object({
+  name: z.string().trim().max(120).optional().or(z.literal("")),
+  roundDate: z.string().min(1, "Choose a date"),
+  startTime: z.string().optional().or(z.literal("")),
+});
+
+export type UpdateRoundDetailsInput = z.infer<typeof updateRoundDetailsSchema>;

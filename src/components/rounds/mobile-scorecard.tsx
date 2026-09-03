@@ -404,7 +404,9 @@ export function MobileScorecard({
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-charcoal-400">
             <span>
               {currentNet != null ? `Net ${currentNet}` : "Net —"}
-              {strokesOnCurrentHole ? ` (${strokesOnCurrentHole > 0 ? "+" : ""}${strokesOnCurrentHole} hcp)` : ""}
+              {strokesOnCurrentHole
+                ? ` (${strokesOnCurrentHole > 0 ? "+" : ""}${strokesOnCurrentHole} handicap stroke${Math.abs(strokesOnCurrentHole) === 1 ? "" : "s"})`
+                : ""}
             </span>
             {currentSync === "pending" && <span className="text-amber-600">Saving…</span>}
             {currentSync === "error" && <span className="text-red-600">Not synced — will retry</span>}

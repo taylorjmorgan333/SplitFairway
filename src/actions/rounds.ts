@@ -8,6 +8,7 @@ import {
   addRoundPlayerSchema,
   updateRoundPlayerSchema,
   createRoundGroupSchema,
+  updateRoundDetailsSchema,
 } from "@/lib/validation/round";
 import type { ActionState } from "@/actions/auth";
 import type { Json } from "@/lib/supabase/database.types";
@@ -395,4 +396,69 @@ export async function deleteRoundGroupAction(groupId: string): Promise<void> {
     throw new Error("Couldn't remove that group.");
   }
   revalidatePath(`/trips`);
+}
+
+/**
+ * Lets the captain fix a round's name/date/start time from the "Edit
+ * round details" link on the round header, instead of exposing every
+ * setting inline. Date and start time only change while the round is
+ * still 'scheduled' -- once play has started (or finished), rewriting
+ * the date it was actually played would misrepresent the record, so
+ * only the display name stays editable at that point (the form hides
+ * those fields client-side; this is the server-side backstop).
+ */
+export async function updateRoundDetailsAction(
+  tripId: string,
+  roundId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = updateRoundDetailsSchema.safeParse({
+    name: formData.get("name"),
+    roundDate: formData.get("roundDate"),
+    startTime: formData.get("startTime"),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: "error", message: "You need to be signed in to do that." };
+  }
+
+  const { data: round } = await supabase
+    .from("rounds")
+    .select("id, status")
+    .eq("id", roundId)
+    .maybeSingle();
+
+  if (!round) {
+    return { status: "error", message: "That round couldn't be found." };
+  }
+
+  const { name, roundDate, startTime } = parsed.data;
+  const update: { name: string | null; round_date?: string; start_time?: string | null } = {
+    name: name || null,
+  };
+  if (round.status === "scheduled") {
+    update.round_date = roundDate;
+    update.start_time = startTime || null;
+  }
+
+  const { error } = await supabase.from("rounds").update(update).eq("id", roundId);
+
+  if (error) {
+    return {
+      status: "error",
+      message: "Couldn't save those details. Make sure you're this trip's captain.",
+    };
+  }
+
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}`);
+  return { status: "success", message: "Round details saved." };
 }

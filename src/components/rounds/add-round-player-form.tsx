@@ -6,14 +6,15 @@ import { addRoundPlayerAction } from "@/actions/rounds";
 import type { ActionState } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const initialState: ActionState = { status: "idle" };
 
 function AddButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="sm" disabled={pending}>
-      {pending ? "Adding…" : "Add golfer"}
+    <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+      {pending ? "Adding…" : "Add Golfer"}
     </Button>
   );
 }
@@ -32,75 +33,79 @@ export function AddRoundPlayerForm({
 
   if (availableMembers.length === 0) {
     return (
-      <p className="text-sm text-charcoal-400">
+      <p className="text-sm text-charcoal-500">
         Every active golfer on this trip is already in this round.
       </p>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-3">
-      <div className="min-w-[10rem] flex-1">
-        <label htmlFor="tripMemberId" className="text-xs font-medium text-charcoal-500">
-          Golfer
-        </label>
-        <select
-          id="tripMemberId"
-          name="tripMemberId"
-          required
-          defaultValue=""
-          className="mt-1 h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal focus:border-forest-600"
-        >
-          <option value="" disabled>
-            Choose a golfer
-          </option>
-          {availableMembers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.display_name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {teeSetNames.length > 0 && (
-        <div className="min-w-[8rem]">
-          <label htmlFor="teeSetName" className="text-xs font-medium text-charcoal-500">
-            Tees
+    <form action={formAction} className="space-y-3" noValidate>
+      <p className="text-sm font-medium text-forest-900">Add a golfer to this round</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label htmlFor="tripMemberId" className="mb-1 block text-sm font-medium text-forest-900">
+            Golfer
           </label>
           <select
-            id="teeSetName"
-            name="teeSetName"
+            id="tripMemberId"
+            name="tripMemberId"
+            required
             defaultValue=""
-            className="mt-1 h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal focus:border-forest-600"
+            className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base text-charcoal focus:border-forest-600"
           >
-            <option value="">Not set</option>
-            {teeSetNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
+            <option value="" disabled>
+              Choose a golfer
+            </option>
+            {availableMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.display_name}
               </option>
             ))}
           </select>
         </div>
-      )}
 
-      <div className="w-28">
-        <label htmlFor="playingHandicap" className="text-xs font-medium text-charcoal-500">
-          Playing hcp
-        </label>
-        <input
-          id="playingHandicap"
-          name="playingHandicap"
-          placeholder="Auto"
-          className="mt-1 h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-sm focus:border-forest-600"
-        />
+        {teeSetNames.length > 0 && (
+          <div>
+            <label htmlFor="teeSetName" className="mb-1 block text-sm font-medium text-forest-900">
+              Tees
+            </label>
+            <select
+              id="teeSetName"
+              name="teeSetName"
+              defaultValue=""
+              className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base text-charcoal focus:border-forest-600"
+            >
+              <option value="">Not set</option>
+              {teeSetNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="playingHandicap" className="mb-1 flex items-center gap-1 text-sm font-medium text-forest-900">
+            Playing handicap
+            <InfoTip label="What is a playing handicap?">
+              The playing handicap is the number used for this round. Changing it here will not
+              change the golfer&apos;s profile.
+            </InfoTip>
+          </label>
+          <input
+            id="playingHandicap"
+            name="playingHandicap"
+            placeholder="Auto from profile"
+            inputMode="decimal"
+            className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
+          />
+        </div>
       </div>
 
       <AddButton />
-      {state.status === "error" && state.message && (
-        <Alert variant="error" className="w-full">
-          {state.message}
-        </Alert>
-      )}
+      {state.status === "error" && state.message && <Alert variant="error">{state.message}</Alert>}
     </form>
   );
 }

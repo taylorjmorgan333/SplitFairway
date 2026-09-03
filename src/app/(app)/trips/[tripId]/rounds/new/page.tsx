@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 import { Card, CardContent } from "@/components/ui/card";
 import { CreateRoundForm } from "@/components/rounds/create-round-form";
+import { SetupStepNav } from "@/components/rounds/round-nav";
 
-export const metadata: Metadata = { title: "Schedule a round" };
+export const metadata: Metadata = { title: "Set Up Round" };
 
 export default async function NewRoundPage({
   params,
@@ -35,9 +36,11 @@ export default async function NewRoundPage({
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="text-2xl">Schedule a round</h1>
+      <SetupStepNav tripId={tripId} roundId={null} currentStep={1} />
+
+      <h1 className="text-2xl">Set Up Round</h1>
       <p className="mt-1.5 text-sm text-charcoal-500">
-        Pick a course from your library, then add golfers and set up games once it&apos;s created.
+        Pick a course from your library. You&apos;ll add golfers, choose tees and set up games next.
       </p>
 
       <Card className="mt-6">
