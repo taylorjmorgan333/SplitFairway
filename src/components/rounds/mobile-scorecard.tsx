@@ -79,6 +79,18 @@ function scoreKey(roundPlayerId: string, holeNumber: number): ScoreKey {
   return `${roundPlayerId}:${holeNumber}`;
 }
 
+/** Traditional golf term for a score's relation to par -- used only in
+ * the skins detail breakdown ("Birdie on 3") below, purely descriptive. */
+function relativeScoreLabel(diff: number): string {
+  if (diff <= -3) return "Albatross";
+  if (diff === -2) return "Eagle";
+  if (diff === -1) return "Birdie";
+  if (diff === 0) return "Par";
+  if (diff === 1) return "Bogey";
+  if (diff === 2) return "Double bogey";
+  return `+${diff} on par`;
+}
+
 export function MobileScorecard({
   tripId,
   roundId,
@@ -271,22 +283,54 @@ export function MobileScorecard({
     const game = selectedSideGame;
     const gameHoleNumbers = Array.from({ length: holeCount }, (_, i) => i + 1);
     const gamePlayers = playerScoreInputs.filter((p) => game.participantIds.includes(p.roundPlayerId));
+    const gamePlayersById = new Map(gamePlayers.map((p) => [p.roundPlayerId, p]));
     const result = computeSkins(gamePlayers, gameHoleNumbers, game.scoringMetric, game.carryover);
     const settlement =
       game.isMonetary && game.dollarValue != null
         ? computeSkinsSettlement(result, game.participantIds, dollarsToCents(game.dollarValue))
         : null;
+
+    // Which hole each skin was won on, and by whom -- drives both the
+    // full scorecard's cell highlight and the "Birdie on 3" breakdown
+    // below, built from the same winner the settlement money is
+    // already based on (SkinHoleResult#winnerRoundPlayerId).
+    const skinWinnerByHole = new Map<number, string>();
+    const holesWonByPlayer = new Map<
+      string,
+      { holeNumber: number; skinsWon: number; label: string | null }[]
+    >();
+    for (const hole of result.holes) {
+      if (!hole.winnerRoundPlayerId) continue;
+      skinWinnerByHole.set(hole.holeNumber, hole.winnerRoundPlayerId);
+      const winner = gamePlayersById.get(hole.winnerRoundPlayerId);
+      const gross = winner?.grossByHole.get(hole.holeNumber) ?? null;
+      const par = winner?.holes.find((h) => h.holeNumber === hole.holeNumber)?.par ?? null;
+      const label = gross != null && par != null ? relativeScoreLabel(gross - par) : null;
+      const list = holesWonByPlayer.get(hole.winnerRoundPlayerId) ?? [];
+      list.push({ holeNumber: hole.holeNumber, skinsWon: hole.skinsWon, label });
+      holesWonByPlayer.set(hole.winnerRoundPlayerId, list);
+    }
+
     const standings = game.participantIds
       .map((roundPlayerId) => ({
         roundPlayerId,
         displayName: standingsById.get(roundPlayerId)?.displayName ?? "Golfer",
         skinsWon: result.totalsByPlayer.get(roundPlayerId) ?? 0,
         netCents: settlement?.netByPlayer.get(roundPlayerId) ?? null,
+        holesWon: (holesWonByPlayer.get(roundPlayerId) ?? []).sort((a, b) => a.holeNumber - b.holeNumber),
       }))
       .sort((a, b) => b.skinsWon - a.skinsWon);
-    return { game, result, settlement, standings };
+    return { game, result, settlement, standings, skinWinnerByHole };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSideGame, playerScoreInputs, holeCount]);
+
+  // Which skins-standings row is expanded to show its "Birdie on 3"
+  // hole-by-hole breakdown -- collapsed by default, and reset whenever
+  // the game picker changes so a stale expansion doesn't linger.
+  const [expandedSkinsPlayerId, setExpandedSkinsPlayerId] = useState<string | null>(null);
+  useEffect(() => {
+    setExpandedSkinsPlayerId(null);
+  }, [selectedGameId]);
 
   const selectedPlayerInput = selectedPlayer
     ? playerScoreInputs.find((p) => p.roundPlayerId === selectedPlayer.roundPlayerId)
@@ -357,6 +401,7 @@ export function MobileScorecard({
           players={players}
           playerScoreInputs={playerScoreInputs}
           editableIds={editableIds}
+          skinWinnerByHole={selectedSideGame?.gameType === "skins" ? skinsView?.skinWinnerByHole : undefined}
           onCellSelect={(roundPlayerId, holeNumber) => {
             setSelectedPlayerId(roundPlayerId);
             setCurrentHole(holeNumber);
@@ -588,24 +633,46 @@ export function MobileScorecard({
                 <p className="mt-2 text-sm text-charcoal-400">No skins won yet.</p>
               ) : (
                 <ul className="mt-2 space-y-1.5">
-                  {skinsView.standings.map((s) => (
-                    <li key={s.roundPlayerId} className="flex items-center justify-between text-sm">
-                      <span className="text-charcoal-700">{s.displayName}</span>
-                      <span className="font-medium text-forest-900">
-                        {s.skinsWon} skin{s.skinsWon === 1 ? "" : "s"}
-                        {s.netCents != null && (
-                          <span
-                            className={cn(
-                              "ml-2 text-xs font-normal",
-                              s.netCents > 0 ? "text-emerald-600" : s.netCents < 0 ? "text-red-600" : "text-charcoal-400",
+                  {skinsView.standings.map((s) => {
+                    const hasDetail = s.holesWon.length > 0;
+                    const isExpanded = expandedSkinsPlayerId === s.roundPlayerId;
+                    return (
+                      <li key={s.roundPlayerId}>
+                        <button
+                          type="button"
+                          disabled={!hasDetail}
+                          onClick={() => setExpandedSkinsPlayerId(isExpanded ? null : s.roundPlayerId)}
+                          className="flex w-full items-center justify-between gap-2 text-left text-sm disabled:cursor-default"
+                        >
+                          <span className="text-charcoal-700">{s.displayName}</span>
+                          <span className="flex items-center gap-1.5 font-medium text-forest-900">
+                            {s.skinsWon} skin{s.skinsWon === 1 ? "" : "s"}
+                            {s.netCents != null && (
+                              <span
+                                className={cn(
+                                  "text-xs font-normal",
+                                  s.netCents > 0 ? "text-emerald-600" : s.netCents < 0 ? "text-red-600" : "text-charcoal-400",
+                                )}
+                              >
+                                {formatSignedCents(s.netCents)}
+                              </span>
                             )}
-                          >
-                            {formatSignedCents(s.netCents)}
+                            {hasDetail && <span className="text-xs text-charcoal-400">{isExpanded ? "▲" : "▼"}</span>}
                           </span>
+                        </button>
+                        {isExpanded && hasDetail && (
+                          <p className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-charcoal-600">
+                            {s.holesWon
+                              .map(
+                                (h) =>
+                                  `${h.label ?? "Won"} on ${h.holeNumber}${h.skinsWon > 1 ? ` (${h.skinsWon} skins)` : ""}`,
+                              )
+                              .join(" · ")}
+                          </p>
                         )}
-                      </span>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 
@@ -618,6 +685,12 @@ export function MobileScorecard({
               {skinsView.settlement && skinsView.settlement.pendingCents > 0 && (
                 <p className="mt-1 text-xs text-charcoal-400">
                   {formatCents(skinsView.settlement.pendingCents)} still riding on tied holes not yet resolved.
+                </p>
+              )}
+              {skinsView.standings.some((s) => s.holesWon.length > 0) && (
+                <p className="mt-2 text-xs text-charcoal-400">
+                  Tap a golfer above to see which holes they won. The full scorecard highlights each winning
+                  hole in amber.
                 </p>
               )}
             </>

@@ -25,6 +25,7 @@ export function FullScorecardTable({
   players,
   playerScoreInputs,
   editableIds,
+  skinWinnerByHole,
   onCellSelect,
 }: {
   holeCount: number;
@@ -32,6 +33,11 @@ export function FullScorecardTable({
   players: ScorecardPlayer[];
   playerScoreInputs: PlayerScoreInput[];
   editableIds: Set<string>;
+  /** Hole number -> the round_player_id who won that hole's skin, for
+   * whichever skins game the Standings card has selected -- undefined
+   * (not just empty) when no skins game is currently selected, so a
+   * round with no side games looks exactly as before. */
+  skinWinnerByHole?: Map<number, string>;
   onCellSelect?: (roundPlayerId: string, holeNumber: number) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("gross");
@@ -186,6 +192,7 @@ export function FullScorecardTable({
                 const par = parByHole.get(h) ?? null;
                 const display = metric === "net" ? (netScore(gross, strokes.get(h) ?? null) ?? gross) : gross;
                 const diff = gross != null && par != null ? gross - par : null;
+                const wonSkin = skinWinnerByHole?.get(h) === p.roundPlayerId;
 
                 return (
                   <td key={h} className="py-1">
@@ -193,6 +200,7 @@ export function FullScorecardTable({
                       type="button"
                       disabled={!onCellSelect}
                       onClick={() => onCellSelect?.(p.roundPlayerId, h)}
+                      title={wonSkin ? `Won the skin on hole ${h}` : undefined}
                       className={cn(
                         "mx-auto flex h-7 w-7 items-center justify-center text-sm text-charcoal-800",
                         canEdit && onCellSelect && "cursor-pointer hover:bg-cream-100",
@@ -201,6 +209,7 @@ export function FullScorecardTable({
                         diff === -1 && "rounded-full text-forest-800 ring-2 ring-forest-600",
                         diff === 1 && "rounded-sm border border-charcoal-400",
                         diff != null && diff >= 2 && "rounded-sm border-2 border-charcoal-500",
+                        wonSkin && "rounded-md bg-amber-200",
                       )}
                     >
                       {display ?? "–"}
@@ -235,6 +244,7 @@ export function FullScorecardTable({
       <p className="mt-3 text-xs text-charcoal-400">
         Circled scores are under par, boxed scores are over par — a double ring or box means two or more.
         {onCellSelect && " Tap a score to jump to it above."}
+        {skinWinnerByHole && " Amber highlights mark the hole and golfer who won that skin."}
       </p>
     </div>
   );
