@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveHoleScoreAction, startRoundAction, lockRoundAction } from "@/actions/scores";
-import { allocateStrokes, netScore } from "@/lib/golf/handicap";
+import { netScore } from "@/lib/golf/handicap";
+import {
+  strokesReceivedByHole,
+  computePlayerTotals,
+  computeStandings,
+  type HoleSpec,
+  type PlayerScoreInput,
+  type StandingsMetric,
+} from "@/lib/golf/scoring";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -102,14 +110,15 @@ export function MobileScorecard({
     return byName;
   }, [teeSets]);
 
+  function holesFor(player: ScorecardPlayer): HoleSpec[] {
+    const holes = player.teeSetName ? (holesByTeeSet.get(player.teeSetName) ?? []) : (teeSets[0]?.holes ?? []);
+    return holes.map((h) => ({ holeNumber: h.hole_number, par: h.par, strokeIndex: h.stroke_index }));
+  }
+
   function strokesTableFor(playerId: string): Map<number, number | null> {
     const player = players.find((p) => p.roundPlayerId === playerId);
-    if (!player || player.playingHandicap == null) return new Map();
-    const holes = player.teeSetName ? (holesByTeeSet.get(player.teeSetName) ?? []) : teeSets[0]?.holes ?? [];
-    return allocateStrokes(
-      player.playingHandicap,
-      holes.map((h) => ({ holeNumber: h.hole_number, strokeIndex: h.stroke_index })),
-    );
+    if (!player) return new Map();
+    return strokesReceivedByHole(player.playingHandicap, holesFor(player));
   }
 
   const persist = useCallback(
@@ -185,36 +194,36 @@ export function MobileScorecard({
   const currentKey = selectedPlayer ? scoreKey(selectedPlayer.roundPlayerId, currentHole) : "";
   const currentSync = syncStatus.get(currentKey);
 
-  function totalsFor(playerId: string) {
-    let frontGross = 0;
-    let frontCount = 0;
-    let backGross = 0;
-    let backCount = 0;
-    for (let h = 1; h <= holeCount; h++) {
-      const g = scores.get(scoreKey(playerId, h));
-      if (g == null) continue;
-      if (h <= 9) {
-        frontGross += g;
-        frontCount++;
-      } else {
-        backGross += g;
-        backCount++;
-      }
-    }
-    return {
-      front: frontCount > 0 ? frontGross : null,
-      back: backCount > 0 ? backGross : null,
-      total: frontCount + backCount > 0 ? frontGross + backGross : null,
-      holesPlayed: frontCount + backCount,
-    };
-  }
+  // One PlayerScoreInput per player -- the shared engine's unit of
+  // input (src/lib/golf/scoring.ts) -- rebuilt whenever a score changes.
+  // Each player carries their own tee set's holes, since golfers in the
+  // same round can play different tees with different par/stroke index.
+  const playerScoreInputs: PlayerScoreInput[] = useMemo(
+    () =>
+      players.map((p) => {
+        const grossByHole = new Map<number, number | null>();
+        for (let h = 1; h <= holeCount; h++) {
+          grossByHole.set(h, scores.get(scoreKey(p.roundPlayerId, h)) ?? null);
+        }
+        return {
+          roundPlayerId: p.roundPlayerId,
+          playingHandicap: p.playingHandicap,
+          holes: holesFor(p),
+          grossByHole,
+        };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [players, scores, holeCount, holesByTeeSet, teeSets],
+  );
 
-  const standings = players
-    .map((p) => ({ player: p, totals: totalsFor(p.roundPlayerId) }))
-    .filter((s) => s.totals.holesPlayed > 0)
-    .sort((a, b) => (a.totals.total ?? Infinity) - (b.totals.total ?? Infinity));
+  const [standingsMetric, setStandingsMetric] = useState<StandingsMetric>("gross");
+  const standings = computeStandings(playerScoreInputs, standingsMetric);
+  const standingsById = new Map(players.map((p) => [p.roundPlayerId, p]));
 
-  const selectedTotals = selectedPlayer ? totalsFor(selectedPlayer.roundPlayerId) : null;
+  const selectedPlayerInput = selectedPlayer
+    ? playerScoreInputs.find((p) => p.roundPlayerId === selectedPlayer.roundPlayerId)
+    : undefined;
+  const selectedTotals = selectedPlayerInput ? computePlayerTotals(selectedPlayerInput) : null;
 
   function adjustScore(delta: number) {
     if (!selectedPlayer || !canEditSelected) return;
@@ -352,15 +361,22 @@ export function MobileScorecard({
             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-charcoal-400/10 pt-3 text-center text-sm">
               <div>
                 <p className="text-xs text-charcoal-400">Front</p>
-                <p className="font-medium text-forest-900">{selectedTotals.front ?? "—"}</p>
+                <p className="font-medium text-forest-900">{selectedTotals.front.gross ?? "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-charcoal-400">Back</p>
-                <p className="font-medium text-forest-900">{selectedTotals.back ?? "—"}</p>
+                <p className="font-medium text-forest-900">{selectedTotals.back.gross ?? "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-charcoal-400">Total</p>
-                <p className="font-medium text-forest-900">{selectedTotals.total ?? "—"}</p>
+                <p className="font-medium text-forest-900">
+                  {selectedTotals.total.gross ?? "—"}
+                  {selectedTotals.total.net != null && selectedTotals.total.net !== selectedTotals.total.gross && (
+                    <span className="ml-1 text-xs font-normal text-charcoal-400">
+                      (net {selectedTotals.total.net})
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           )}
@@ -369,24 +385,42 @@ export function MobileScorecard({
 
       {standings.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
-          <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">
-            Gross totals (thru holes played)
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Standings</p>
+            <div className="flex gap-1">
+              {(["gross", "net", "stableford"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setStandingsMetric(m)}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                    standingsMetric === m ? "bg-forest-800 text-cream-50" : "bg-cream-100 text-charcoal-500",
+                  )}
+                >
+                  {m === "stableford" ? "Points" : m}
+                </button>
+              ))}
+            </div>
+          </div>
           <ul className="mt-2 space-y-1.5">
-            {standings.map((s, i) => (
-              <li key={s.player.roundPlayerId} className="flex items-center justify-between text-sm">
+            {standings.map((s) => (
+              <li key={s.roundPlayerId} className="flex items-center justify-between text-sm">
                 <span className="text-charcoal-700">
-                  {i + 1}. {s.player.displayName}
+                  {s.rank}. {standingsById.get(s.roundPlayerId)?.displayName ?? "Golfer"}
                 </span>
                 <span className="font-medium text-forest-900">
-                  {s.totals.total} <span className="text-xs text-charcoal-400">thru {s.totals.holesPlayed}</span>
+                  {s.value}
+                  {standingsMetric === "stableford" && <span className="text-xs text-charcoal-400"> pts</span>}{" "}
+                  <span className="text-xs text-charcoal-400">thru {s.thru}</span>
                 </span>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-xs text-charcoal-400">
-            Gross totals only — game-format standings (net, match play, skins) come from Games once
-            they&apos;re set up.
+            Net uses each golfer&apos;s playing handicap and stroke index; a golfer with no handicap on
+            file shows their gross score instead. Match play and skins come from Games once they&apos;re
+            set up.
           </p>
         </div>
       )}
