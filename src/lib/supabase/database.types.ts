@@ -895,6 +895,7 @@ export type Database = {
             | Database["public"]["Enums"]["handicap_source"]
             | null
           round_id: string
+          team_color: Database["public"]["Enums"]["player_team_color"] | null
           tee_set_name: string | null
           trip_member_id: string
         }
@@ -910,6 +911,7 @@ export type Database = {
             | Database["public"]["Enums"]["handicap_source"]
             | null
           round_id: string
+          team_color?: Database["public"]["Enums"]["player_team_color"] | null
           tee_set_name?: string | null
           trip_member_id: string
         }
@@ -925,6 +927,7 @@ export type Database = {
             | Database["public"]["Enums"]["handicap_source"]
             | null
           round_id?: string
+          team_color?: Database["public"]["Enums"]["player_team_color"] | null
           tee_set_name?: string | null
           trip_member_id?: string
         }
@@ -1772,6 +1775,15 @@ export type Database = {
       member_status: "invited" | "active" | "declined" | "removed"
       payment_method: "venmo" | "zelle" | "paypal" | "cash" | "check" | "other"
       payment_status: "reported" | "confirmed" | "rejected"
+      player_team_color:
+        | "red"
+        | "orange"
+        | "yellow"
+        | "green"
+        | "teal"
+        | "blue"
+        | "purple"
+        | "pink"
       round_score_edit_scope: "per_golfer" | "per_group"
       round_status: "scheduled" | "in_progress" | "completed" | "locked"
       side_game_scoring_metric: "gross" | "net"
@@ -1942,6 +1954,16 @@ export const Constants = {
       member_status: ["invited", "active", "declined", "removed"],
       payment_method: ["venmo", "zelle", "paypal", "cash", "check", "other"],
       payment_status: ["reported", "confirmed", "rejected"],
+      player_team_color: [
+        "red",
+        "orange",
+        "yellow",
+        "green",
+        "teal",
+        "blue",
+        "purple",
+        "pink",
+      ],
       round_score_edit_scope: ["per_golfer", "per_group"],
       round_status: ["scheduled", "in_progress", "completed", "locked"],
       side_game_scoring_metric: ["gross", "net"],

@@ -7,6 +7,8 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { Badge } from "@/components/ui/badge";
 import { InfoTip } from "@/components/ui/info-tip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TEAM_COLORS, TEAM_COLOR_SWATCH, TEAM_COLOR_LABEL, type PlayerTeamColor } from "@/components/rounds/team-colors";
+import { cn } from "@/lib/utils";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -42,6 +44,7 @@ export function RoundPlayerRow({
     player.playing_handicap != null ? String(player.playing_handicap) : "",
   );
   const [groupId, setGroupId] = useState(player.group_id ?? "");
+  const [teamColor, setTeamColor] = useState<PlayerTeamColor | "">(player.team_color ?? "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -68,11 +71,17 @@ export function RoundPlayerRow({
 
   if (removed) return null;
 
-  function save(next: { teeSetName?: string; playingHandicap?: string; groupId?: string }) {
+  function save(next: {
+    teeSetName?: string;
+    playingHandicap?: string;
+    groupId?: string;
+    teamColor?: PlayerTeamColor | "";
+  }) {
     const formData = new FormData();
     formData.set("teeSetName", next.teeSetName ?? teeSetName);
     formData.set("playingHandicap", next.playingHandicap ?? playingHandicap);
     formData.set("groupId", next.groupId ?? groupId);
+    formData.set("teamColor", next.teamColor ?? teamColor);
     setSaveState("saving");
     setSaveError(null);
     startTransition(async () => {
@@ -92,7 +101,18 @@ export function RoundPlayerRow({
     <div className="rounded-xl border border-charcoal-400/15 p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-base font-medium text-forest-900">{displayName}</p>
+          <p className="flex items-center gap-2 text-base font-medium text-forest-900">
+            {displayName}
+            {teamColor && (
+              <>
+                <span
+                  aria-hidden="true"
+                  className={cn("h-2.5 w-2.5 rounded-full border border-black/10", TEAM_COLOR_SWATCH[teamColor])}
+                />
+                <span className="sr-only">Team: {TEAM_COLOR_LABEL[teamColor]}</span>
+              </>
+            )}
+          </p>
           {player.profile_handicap_index != null && (
             <p className="mt-0.5 text-xs text-charcoal-400">
               Profile handicap when added: {player.profile_handicap_index.toFixed(1)}
@@ -140,7 +160,7 @@ export function RoundPlayerRow({
       </div>
 
       {canEdit ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {teeSetNames.length > 0 && (
             <div>
               <label className="mb-1 block text-sm font-medium text-forest-900">Tees</label>
@@ -199,11 +219,41 @@ export function RoundPlayerRow({
               </select>
             </div>
           )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-forest-900">Team</label>
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border",
+                  teamColor ? cn(TEAM_COLOR_SWATCH[teamColor], "border-black/10") : "border-dashed border-charcoal-400/40",
+                )}
+              />
+              <select
+                value={teamColor}
+                onChange={(e) => {
+                  const next = e.target.value as PlayerTeamColor | "";
+                  setTeamColor(next);
+                  save({ teamColor: next });
+                }}
+                className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white py-0 pl-8 pr-3 text-base focus:border-forest-600"
+              >
+                <option value="">No team</option>
+                {TEAM_COLORS.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       ) : (
         <p className="mt-2 text-sm text-charcoal-500">
           {player.tee_set_name ? `${player.tee_set_name} tees` : "Tees not set"}
           {player.playing_handicap != null ? ` · Playing handicap ${player.playing_handicap}` : ""}
+          {teamColor ? ` · Team: ${TEAM_COLOR_LABEL[teamColor]}` : ""}
         </p>
       )}
 

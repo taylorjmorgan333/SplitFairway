@@ -278,6 +278,7 @@ export async function updateRoundPlayerAction(
     teeSetName: formData.get("teeSetName"),
     playingHandicap: formData.get("playingHandicap"),
     groupId: formData.get("groupId"),
+    teamColor: formData.get("teamColor"),
   });
 
   if (!parsed.success) {
@@ -292,7 +293,7 @@ export async function updateRoundPlayerAction(
     return { status: "error", message: "You need to be signed in to do that." };
   }
 
-  const { teeSetName, playingHandicap, groupId } = parsed.data;
+  const { teeSetName, playingHandicap, groupId, teamColor } = parsed.data;
 
   const { error } = await supabase
     .from("round_players")
@@ -300,6 +301,7 @@ export async function updateRoundPlayerAction(
       tee_set_name: teeSetName || null,
       playing_handicap: playingHandicap ? Number(playingHandicap) : null,
       group_id: groupId || null,
+      team_color: teamColor || null,
       handicap_entered_by: user.id,
     })
     .eq("id", playerId);

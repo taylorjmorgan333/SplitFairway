@@ -1,6 +1,20 @@
 import { z } from "zod";
+import type { Database } from "@/lib/supabase/database.types";
 
 export const ROUND_HOLE_COUNT_VALUES = [9, 18] as const;
+
+export type PlayerTeamColor = Database["public"]["Enums"]["player_team_color"];
+
+export const PLAYER_TEAM_COLORS: PlayerTeamColor[] = [
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "teal",
+  "blue",
+  "purple",
+  "pink",
+];
 
 export const createRoundSchema = z.object({
   courseId: z.string().uuid("Choose a course"),
@@ -38,6 +52,7 @@ export const updateRoundPlayerSchema = z.object({
   teeSetName: z.string().trim().max(80).optional().or(z.literal("")),
   playingHandicap: playingHandicapString.optional().or(z.literal("")),
   groupId: z.string().uuid().optional().or(z.literal("")),
+  teamColor: z.enum(PLAYER_TEAM_COLORS as [PlayerTeamColor, ...PlayerTeamColor[]]).optional().or(z.literal("")),
 });
 
 export type UpdateRoundPlayerInput = z.infer<typeof updateRoundPlayerSchema>;
