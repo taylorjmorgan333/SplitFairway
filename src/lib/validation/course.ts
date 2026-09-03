@@ -4,9 +4,12 @@ export const HOLE_COUNT_VALUES = [9, 18] as const;
 
 /**
  * A course, as entered by the golfer who created it — see
- * supabase/migrations/20260903030000_courses.sql. This app never
- * scrapes or imports course data from a third party; every field here
- * is typed in by hand.
+ * supabase/migrations/20260903030000_courses.sql. Every field here is
+ * typed in by hand; this app never scrapes course data. (A course can
+ * also be imported from GolfCourseAPI, a licensed provider the user has
+ * their own account for — see src/actions/course-import.ts — but that
+ * path doesn't go through this schema, since the imported fields come
+ * from the provider's response, not a form submission.)
  */
 export const courseSchema = z.object({
   name: z.string().trim().min(2, "Enter a course name").max(160),

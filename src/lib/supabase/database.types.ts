@@ -232,6 +232,8 @@ export type Database = {
           city: string | null
           created_at: string
           created_by: string | null
+          external_id: string | null
+          external_source: string | null
           hole_count: number
           id: string
           name: string
@@ -243,6 +245,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by?: string | null
+          external_id?: string | null
+          external_source?: string | null
           hole_count: number
           id?: string
           name: string
@@ -254,6 +258,8 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by?: string | null
+          external_id?: string | null
+          external_source?: string | null
           hole_count?: number
           id?: string
           name?: string
