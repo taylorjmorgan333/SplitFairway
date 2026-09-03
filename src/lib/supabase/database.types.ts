@@ -252,6 +252,100 @@ export type Database = {
           },
         ]
       }
+      golf_profiles: {
+        Row: {
+          created_at: string
+          dominant_hand: Database["public"]["Enums"]["dominant_hand"] | null
+          ghin_number: string | null
+          ghin_screenshot_retained: boolean
+          golf_association: string | null
+          handicap_index: number | null
+          handicap_revision_date: string | null
+          handicap_source: Database["public"]["Enums"]["handicap_source"]
+          handicap_updated_at: string
+          home_club: string | null
+          id: string
+          preferred_tee: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
+          ghin_number?: string | null
+          ghin_screenshot_retained?: boolean
+          golf_association?: string | null
+          handicap_index?: number | null
+          handicap_revision_date?: string | null
+          handicap_source?: Database["public"]["Enums"]["handicap_source"]
+          handicap_updated_at?: string
+          home_club?: string | null
+          id?: string
+          preferred_tee?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
+          ghin_number?: string | null
+          ghin_screenshot_retained?: boolean
+          golf_association?: string | null
+          handicap_index?: number | null
+          handicap_revision_date?: string | null
+          handicap_source?: Database["public"]["Enums"]["handicap_source"]
+          handicap_updated_at?: string
+          home_club?: string | null
+          id?: string
+          preferred_tee?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golf_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      handicap_history: {
+        Row: {
+          handicap_index: number
+          handicap_revision_date: string | null
+          id: string
+          recorded_at: string
+          source: Database["public"]["Enums"]["handicap_source"]
+          user_id: string
+        }
+        Insert: {
+          handicap_index: number
+          handicap_revision_date?: string | null
+          id?: string
+          recorded_at?: string
+          source: Database["public"]["Enums"]["handicap_source"]
+          user_id: string
+        }
+        Update: {
+          handicap_index?: number
+          handicap_revision_date?: string | null
+          id?: string
+          recorded_at?: string
+          source?: Database["public"]["Enums"]["handicap_source"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "handicap_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -660,6 +754,18 @@ export type Database = {
         Returns: undefined
       }
       get_invitation_preview: { Args: { p_token: string }; Returns: Json }
+      get_trip_mate_handicap: {
+        Args: { p_user_id: string }
+        Returns: {
+          handicap_index: number
+          handicap_revision_date: string
+          handicap_source: Database["public"]["Enums"]["handicap_source"]
+          handicap_updated_at: string
+          home_club: string
+          preferred_tee: string
+          user_id: string
+        }[]
+      }
       invite_trip_member: {
         Args: {
           p_display_name: string
@@ -803,6 +909,7 @@ export type Database = {
       }
     }
     Enums: {
+      dominant_hand: "right" | "left"
       expense_category:
         | "lodging"
         | "golf"
@@ -811,6 +918,7 @@ export type Database = {
         | "merchandise"
         | "activity"
         | "other"
+      handicap_source: "manual" | "ghin_screenshot_import"
       invitation_status: "pending" | "accepted" | "declined" | "revoked"
       member_role: "captain" | "member"
       member_status: "invited" | "active" | "declined" | "removed"
@@ -945,6 +1053,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      dominant_hand: ["right", "left"],
       expense_category: [
         "lodging",
         "golf",
@@ -954,6 +1063,7 @@ export const Constants = {
         "activity",
         "other",
       ],
+      handicap_source: ["manual", "ghin_screenshot_import"],
       invitation_status: ["pending", "accepted", "declined", "revoked"],
       member_role: ["captain", "member"],
       member_status: ["invited", "active", "declined", "removed"],

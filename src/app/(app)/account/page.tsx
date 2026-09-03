@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/actions/auth";
 import { DeleteAccountForm } from "@/components/account/delete-account-form";
+import { GolfProfileSection } from "@/components/account/golf-profile-section";
+import { GOLF_SCORING_ENABLED } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Account settings" };
@@ -51,6 +53,8 @@ export default async function AccountPage() {
           </div>
         </CardContent>
       </Card>
+
+      {GOLF_SCORING_ENABLED && <GolfProfileSection userId={user.id} />}
 
       <Card className="mt-6">
         <CardHeader>
