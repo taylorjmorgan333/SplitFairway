@@ -22,13 +22,25 @@ import type { ActionState } from "@/actions/auth";
  */
 export async function deleteCourseAction(courseId: string): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase.from("courses").delete().eq("id", courseId);
+  const { data, error } = await supabase.from("courses").delete().eq("id", courseId).select("id");
 
   if (error) {
+    console.error("deleteCourseAction: Supabase delete error", error.message);
     throw new Error("Couldn't delete this course.");
   }
 
+  if (!data || data.length === 0) {
+    // RLS silently reports zero rows affected (no `error`) instead of
+    // raising one, both when another golfer's course is targeted and
+    // when the course is already gone -- so this is the only reliable
+    // place to tell those apart from a real success.
+    throw new Error(
+      "Couldn't delete this course — it may already be gone, or you may not have permission.",
+    );
+  }
+
   revalidatePath("/courses");
+  revalidatePath(`/courses/${courseId}`);
   redirect("/courses");
 }
 
