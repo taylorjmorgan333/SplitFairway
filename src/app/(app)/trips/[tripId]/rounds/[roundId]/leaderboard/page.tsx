@@ -29,7 +29,7 @@ export default async function LeaderboardPage({
     redirect("/login");
   }
 
-  const [{ data: round }, { data: snapshot }, { data: myMembership }] = await Promise.all([
+  const [{ data: round }, { data: snapshot }, { data: myMembership }, { data: sideGameRows }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).maybeSingle(),
     supabase.from("round_course_snapshots").select("*").eq("round_id", roundId).maybeSingle(),
     supabase
@@ -38,6 +38,9 @@ export default async function LeaderboardPage({
       .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .maybeSingle(),
+    SIDE_GAMES_ENABLED
+      ? supabase.from("side_games").select("id, name, game_type").eq("round_id", roundId)
+      : Promise.resolve({ data: [] as { id: string; name: string; game_type: string }[] }),
   ]);
 
   // rounds_select_members RLS already means this query returns null for
@@ -106,6 +109,9 @@ export default async function LeaderboardPage({
         }))}
         liveScoreVisibility={round.live_score_visibility}
         isCaptain={isCaptain}
+        games={(sideGameRows ?? []).map((g) => ({ id: g.id, name: g.name, gameType: g.game_type }))}
+        sideGamesEnabled={SIDE_GAMES_ENABLED}
+        gamesHref={`/trips/${tripId}/rounds/${roundId}/games/details`}
       />
     </div>
   );
