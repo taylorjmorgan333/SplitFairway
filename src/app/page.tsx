@@ -32,20 +32,20 @@ const OG_IMAGE = {
 };
 
 export const metadata: Metadata = {
-  title: { absolute: "SplitFairway | Golf Trip Expense Tracking" },
+  title: { absolute: "SplitFairway | Golf Trips Made Easy" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
     siteName: "SplitFairway",
     type: "website",
-    title: "SplitFairway | Golf Trip Expense Tracking",
+    title: "SplitFairway | Golf Trips Made Easy",
     description: DESCRIPTION,
     url: "/",
     images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SplitFairway | Golf Trip Expense Tracking",
+    title: "SplitFairway | Golf Trips Made Easy",
     description: DESCRIPTION,
     images: ["/og-image.png"],
   },
