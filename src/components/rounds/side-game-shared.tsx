@@ -29,14 +29,22 @@ export function formatDollars(value: number | null): string {
   return `$${value.toLocaleString("en-US", { minimumFractionDigits: value % 1 === 0 ? 0 : 2 })}`;
 }
 
-/** The dollar-value + accept-notice fields, shown inline in a create form once "Play for money" is checked. */
-export function MonetarySection({ show }: { show: boolean }) {
+/**
+ * The dollar-value + accept-notice fields, shown inline in a create
+ * form once "Play for money" is checked. `label` lets a specific game
+ * use its own plain-language field name (Skins passes "Value per
+ * skin") instead of the generic "Dollar value" every other game keeps.
+ */
+export function MonetarySection({ show, label = "Dollar value" }: { show: boolean; label?: string }) {
   if (!show) return null;
   return (
     <div className="space-y-3 rounded-lg bg-cream-100 p-3">
       <div className="max-w-[10rem]">
-        <Label htmlFor="dollarValue">Dollar value</Label>
+        <Label htmlFor="dollarValue">{label}</Label>
         <Input id="dollarValue" name="dollarValue" type="number" min="0.01" step="0.01" placeholder="20.00" />
+        <p className="mt-1 text-xs text-charcoal-500">
+          Optional. SplitFairway records the result and balance but does not collect or transfer money.
+        </p>
       </div>
       <p className="text-xs text-charcoal-500">{MONETARY_GAME_NOTICE}</p>
       <label className="flex items-start gap-2 text-xs text-charcoal-700">

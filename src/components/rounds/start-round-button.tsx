@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 
 /**
- * "Start Round" on the Review step. Calls the same startRoundAction the
+ * "Start Scoring" on the Review step. Calls the same startRoundAction the
  * mobile scorecard already uses to flip scheduled -> in_progress, then
  * sends the captain straight into score entry -- the redesign's "one
  * obvious next action" principle applied to the moment play actually
@@ -50,7 +50,7 @@ export function StartRoundButton({
           });
         }}
       >
-        {isPending ? "Starting round…" : "Start Round"}
+        {isPending ? "Starting…" : "Start Scoring"}
       </Button>
     </div>
   );

@@ -397,7 +397,7 @@ export function CreateSkinsForm({
       </div>
 
       <MonetaryToggle monetaryEnabled={monetaryEnabled} isMonetary={isMonetary} onChange={setIsMonetary} />
-      <MonetarySection show={monetaryEnabled && isMonetary} />
+      <MonetarySection show={monetaryEnabled && isMonetary} label="Value per skin" />
       {monetaryEnabled && isMonetary && (
         <p className="text-xs text-charcoal-500">
           Every golfer antes this amount into one pot; the pot splits across whoever won skins once the round

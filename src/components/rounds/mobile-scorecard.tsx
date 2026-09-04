@@ -361,7 +361,7 @@ export function MobileScorecard({
             }).finally(() => setIsStarting(false));
           }}
         >
-          {isStarting ? "Starting…" : "Start round"}
+          {isStarting ? "Starting…" : "Start Scoring"}
         </Button>
       )}
 

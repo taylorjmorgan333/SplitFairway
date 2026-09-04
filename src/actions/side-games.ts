@@ -11,6 +11,7 @@ import {
   createQuotaGameSchema,
   createNinesGameSchema,
   createTwosGameSchema,
+  createCustomGameSchema,
   createMatchPlayGameSchema,
   createStrokePlayGameSchema,
   createStablefordGameSchema,
@@ -1143,4 +1144,74 @@ export async function createLowHandicapHighHandicapGameAction(
     },
     "Low Handicap High Handicap game created.",
   );
+}
+
+/**
+ * "Custom Game" -- the redesign's freeform option for when a group's
+ * format isn't one of the built-in engines. Same side_games row every
+ * other game creates, with no scoring meaning attached to it: nothing
+ * in src/lib/golf/ reads this row to compute a result, so the group
+ * tracks and settles it themselves. scoring_metric is stored as
+ * "gross" purely to satisfy the column's NOT NULL constraint -- no
+ * code path ever reads it back for a custom game.
+ */
+export async function createCustomGameAction(
+  roundId: string,
+  tripId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createCustomGameSchema.safeParse({
+    name: formData.get("name"),
+    playerIds: formData.getAll("playerIds"),
+    isMonetary: formData.get("isMonetary") === "on",
+    dollarValue: formData.get("dollarValue"),
+    monetaryNoticeAccepted: formData.get("monetaryNoticeAccepted") === "on",
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { status: "error", message: "You need to be signed in." };
+  }
+
+  const { data: game, error: gameError } = await supabase
+    .from("side_games")
+    .insert({
+      round_id: roundId,
+      game_type: "custom",
+      name: parsed.data.name,
+      scoring_metric: "gross",
+      is_monetary: parsed.data.isMonetary,
+      dollar_value: parsed.data.isMonetary ? parsed.data.dollarValue : null,
+      monetary_accepted_by: parsed.data.isMonetary ? user.id : null,
+      monetary_accepted_at: parsed.data.isMonetary ? new Date().toISOString() : null,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (gameError || !game) {
+    return { status: "error", message: "Couldn't create this game — make sure you're the trip captain." };
+  }
+
+  if (parsed.data.playerIds.length > 0) {
+    const { error: participantsError } = await supabase.from("side_game_participants").insert(
+      parsed.data.playerIds.map((id) => ({ side_game_id: game.id, round_player_id: id, side: null })),
+    );
+
+    if (participantsError) {
+      await supabase.from("side_games").delete().eq("id", game.id);
+      return { status: "error", message: "Couldn't add golfers to this game. Please try again." };
+    }
+  }
+
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}/games`);
+  return { status: "success", message: "Custom game created." };
 }

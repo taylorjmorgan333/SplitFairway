@@ -45,8 +45,8 @@ function TeesField({ teeSetNames }: { teeSetNames: string[] }) {
   if (teeSetNames.length === 0) return null;
   return (
     <div>
-      <label htmlFor="teeSetName" className="mb-1 block text-sm font-medium text-forest-900">
-        Tees
+      <label htmlFor="teeSetName" className="mb-1 block text-base font-medium text-forest-900">
+        Choose tee
       </label>
       <select
         id="teeSetName"

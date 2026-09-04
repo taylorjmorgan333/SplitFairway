@@ -149,9 +149,9 @@ export function RoundPlayerRow({
                     setMenuOpen(false);
                     setConfirmOpen(true);
                   }}
-                  className="block min-h-11 w-full px-4 py-2.5 text-left text-sm text-red-700 hover:bg-red-50"
+                  className="block min-h-11 w-full px-4 py-2.5 text-left text-base text-red-700 hover:bg-red-50"
                 >
-                  Remove from round
+                  Remove Golfer
                 </button>
               </div>
             )}
@@ -163,7 +163,7 @@ export function RoundPlayerRow({
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {teeSetNames.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-forest-900">Tees</label>
+              <label className="mb-1 block text-base font-medium text-forest-900">Choose tee</label>
               <select
                 value={teeSetName}
                 onChange={(e) => {
@@ -183,7 +183,7 @@ export function RoundPlayerRow({
           )}
 
           <div>
-            <label className="mb-1 flex items-center gap-1 text-sm font-medium text-forest-900">
+            <label className="mb-1 flex items-center gap-1 text-base font-medium text-forest-900">
               Playing handicap
               <InfoTip label="What is a playing handicap?">
                 The playing handicap is the number used for this round. Changing it here will not
@@ -201,7 +201,7 @@ export function RoundPlayerRow({
 
           {groups.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-forest-900">Group</label>
+              <label className="mb-1 block text-base font-medium text-forest-900">Playing group</label>
               <select
                 value={groupId}
                 onChange={(e) => {
@@ -221,7 +221,7 @@ export function RoundPlayerRow({
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-forest-900">Team</label>
+            <label className="mb-1 block text-base font-medium text-forest-900">Team</label>
             <div className="relative">
               <span
                 aria-hidden="true"
@@ -250,8 +250,8 @@ export function RoundPlayerRow({
           </div>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-charcoal-500">
-          {player.tee_set_name ? `${player.tee_set_name} tees` : "Tees not set"}
+        <p className="mt-2 text-base text-charcoal-500">
+          {player.tee_set_name ? `${player.tee_set_name} tees` : "Tee not set"}
           {player.playing_handicap != null ? ` · Playing handicap ${player.playing_handicap}` : ""}
           {teamColor ? ` · Team: ${TEAM_COLOR_LABEL[teamColor]}` : ""}
         </p>
@@ -274,8 +274,8 @@ export function RoundPlayerRow({
         onOpenChange={setConfirmOpen}
         title={`Remove ${displayName} from this round?`}
         description={`${displayName} will remain on the trip but will be removed from this round.`}
-        confirmLabel="Remove Player"
-        cancelLabel="Keep Player"
+        confirmLabel="Remove Golfer"
+        cancelLabel="Keep Golfer"
         onConfirm={async () => {
           await removeRoundPlayerAction(roundId, player.id);
           setRemoved(true);

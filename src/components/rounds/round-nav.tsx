@@ -41,7 +41,7 @@ export function SetupStepNav({
 
   return (
     <nav aria-label="Round setup progress" className="mb-5">
-      <p className="text-sm font-semibold text-charcoal-600">
+      <p className="text-base font-semibold text-charcoal-600">
         Step {currentStep} of 4 — {SETUP_STEPS[currentStep - 1]}
       </p>
       <ol className="mt-2 flex items-center gap-1.5">
@@ -86,13 +86,18 @@ interface PlayFinishTab {
 }
 
 /**
- * The persistent Scorecard / Games / Leaderboard / Results nav for a
- * round that's in play or finished, replacing the old flat row of
- * buttons that lived only on the round-detail page (and so vanished
- * the moment a golfer navigated to Enter Scores, Games, etc. — the
- * exact "nav says one thing, screen shows another" problem this
- * redesign is fixing). Rendered at the top of every one of those
- * routes so it's always visible and always shows where you are.
+ * The persistent nav for a round that's in play or finished, replacing
+ * the old flat row of buttons that lived only on the round-detail page
+ * (and so vanished the moment a golfer navigated to Enter Scores,
+ * Games, etc.). Rendered at the top of every route so it's always
+ * visible and always shows where you are.
+ *
+ * The tab SET itself is phase-aware, not just which ones are enabled:
+ * while a round is being played it shows only the three screens that
+ * matter mid-round (Scorecard, Games, Leaderboard); once it's finished
+ * it swaps to the two post-round screens (Results, Settle Up). This
+ * keeps the nav to 2-3 items at a time instead of piling every screen
+ * into one row regardless of what's actually usable right now.
  */
 export function RoundPhaseTabs({
   tripId,
@@ -111,12 +116,16 @@ export function RoundPhaseTabs({
   const base = `/trips/${tripId}/rounds/${roundId}`;
   const phase = phaseForStatus(status);
 
-  const tabs: PlayFinishTab[] = [
+  const playTabs: PlayFinishTab[] = [
     { key: "score", label: "Scorecard", href: `${base}/score`, show: true },
     { key: "games", label: "Games", href: `${base}/games`, show: sideGamesEnabled },
     { key: "leaderboard", label: "Leaderboard", href: `${base}/leaderboard`, show: leaderboardEnabled },
+  ];
+  const finishTabs: PlayFinishTab[] = [
     { key: "results", label: "Results", href: `${base}/results`, show: true },
-  ].filter((t) => t.show);
+    { key: "settle", label: "Settle Up", href: `${base}/settle`, show: true },
+  ];
+  const tabs = (phase === "finish" ? finishTabs : playTabs).filter((t) => t.show);
 
   return (
     <nav aria-label="Round" className="mb-5">
@@ -130,7 +139,7 @@ export function RoundPhaseTabs({
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex-1 rounded-full px-2 py-2.5 text-center text-sm font-medium transition-colors",
+                  "flex-1 rounded-full px-2 py-2.5 text-center text-base font-medium transition-colors",
                   active ? "bg-white text-forest-900 shadow-sm" : "text-charcoal-500 hover:text-forest-800",
                 )}
               >
@@ -149,7 +158,7 @@ export function RoundPhaseTabs({
           </span>
         </Link>
       </div>
-      <p className="mt-2 text-xs text-charcoal-400">
+      <p className="mt-2 text-sm text-charcoal-400">
         {phase === "play" ? "Round in progress" : "Round finished"} · Tap ⋯ for round details, players
         and groups.
       </p>

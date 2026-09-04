@@ -140,6 +140,27 @@ export const createTwosGameSchema = z
 export type CreateTwosGameInput = z.infer<typeof createTwosGameSchema>;
 
 /**
+ * "Custom Game" -- the redesign's simple freeform option for a format
+ * that isn't one of the built-in engines. No scoringMetric, no minimum
+ * player count, no computed outcome: this row exists purely so the
+ * group can note what they're playing (and, optionally, for how much)
+ * and see it listed on the Games screen -- SplitFairway doesn't score
+ * it, so the group records and settles the result themselves.
+ */
+export const createCustomGameSchema = z
+  .object({
+    name: z.string().trim().min(1, "Give this game a name").max(120),
+    playerIds: z.array(z.string().uuid()).default([]),
+  })
+  .merge(monetaryFields)
+  .refine((data) => !data.isMonetary || (data.dollarValue != null && data.monetaryNoticeAccepted), {
+    message: "Enter a value and accept the notice to make this game monetary",
+    path: ["dollarValue"],
+  });
+
+export type CreateCustomGameInput = z.infer<typeof createCustomGameSchema>;
+
+/**
  * Batch 1 of the Squabbit-list expansion (games/game-type-picker.tsx):
  * formats that are pure aggregation formulas over scores already
  * recorded via hole_scores -- no new per-hole data entry, no schema

@@ -1808,6 +1808,7 @@ export type Database = {
         | "one_gross_one_net"
         | "lone_ranger"
         | "cha_cha_cha"
+        | "custom"
       split_method: "equal" | "selected" | "custom"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
@@ -1988,6 +1989,7 @@ export const Constants = {
         "one_gross_one_net",
         "lone_ranger",
         "cha_cha_cha",
+        "custom",
       ],
       split_method: ["equal", "selected", "custom"],
       trip_status: ["planning", "active", "completed", "cancelled"],
