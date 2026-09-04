@@ -6,7 +6,6 @@ import { saveHoleScoreAction, startRoundAction, lockRoundAction } from "@/action
 import { netScore } from "@/lib/golf/handicap";
 import {
   strokesReceivedByHole,
-  computePlayerTotals,
   computeStandings,
   type HoleSpec,
   type PlayerScoreInput,
@@ -79,6 +78,42 @@ function scoreKey(roundPlayerId: string, holeNumber: number): ScoreKey {
   return `${roundPlayerId}:${holeNumber}`;
 }
 
+/**
+ * A per-round, localStorage-backed queue of scores entered but not yet
+ * confirmed saved -- the durable half of "preserve entered scores if
+ * the connection drops and sync when service returns." The in-memory
+ * retry-on-`online` behavior already covers a dropped connection while
+ * the tab stays open; this covers the harder case of a golfer closing
+ * the app (or the tab getting killed) with unsynced holes, by writing
+ * through on every edit and replaying whatever's left on next launch.
+ * Safe to replay blindly because saveHoleScoreAction upserts on
+ * (round_player_id, hole_number) -- resubmitting an already-saved value
+ * is a no-op, never a duplicate.
+ */
+function pendingQueueStorageKey(roundId: string): string {
+  return `splitfairway:pending-scores:${roundId}`;
+}
+
+function loadPendingQueue(roundId: string): Record<ScoreKey, number | null> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(pendingQueueStorageKey(roundId));
+    return raw ? (JSON.parse(raw) as Record<ScoreKey, number | null>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePendingQueue(roundId: string, queue: Record<ScoreKey, number | null>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(pendingQueueStorageKey(roundId), JSON.stringify(queue));
+  } catch {
+    // Storage unavailable (private browsing, quota) -- the in-tab
+    // retry-on-reconnect below still covers this session.
+  }
+}
+
 /** Traditional golf term for a score's relation to par -- used only in
  * the skins detail breakdown ("Birdie on 3") below, purely descriptive. */
 function relativeScoreLabel(diff: number): string {
@@ -148,6 +183,32 @@ export function MobileScorecard({
   });
   const [syncStatus, setSyncStatus] = useState<Map<ScoreKey, SyncStatus>>(new Map());
   const saveTimers = useRef<Map<ScoreKey, ReturnType<typeof setTimeout>>>(new Map());
+  // Auto-hides each row's "Saved" confirmation a couple seconds after
+  // it appears, per the redesign spec -- previously it stuck around
+  // until the next edit.
+  const hideTimers = useRef<Map<ScoreKey, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingQueueRef = useRef<Record<ScoreKey, number | null>>({});
+
+  function scheduleHideSaved(key: ScoreKey) {
+    const existing = hideTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    hideTimers.current.set(
+      key,
+      setTimeout(() => {
+        setSyncStatus((prev) => {
+          if (prev.get(key) !== "synced") return prev;
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      }, 1800),
+    );
+  }
+
+  function clearFromPendingQueue(key: ScoreKey) {
+    delete pendingQueueRef.current[key];
+    savePendingQueue(roundId, pendingQueueRef.current);
+  }
   const [isLocking, setIsLocking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -186,10 +247,15 @@ export function MobileScorecard({
         }
         const result = await saveHoleScoreAction(roundId, roundPlayerId, holeNumber, value);
         setSyncStatus((prev) => new Map(prev).set(key, result.ok ? "synced" : "error"));
+        if (result.ok) {
+          clearFromPendingQueue(key);
+          scheduleHideSaved(key);
+        }
       }, 350);
 
       saveTimers.current.set(key, timer);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [roundId],
   );
 
@@ -213,6 +279,10 @@ export function MobileScorecard({
           next.set(key, "pending");
           saveHoleScoreAction(roundId, roundPlayerId, holeNumber, value).then((result) => {
             setSyncStatus((p) => new Map(p).set(key, result.ok ? "synced" : "error"));
+            if (result.ok) {
+              clearFromPendingQueue(key);
+              scheduleHideSaved(key);
+            }
           });
         }
         return next;
@@ -223,26 +293,64 @@ export function MobileScorecard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId]);
 
+  // Once on mount: pick up anything left in this device's durable queue
+  // from a previous visit -- a golfer who entered scores, lost signal,
+  // and closed the app before it reconnected still has them here, and
+  // they get folded into local state (so they're visible right away)
+  // and replayed to the server if a connection is already available.
+  useEffect(() => {
+    const queue = loadPendingQueue(roundId);
+    pendingQueueRef.current = queue;
+    const keys = Object.keys(queue);
+    if (keys.length === 0) return;
+
+    setScores((prev) => {
+      const next = new Map(prev);
+      for (const key of keys) next.set(key, queue[key]);
+      return next;
+    });
+    setSyncStatus((prev) => {
+      const next = new Map(prev);
+      for (const key of keys) next.set(key, "pending");
+      return next;
+    });
+
+    if (navigator.onLine) {
+      for (const key of keys) {
+        const [roundPlayerId, holeStr] = key.split(":");
+        saveHoleScoreAction(roundId, roundPlayerId, Number(holeStr), queue[key]).then((result) => {
+          setSyncStatus((p) => new Map(p).set(key, result.ok ? "synced" : "error"));
+          if (result.ok) {
+            clearFromPendingQueue(key);
+            scheduleHideSaved(key);
+          }
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
+
   function setScore(roundPlayerId: string, holeNumber: number, value: number | null) {
     const key = scoreKey(roundPlayerId, holeNumber);
     setScores((prev) => new Map(prev).set(key, value));
+    pendingQueueRef.current[key] = value;
+    savePendingQueue(roundId, pendingQueueRef.current);
     persist(roundPlayerId, holeNumber, value);
   }
 
-  const selectedPlayer = players.find((p) => p.roundPlayerId === selectedPlayerId);
-  const canEditSelected = selectedPlayer != null && editableIds.has(selectedPlayer.roundPlayerId) && !isLocked;
-  const selectedHoles = selectedPlayer?.teeSetName
-    ? (holesByTeeSet.get(selectedPlayer.teeSetName) ?? [])
+  // The redesign shows every editable golfer's row for the current
+  // hole at once (below), rather than one selected golfer at a time --
+  // this is just the reference hole/par/yardage shown once at the top,
+  // taken from whichever editable golfer's tee set (falling back to the
+  // round's first tee set). Par is effectively the same across tees at
+  // one course; only yardage and stroke index meaningfully differ, and
+  // each row still computes its own strokes-received off its own
+  // golfer's tee set and handicap.
+  const headerPlayer = editablePlayers[0] ?? players[0];
+  const headerHoles = headerPlayer?.teeSetName
+    ? (holesByTeeSet.get(headerPlayer.teeSetName) ?? [])
     : (teeSets[0]?.holes ?? []);
-  const holeInfo = selectedHoles.find((h) => h.hole_number === currentHole);
-  const selectedStrokes = selectedPlayer ? strokesTableFor(selectedPlayer.roundPlayerId) : new Map();
-  const strokesOnCurrentHole = selectedStrokes.get(currentHole) ?? null;
-  const currentGross = selectedPlayer
-    ? (scores.get(scoreKey(selectedPlayer.roundPlayerId, currentHole)) ?? null)
-    : null;
-  const currentNet = netScore(currentGross, strokesOnCurrentHole);
-  const currentKey = selectedPlayer ? scoreKey(selectedPlayer.roundPlayerId, currentHole) : "";
-  const currentSync = syncStatus.get(currentKey);
+  const headerHoleInfo = headerHoles.find((h) => h.hole_number === currentHole);
 
   // One PlayerScoreInput per player -- the shared engine's unit of
   // input (src/lib/golf/scoring.ts) -- rebuilt whenever a score changes.
@@ -332,16 +440,14 @@ export function MobileScorecard({
     setExpandedSkinsPlayerId(null);
   }, [selectedGameId]);
 
-  const selectedPlayerInput = selectedPlayer
-    ? playerScoreInputs.find((p) => p.roundPlayerId === selectedPlayer.roundPlayerId)
-    : undefined;
-  const selectedTotals = selectedPlayerInput ? computePlayerTotals(selectedPlayerInput) : null;
-
-  function adjustScore(delta: number) {
-    if (!selectedPlayer || !canEditSelected) return;
-    const base = currentGross ?? holeInfo?.par ?? 4;
+  function adjustScore(player: ScorecardPlayer, delta: number) {
+    if (!editableIds.has(player.roundPlayerId) || isLocked) return;
+    const holes = player.teeSetName ? (holesByTeeSet.get(player.teeSetName) ?? []) : (teeSets[0]?.holes ?? []);
+    const par = holes.find((h) => h.hole_number === currentHole)?.par ?? 4;
+    const current = scores.get(scoreKey(player.roundPlayerId, currentHole)) ?? null;
+    const base = current ?? par;
     const next = Math.min(20, Math.max(1, base + delta));
-    setScore(selectedPlayer.roundPlayerId, currentHole, next);
+    setScore(player.roundPlayerId, currentHole, next);
   }
 
   return (
@@ -410,147 +516,133 @@ export function MobileScorecard({
         />
       )}
 
-      {/* Player switcher — a horizontal, thumb-scrollable row rather than
-          a dropdown, since the whole point of the mobile scorecard is
-          minimal taps: whoever's entering (often the captain, for a
-          whole group) just taps a name instead of opening a menu. */}
-      {viewMode === "hole" && players.length > 1 && (
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {players.map((p) => (
-            <button
-              key={p.roundPlayerId}
-              type="button"
-              onClick={() => setSelectedPlayerId(p.roundPlayerId)}
-              className={cn(
-                "shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
-                p.roundPlayerId === selectedPlayerId
-                  ? "bg-forest-800 text-cream-50"
-                  : "bg-cream-100 text-charcoal-700",
-              )}
-            >
-              {p.displayName}
-            </button>
-          ))}
-        </div>
+      {viewMode === "hole" && editablePlayers.length === 0 && (
+        <p className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 text-center text-base text-charcoal-500 shadow-card">
+          {players.length === 0
+            ? "No golfers in this round yet."
+            : "You don't have permission to enter scores for this round — ask your captain."}
+        </p>
       )}
 
-      {viewMode === "hole" && selectedPlayer && (
+      {viewMode === "hole" && editablePlayers.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
-          <div className="flex items-center justify-between">
+          <div className="text-center">
+            <p className="text-sm font-medium uppercase tracking-wide text-charcoal-400">Hole</p>
+            <p className="font-serif text-4xl text-forest-900">{currentHole}</p>
+            <p className="text-base text-charcoal-500">
+              Par {headerHoleInfo?.par ?? "—"}
+              {headerHoleInfo?.stroke_index ? ` · Handicap ${headerHoleInfo.stroke_index}` : ""}
+              {headerHoleInfo?.yardage ? ` · ${headerHoleInfo.yardage} yds` : ""}
+            </p>
+          </div>
+
+          {/* Large, text-labeled Previous/Next Hole buttons -- the old
+              nav was a pair of small icon-only circles flanking the hole
+              number. These are full-width, plain-language, and a real
+              tap target rather than a 48px chevron. */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <button
               type="button"
               disabled={currentHole <= 1}
               onClick={() => setCurrentHole((h) => Math.max(1, h - 1))}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-100 text-xl text-forest-800 disabled:opacity-30"
-              aria-label="Previous hole"
+              className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
             >
-              ‹
+              <span aria-hidden="true">‹</span> Previous Hole
             </button>
-            <div className="text-center">
-              <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Hole</p>
-              <p className="font-serif text-3xl text-forest-900">{currentHole}</p>
-              <p className="text-xs text-charcoal-500">
-                Par {holeInfo?.par ?? "—"}
-                {holeInfo?.yardage ? ` · ${holeInfo.yardage} yds` : ""}
-                {holeInfo?.stroke_index ? ` · SI ${holeInfo.stroke_index}` : ""}
-              </p>
-            </div>
             <button
               type="button"
               disabled={currentHole >= holeCount}
               onClick={() => setCurrentHole((h) => Math.min(holeCount, h + 1))}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-100 text-xl text-forest-800 disabled:opacity-30"
-              aria-label="Next hole"
+              className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
             >
-              ›
+              Next Hole <span aria-hidden="true">›</span>
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              disabled={!canEditSelected}
-              onClick={() => adjustScore(-1)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-cream-100 text-2xl font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
-              aria-label="Decrease score"
-            >
-              −
-            </button>
-            <input
-              type="number"
-              inputMode="numeric"
-              disabled={!canEditSelected}
-              value={currentGross ?? holeInfo?.par ?? ""}
-              onFocus={(e) => {
-                // Show a real number (par, when nothing's been entered yet)
-                // instead of a grayed-out placeholder, so the field always
-                // reads as ready-to-go rather than empty -- tapping it is a
-                // single, deliberate action (unlike just paging past a hole
-                // with the </> arrows) that confirms that par as the actual
-                // score. Text is selected so typing a different score
-                // overwrites it in one go, and +/- still work normally from
-                // here (base par +/-1 is already a single tap each).
-                if (selectedPlayer && canEditSelected && currentGross == null && holeInfo?.par != null) {
-                  setScore(selectedPlayer.roundPlayerId, currentHole, holeInfo.par);
-                }
-                e.target.select();
-              }}
-              onChange={(e) => {
-                if (!selectedPlayer) return;
-                const v = e.target.value === "" ? null : Number(e.target.value);
-                setScore(selectedPlayer.roundPlayerId, currentHole, v === null ? null : Math.min(20, Math.max(1, v)));
-              }}
-              className="h-16 w-20 rounded-2xl border border-charcoal-400/25 bg-white text-center font-serif text-3xl text-forest-900 focus:border-forest-600"
-            />
-            <button
-              type="button"
-              disabled={!canEditSelected}
-              onClick={() => adjustScore(1)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-cream-100 text-2xl font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
-              aria-label="Increase score"
-            >
-              +
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-charcoal-400">
-            <span>
-              {currentNet != null ? `Net ${currentNet}` : "Net —"}
-              {strokesOnCurrentHole
-                ? ` (${strokesOnCurrentHole > 0 ? "+" : ""}${strokesOnCurrentHole} handicap stroke${Math.abs(strokesOnCurrentHole) === 1 ? "" : "s"})`
-                : ""}
-            </span>
-            {currentSync === "pending" && <span className="text-amber-600">Saving…</span>}
-            {currentSync === "error" && <span className="text-red-600">Not synced — will retry</span>}
-            {currentSync === "synced" && <span className="text-emerald-600">Saved</span>}
-          </div>
-
-          {selectedTotals && (
-            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-charcoal-400/10 pt-3 text-center text-sm">
-              <div>
-                <p className="text-xs text-charcoal-400">Front</p>
-                <p className="font-medium text-forest-900">{selectedTotals.front.gross ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-charcoal-400">Back</p>
-                <p className="font-medium text-forest-900">{selectedTotals.back.gross ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-charcoal-400">Total</p>
-                <p className="font-medium text-forest-900">
-                  {selectedTotals.total.gross ?? "—"}
-                  {selectedTotals.total.net != null && selectedTotals.total.net !== selectedTotals.total.gross && (
-                    <span className="ml-1 text-xs font-normal text-charcoal-400">
-                      (net {selectedTotals.total.net})
-                    </span>
+          {/* Every golfer this scorekeeper can enter for, on this same
+              screen -- the redesign's "one scorekeeper, whole group,
+              one hole at a time" model, replacing the old single-golfer-
+              at-a-time switcher. */}
+          <div className="mt-5 divide-y divide-charcoal-400/10">
+            {editablePlayers.map((player) => {
+              const strokes = strokesTableFor(player.roundPlayerId).get(currentHole) ?? null;
+              const key = scoreKey(player.roundPlayerId, currentHole);
+              const gross = scores.get(key) ?? null;
+              const net = netScore(gross, strokes);
+              const sync = syncStatus.get(key);
+              const holes = player.teeSetName ? (holesByTeeSet.get(player.teeSetName) ?? []) : (teeSets[0]?.holes ?? []);
+              const par = holes.find((h) => h.hole_number === currentHole)?.par ?? null;
+              return (
+                <div
+                  key={player.roundPlayerId}
+                  className={cn(
+                    "py-4 first:pt-0 last:pb-0",
+                    player.roundPlayerId === selectedPlayerId && "-mx-4 rounded-lg bg-forest-50/60 px-4",
                   )}
-                </p>
-              </div>
-            </div>
-          )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-base font-medium text-forest-900">{player.displayName}</p>
+                      <p className="text-sm text-charcoal-400">
+                        {net != null ? `Net ${net}` : "Net —"}
+                        {strokes
+                          ? ` (${strokes > 0 ? "+" : ""}${strokes} handicap stroke${Math.abs(strokes) === 1 ? "" : "s"})`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => adjustScore(player, -1)}
+                        className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-100 text-xl font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
+                        aria-label={`Decrease ${player.displayName}'s score`}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        disabled={isLocked}
+                        value={gross ?? par ?? ""}
+                        onFocus={(e) => {
+                          // Par is shown as soon as this row is visible; tapping
+                          // the field is the deliberate action that confirms it
+                          // as the actual score, same one-tap-confirm model the
+                          // old single-golfer view used.
+                          if (gross == null && par != null) {
+                            setScore(player.roundPlayerId, currentHole, par);
+                          }
+                          e.target.select();
+                        }}
+                        onChange={(e) => {
+                          const v = e.target.value === "" ? null : Number(e.target.value);
+                          setScore(player.roundPlayerId, currentHole, v === null ? null : Math.min(20, Math.max(1, v)));
+                        }}
+                        className="h-12 w-14 rounded-xl border border-charcoal-400/25 bg-white text-center font-serif text-2xl text-forest-900 focus:border-forest-600"
+                      />
+                      <button
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => adjustScore(player, 1)}
+                        className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-100 text-xl font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
+                        aria-label={`Increase ${player.displayName}'s score`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 h-4 text-sm">
+                    {sync === "pending" && <span className="text-amber-600">Saving…</span>}
+                    {sync === "error" && <span className="text-red-600">Not synced — will retry</span>}
+                    {sync === "synced" && <span className="text-emerald-600">Saved</span>}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
-
       {standings.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
           <div className="flex items-center justify-between gap-2">

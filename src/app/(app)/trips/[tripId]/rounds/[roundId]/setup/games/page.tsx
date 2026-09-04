@@ -67,9 +67,9 @@ export default async function SetupGamesPage({
     <div className="mx-auto max-w-2xl pb-28">
       <SetupStepNav tripId={tripId} roundId={round.id} currentStep={3} />
 
-      <h1 className="text-2xl">Choose Your Games</h1>
-      <p className="mt-1 text-sm text-charcoal-500">
-        Select the main format, then add any optional side games.
+      <h1 className="text-2xl">Games</h1>
+      <p className="mt-1 text-base text-charcoal-500">
+        Add any games your group is playing, or skip this if you&apos;d rather just keep score.
       </p>
 
       {!SIDE_GAMES_ENABLED ? (
