@@ -24,7 +24,17 @@ const config: CapacitorConfig = {
     // of a mismatched color between the native launch screen and the
     // page painting in.
     backgroundColor: "#0F2117",
-    contentInset: "always",
+    // "never" (Capacitor's own default) -- the web app already handles
+    // every safe-area inset itself via env(safe-area-inset-*) (see
+    // .safe-top/.safe-bottom/.safe-x in globals.css and the
+    // viewportFit: "cover" comment in layout.tsx). Leaving this on
+    // "always" made the native WKWebView ALSO auto-inset its scroll
+    // view for the notch/home indicator on top of that -- double
+    // padding that pushed the whole layout down and cut content off
+    // the bottom of the screen in the native app specifically (the
+    // same pages render correctly in Mobile Safari, which never
+    // applied that extra native inset).
+    contentInset: "never",
   },
 };
 
