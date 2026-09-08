@@ -34,30 +34,88 @@ const BALANCE_ROWS: BalanceRow[] = [
   { name: "Riley", amt: "Owes $64", tone: "text-gold-700" },
 ];
 
+const GAMES = [
+  { key: "skins", label: "Skins" },
+  { key: "nassau", label: "Nassau" },
+  { key: "match", label: "Match Play" },
+] as const;
+
+type GameKey = (typeof GAMES)[number]["key"];
+type Scene = "dashboard" | "games" | "score";
+
 const TARGET_BALANCE = 342;
 const ROW_STAGGER_MS = 160;
-const ROWS_START_MS = 950;
+
+// Timing for the looping "tour" that plays after the initial dashboard
+// boot-up: how long each screen holds before the mockup moves on, and
+// how long each little tap/press effect lasts along the way.
+const HOLD_DASHBOARD_MS = 3200;
+const HOLD_GAMES_MS = 2000;
+const HOLD_SCORE_MS = 2400;
+const PRESS_MS = 140;
+
+/** A tiny segmented-control echo of the real round nav (Scorecard / Games /
+ * Leaderboard) so the games and score screens read as two tabs of one
+ * round, not two unrelated apps. */
+function MiniTabs({ active }: { active: "score" | "games" }) {
+  const tabs = [
+    { key: "score", label: "Scorecard" },
+    { key: "games", label: "Games" },
+    { key: "board", label: "Leaderboard" },
+  ] as const;
+  return (
+    <div className="flex gap-1 rounded-full bg-cream-100 p-0.5">
+      {tabs.map((t) => (
+        <div
+          key={t.key}
+          className={`flex-1 rounded-full py-1 text-center text-[8.5px] font-medium transition-colors duration-300 ${
+            active === t.key ? "bg-forest-900 text-cream-50" : "text-charcoal-400"
+          }`}
+        >
+          {t.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function wait(ms: number, timers: number[]) {
+  return new Promise<void>((resolve) => {
+    timers.push(window.setTimeout(resolve, ms));
+  });
+}
 
 /**
- * A pure-CSS recreation of the actual mobile dashboard — no stock device
- * photography, no glassy/skeuomorphic mockup styling. It mirrors the real
- * "your balance" hero + quick actions + bottom tab bar from the
- * authenticated app (see MyBalanceHero in trip-tabs.tsx and the mobile
- * nav in app-shell.tsx) at phone scale, so what a visitor sees here is
- * what they'll actually get after signing up.
+ * A pure-CSS recreation of the actual mobile app — no stock device
+ * photography, no glassy/skeuomorphic mockup styling. It mirrors three
+ * real screens at phone scale (the "your balance" dashboard, the round's
+ * game picker, and hole-by-hole score entry — see MyBalanceHero in
+ * trip-tabs.tsx, GameTypePicker, and mobile-scorecard.tsx), so what a
+ * visitor sees here is what they'll actually get after signing up.
  *
- * On mount it plays a short, one-time "live app" sequence: the balance
- * counts up, the three balance rows stagger in, and Jordan's checkmark
- * pops in last — purely decorative (the container stays aria-hidden), so
- * it never touches anything a screen reader announces. Skips straight to
- * the final state for prefers-reduced-motion or if JS never runs, and
- * only plays once per page load (guarded against React StrictMode's
- * double-invoked effects in dev).
+ * On mount it plays the dashboard's boot-up once (balance counts up, rows
+ * stagger in, Jordan's checkmark pops), then loops a short silent "tour":
+ * dashboard -> tap into Games and pick Skins -> tap into the Scorecard and
+ * log a couple of strokes -> back to the dashboard. Every step is a state
+ * change on canned, clearly-fictional data, not a live simulation.
+ *
+ * Purely decorative (the container stays aria-hidden, so none of this
+ * reaches a screen reader), guarded against React StrictMode's
+ * double-invoked effects, and skips straight to the finished dashboard
+ * with no looping for prefers-reduced-motion or if JS never runs.
  */
 export function PhonePreview() {
   const [balance, setBalance] = useState(TARGET_BALANCE);
   const [visibleRows, setVisibleRows] = useState(BALANCE_ROWS.length);
   const [settledPop, setSettledPop] = useState(true);
+
+  const [scene, setScene] = useState<Scene>("dashboard");
+  const [gamePressed, setGamePressed] = useState<GameKey | null>(null);
+  const [gameSelected, setGameSelected] = useState<GameKey | null>(null);
+  const [scoreValue, setScoreValue] = useState(4);
+  const [scorePressed, setScorePressed] = useState<"plus" | null>(null);
+  const [scoreSaved, setScoreSaved] = useState(false);
+
   const hasAnimated = useRef(false);
 
   useEffect(() => {
@@ -68,37 +126,99 @@ export function PhonePreview() {
       return;
     }
 
-    setBalance(0);
-    setVisibleRows(0);
-    setSettledPop(false);
+    let cancelled = false;
+    let frame = 0;
+    const timers: number[] = [];
 
-    let frame: number;
-    const countStart = performance.now();
-    const countDurationMs = 900;
+    const countUpBalance = () =>
+      new Promise<void>((resolve) => {
+        const start = performance.now();
+        const durationMs = 900;
+        const tick = (now: number) => {
+          if (cancelled) {
+            resolve();
+            return;
+          }
+          const progress = Math.min((now - start) / durationMs, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setBalance(Math.round(eased * TARGET_BALANCE));
+          if (progress < 1) {
+            frame = requestAnimationFrame(tick);
+          } else {
+            resolve();
+          }
+        };
+        frame = requestAnimationFrame(tick);
+      });
 
-    const tick = (now: number) => {
-      const progress = Math.min((now - countStart) / countDurationMs, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setBalance(Math.round(eased * TARGET_BALANCE));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
+    async function run() {
+      // One-time boot-up.
+      setBalance(0);
+      setVisibleRows(0);
+      setSettledPop(false);
+      await countUpBalance();
+      if (cancelled) return;
+      for (let i = 0; i < BALANCE_ROWS.length; i++) {
+        await wait(ROW_STAGGER_MS, timers);
+        if (cancelled) return;
+        setVisibleRows((v) => Math.max(v, i + 1));
+      }
+      await wait(200, timers);
+      if (cancelled) return;
+      setSettledPop(true);
 
-    const rowTimers = BALANCE_ROWS.map((_, i) =>
-      setTimeout(
-        () => setVisibleRows((v) => Math.max(v, i + 1)),
-        ROWS_START_MS + i * ROW_STAGGER_MS
-      )
-    );
-    const popTimer = setTimeout(
-      () => setSettledPop(true),
-      ROWS_START_MS + BALANCE_ROWS.length * ROW_STAGGER_MS + 200
-    );
+      // Looping tour: dashboard -> pick a game -> log a score -> repeat.
+      while (!cancelled) {
+        await wait(HOLD_DASHBOARD_MS, timers);
+        if (cancelled) return;
+
+        setScene("games");
+        setGameSelected(null);
+        setGamePressed(null);
+        await wait(700, timers);
+        if (cancelled) return;
+        setGamePressed("skins");
+        await wait(PRESS_MS, timers);
+        if (cancelled) return;
+        setGamePressed(null);
+        setGameSelected("skins");
+        await wait(HOLD_GAMES_MS, timers);
+        if (cancelled) return;
+
+        setScene("score");
+        setScoreValue(4);
+        setScoreSaved(false);
+        setScorePressed(null);
+        await wait(650, timers);
+        if (cancelled) return;
+        setScorePressed("plus");
+        await wait(PRESS_MS, timers);
+        if (cancelled) return;
+        setScorePressed(null);
+        setScoreValue(5);
+        await wait(500, timers);
+        if (cancelled) return;
+        setScorePressed("plus");
+        await wait(PRESS_MS, timers);
+        if (cancelled) return;
+        setScorePressed(null);
+        setScoreValue(6);
+        await wait(350, timers);
+        if (cancelled) return;
+        setScoreSaved(true);
+        await wait(HOLD_SCORE_MS, timers);
+        if (cancelled) return;
+
+        setScene("dashboard");
+      }
+    }
+
+    run();
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(frame);
-      rowTimers.forEach(clearTimeout);
-      clearTimeout(popTimer);
+      timers.forEach((id) => window.clearTimeout(id));
     };
   }, []);
 
@@ -118,59 +238,162 @@ export function PhonePreview() {
               <div className="h-6 w-6 rounded-full bg-forest-800/10" />
             </div>
 
-            <div className="flex-1 space-y-3 overflow-hidden px-3.5 py-3.5">
-              <p className="text-[10px] font-medium text-charcoal-400">Pebble Beach Weekend</p>
+            <div className="relative flex-1 overflow-hidden">
+              {/* Dashboard */}
+              <div
+                className="absolute inset-0 space-y-3 px-3.5 py-3.5 transition-opacity duration-300 ease-out"
+                style={{
+                  opacity: scene === "dashboard" ? 1 : 0,
+                  pointerEvents: scene === "dashboard" ? "auto" : "none",
+                }}
+              >
+                <p className="text-[10px] font-medium text-charcoal-400">Pebble Beach Weekend</p>
 
-              <div className="rounded-2xl bg-forest-950 p-3.5 text-cream-50">
-                <p className="text-[9px] font-medium uppercase tracking-wide text-cream-100/60">
-                  Your balance
-                </p>
-                <p className="mt-1 text-2xl font-medium tabular-nums">${balance}</p>
-                <p className="mt-0.5 text-[10px] text-cream-100/75">You owe the group</p>
-                <div className="mt-3 grid grid-cols-3 gap-1.5">
-                  {(["plus", "check", "check"] as const).map((icon, i) => (
+                <div className="rounded-2xl bg-forest-950 p-3.5 text-cream-50">
+                  <p className="text-[9px] font-medium uppercase tracking-wide text-cream-100/60">
+                    Your balance
+                  </p>
+                  <p className="mt-1 text-2xl font-medium tabular-nums">${balance}</p>
+                  <p className="mt-0.5 text-[10px] text-cream-100/75">You owe the group</p>
+                  <div className="mt-3 grid grid-cols-3 gap-1.5">
+                    {(["plus", "check", "check"] as const).map((icon, i) => (
+                      <div
+                        key={i}
+                        className="flex h-9 flex-col items-center justify-center gap-0.5 rounded-lg bg-cream-50/10"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3">
+                          {NAV_ICONS[icon]}
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {BALANCE_ROWS.map((row, i) => (
                     <div
-                      key={i}
-                      className="flex h-9 flex-col items-center justify-center gap-0.5 rounded-lg bg-cream-50/10"
+                      key={row.name}
+                      className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2 transition-all duration-500 ease-out"
+                      style={{
+                        opacity: i < visibleRows ? 1 : 0,
+                        transform: i < visibleRows ? "translateY(0)" : "translateY(4px)",
+                      }}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3">
-                        {NAV_ICONS[icon]}
-                      </svg>
+                      <span className="text-[11px] font-medium text-charcoal">{row.name}</span>
+                      <span
+                        className={`flex items-center gap-1 text-[10px] font-medium tabular-nums ${row.tone}`}
+                      >
+                        {row.justSettled && (
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                            className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 ease-out"
+                            style={{ transform: settledPop ? "scale(1)" : "scale(0)" }}
+                          >
+                            {NAV_ICONS.check}
+                          </svg>
+                        )}
+                        {row.amt}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                {BALANCE_ROWS.map((row, i) => (
-                  <div
-                    key={row.name}
-                    className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2 transition-all duration-500 ease-out"
-                    style={{
-                      opacity: i < visibleRows ? 1 : 0,
-                      transform: i < visibleRows ? "translateY(0)" : "translateY(4px)",
-                    }}
-                  >
-                    <span className="text-[11px] font-medium text-charcoal">{row.name}</span>
-                    <span
-                      className={`flex items-center gap-1 text-[10px] font-medium tabular-nums ${row.tone}`}
-                    >
-                      {row.justSettled && (
+              {/* Games */}
+              <div
+                className="absolute inset-0 space-y-3 px-3.5 py-3.5 transition-opacity duration-300 ease-out"
+                style={{
+                  opacity: scene === "games" ? 1 : 0,
+                  pointerEvents: scene === "games" ? "auto" : "none",
+                }}
+              >
+                <MiniTabs active="games" />
+                <p className="text-[10px] font-medium text-charcoal-400">Choose your games</p>
+                <div className="space-y-1.5">
+                  {GAMES.map((game) => {
+                    const isSelected = gameSelected === game.key;
+                    const isPressed = gamePressed === game.key;
+                    return (
+                      <div
+                        key={game.key}
+                        className={`flex items-center justify-between rounded-xl border px-3 py-2.5 transition-colors duration-200 ${
+                          isSelected
+                            ? "border-forest-900 bg-forest-900 text-cream-50"
+                            : "border-cream-200 bg-cream-50 text-charcoal-700"
+                        }`}
+                        style={{
+                          transform: isPressed ? "scale(0.96)" : "scale(1)",
+                          transition: "transform 150ms ease-out, background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out",
+                        }}
+                      >
+                        <span className="text-[11px] font-medium">{game.label}</span>
                         <svg
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
                           strokeWidth={2.5}
-                          className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 ease-out"
-                          style={{ transform: settledPop ? "scale(1)" : "scale(0)" }}
+                          className="h-3 w-3 shrink-0 transition-transform duration-200 ease-out"
+                          style={{ transform: isSelected ? "scale(1)" : "scale(0)" }}
                         >
                           {NAV_ICONS.check}
                         </svg>
-                      )}
-                      {row.amt}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div
+                  className="rounded-xl bg-gold-50 px-3 py-2.5 transition-all duration-300 ease-out"
+                  style={{
+                    opacity: gameSelected ? 1 : 0,
+                    transform: gameSelected ? "translateY(0)" : "translateY(4px)",
+                  }}
+                >
+                  <p className="text-[10px] font-medium text-forest-900">Skins</p>
+                  <p className="mt-0.5 text-[9px] leading-snug text-charcoal-500">
+                    Win a hole outright to win its value. Tied holes carry over.
+                  </p>
+                </div>
+              </div>
+
+              {/* Score entry */}
+              <div
+                className="absolute inset-0 space-y-3 px-3.5 py-3.5 transition-opacity duration-300 ease-out"
+                style={{
+                  opacity: scene === "score" ? 1 : 0,
+                  pointerEvents: scene === "score" ? "auto" : "none",
+                }}
+              >
+                <MiniTabs active="score" />
+                <div>
+                  <p className="text-[9px] font-medium uppercase tracking-wide text-charcoal-400">Hole 7</p>
+                  <p className="text-[10px] text-charcoal-500">Par 4 · Handicap 5</p>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2.5">
+                  <span className="text-[11px] font-medium text-charcoal-700">Mike</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-forest-900/10 text-forest-900">
+                      <span className="text-xs font-medium leading-none">–</span>
+                    </div>
+                    <span className="w-4 text-center font-serif text-sm tabular-nums text-forest-900">
+                      {scoreValue}
                     </span>
+                    <div
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-forest-900/10 text-forest-900 transition-transform duration-150 ease-out"
+                      style={{ transform: scorePressed === "plus" ? "scale(0.85)" : "scale(1)" }}
+                    >
+                      <span className="text-xs font-medium leading-none">+</span>
+                    </div>
                   </div>
-                ))}
+                </div>
+                <p
+                  className="text-[9px] font-medium text-forest-700 transition-opacity duration-300 ease-out"
+                  style={{ opacity: scoreSaved ? 1 : 0 }}
+                >
+                  Saved
+                </p>
               </div>
             </div>
 
