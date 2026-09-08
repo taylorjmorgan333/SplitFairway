@@ -205,9 +205,45 @@ export function MobileScorecard({
     );
   }
 
+  const pendingQueueWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushPendingQueue = useCallback(() => {
+    if (pendingQueueWriteTimer.current) {
+      clearTimeout(pendingQueueWriteTimer.current);
+      pendingQueueWriteTimer.current = null;
+    }
+    savePendingQueue(roundId, pendingQueueRef.current);
+  }, [roundId]);
+
+  function scheduleQueueWrite() {
+    if (pendingQueueWriteTimer.current) clearTimeout(pendingQueueWriteTimer.current);
+    pendingQueueWriteTimer.current = setTimeout(() => {
+      pendingQueueWriteTimer.current = null;
+      savePendingQueue(roundId, pendingQueueRef.current);
+    }, 200);
+  }
+
+  // Flush the debounced queue write the moment the tab/app is backgrounded
+  // or this screen is left, so a golfer who taps a score and immediately
+  // closes the app never loses more than what was already in flight to
+  // the server -- the 200ms coalescing window above only ever affects
+  // how often we write while the screen stays open and visible.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") flushPendingQueue();
+    };
+    window.addEventListener("pagehide", flushPendingQueue);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flushPendingQueue);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      flushPendingQueue();
+    };
+  }, [flushPendingQueue]);
+
   function clearFromPendingQueue(key: ScoreKey) {
     delete pendingQueueRef.current[key];
-    savePendingQueue(roundId, pendingQueueRef.current);
+    flushPendingQueue();
   }
   const [isLocking, setIsLocking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -260,13 +296,11 @@ export function MobileScorecard({
   );
 
   // Retry every score still marked "error" as soon as the device comes
-  // back online -- the offline-friendly part of "offline-friendly entry
-  // with automatic sync on reconnect." Pending writes only live in this
-  // component's state for as long as the tab stays open; there's no
-  // durable (IndexedDB-backed) queue behind this yet, which is a real
-  // limitation for a golfer who closes the app mid-round with unsynced
-  // holes -- worth flagging rather than silently claiming full offline
-  // support.
+  // back online -- the in-tab half of "offline-friendly entry with
+  // automatic sync on reconnect." The other half is the localStorage-
+  // backed queue above (loadPendingQueue/savePendingQueue), which covers
+  // the harder case of the app being closed or the tab killed with
+  // unsynced holes still pending.
   useEffect(() => {
     function retryAll() {
       setSyncStatus((prev) => {
@@ -334,7 +368,7 @@ export function MobileScorecard({
     const key = scoreKey(roundPlayerId, holeNumber);
     setScores((prev) => new Map(prev).set(key, value));
     pendingQueueRef.current[key] = value;
-    savePendingQueue(roundId, pendingQueueRef.current);
+    scheduleQueueWrite();
     persist(roundPlayerId, holeNumber, value);
   }
 
@@ -375,7 +409,10 @@ export function MobileScorecard({
   );
 
   const [standingsMetric, setStandingsMetric] = useState<StandingsMetric>("gross");
-  const standings = computeStandings(playerScoreInputs, standingsMetric);
+  const standings = useMemo(
+    () => computeStandings(playerScoreInputs, standingsMetric),
+    [playerScoreInputs, standingsMetric],
+  );
   const standingsById = new Map(players.map((p) => [p.roundPlayerId, p]));
 
   // Which game the Standings card is showing -- "overall" is the
