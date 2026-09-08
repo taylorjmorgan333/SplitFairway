@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/logo";
 
 const NAV_ICONS = {
@@ -18,6 +21,23 @@ const NAV_ICONS = {
   check: <path strokeLinecap="round" strokeLinejoin="round" d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 
+type BalanceRow = {
+  name: string;
+  amt: string;
+  tone: string;
+  justSettled?: boolean;
+};
+
+const BALANCE_ROWS: BalanceRow[] = [
+  { name: "Sam", amt: "Owed $118", tone: "text-forest-700" },
+  { name: "Jordan", amt: "Settled up", tone: "text-charcoal-400", justSettled: true },
+  { name: "Riley", amt: "Owes $64", tone: "text-gold-700" },
+];
+
+const TARGET_BALANCE = 342;
+const ROW_STAGGER_MS = 160;
+const ROWS_START_MS = 950;
+
 /**
  * A pure-CSS recreation of the actual mobile dashboard — no stock device
  * photography, no glassy/skeuomorphic mockup styling. It mirrors the real
@@ -25,8 +45,63 @@ const NAV_ICONS = {
  * authenticated app (see MyBalanceHero in trip-tabs.tsx and the mobile
  * nav in app-shell.tsx) at phone scale, so what a visitor sees here is
  * what they'll actually get after signing up.
+ *
+ * On mount it plays a short, one-time "live app" sequence: the balance
+ * counts up, the three balance rows stagger in, and Jordan's checkmark
+ * pops in last — purely decorative (the container stays aria-hidden), so
+ * it never touches anything a screen reader announces. Skips straight to
+ * the final state for prefers-reduced-motion or if JS never runs, and
+ * only plays once per page load (guarded against React StrictMode's
+ * double-invoked effects in dev).
  */
 export function PhonePreview() {
+  const [balance, setBalance] = useState(TARGET_BALANCE);
+  const [visibleRows, setVisibleRows] = useState(BALANCE_ROWS.length);
+  const [settledPop, setSettledPop] = useState(true);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (hasAnimated.current) return;
+    hasAnimated.current = true;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    setBalance(0);
+    setVisibleRows(0);
+    setSettledPop(false);
+
+    let frame: number;
+    const countStart = performance.now();
+    const countDurationMs = 900;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - countStart) / countDurationMs, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setBalance(Math.round(eased * TARGET_BALANCE));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+
+    const rowTimers = BALANCE_ROWS.map((_, i) =>
+      setTimeout(
+        () => setVisibleRows((v) => Math.max(v, i + 1)),
+        ROWS_START_MS + i * ROW_STAGGER_MS
+      )
+    );
+    const popTimer = setTimeout(
+      () => setSettledPop(true),
+      ROWS_START_MS + BALANCE_ROWS.length * ROW_STAGGER_MS + 200
+    );
+
+    return () => {
+      cancelAnimationFrame(frame);
+      rowTimers.forEach(clearTimeout);
+      clearTimeout(popTimer);
+    };
+  }, []);
+
   return (
     <div aria-hidden="true" className="relative w-[250px] shrink-0 sm:w-[270px]">
       <div className="rounded-[2.75rem] border-[6px] border-cream-50/10 bg-forest-900 p-1.5 shadow-2xl shadow-black/50">
@@ -50,7 +125,7 @@ export function PhonePreview() {
                 <p className="text-[9px] font-medium uppercase tracking-wide text-cream-100/60">
                   Your balance
                 </p>
-                <p className="mt-1 text-2xl font-medium tabular-nums">$342</p>
+                <p className="mt-1 text-2xl font-medium tabular-nums">${balance}</p>
                 <p className="mt-0.5 text-[10px] text-cream-100/75">You owe the group</p>
                 <div className="mt-3 grid grid-cols-3 gap-1.5">
                   {(["plus", "check", "check"] as const).map((icon, i) => (
@@ -67,17 +142,31 @@ export function PhonePreview() {
               </div>
 
               <div className="space-y-1.5">
-                {[
-                  { name: "Sam", amt: "Owed $118", tone: "text-forest-700" },
-                  { name: "Jordan", amt: "Settled up", tone: "text-charcoal-400" },
-                  { name: "Riley", amt: "Owes $64", tone: "text-gold-700" },
-                ].map((row) => (
+                {BALANCE_ROWS.map((row, i) => (
                   <div
                     key={row.name}
-                    className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2"
+                    className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2 transition-all duration-500 ease-out"
+                    style={{
+                      opacity: i < visibleRows ? 1 : 0,
+                      transform: i < visibleRows ? "translateY(0)" : "translateY(4px)",
+                    }}
                   >
                     <span className="text-[11px] font-medium text-charcoal">{row.name}</span>
-                    <span className={`text-[10px] font-medium tabular-nums ${row.tone}`}>
+                    <span
+                      className={`flex items-center gap-1 text-[10px] font-medium tabular-nums ${row.tone}`}
+                    >
+                      {row.justSettled && (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                          className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 ease-out"
+                          style={{ transform: settledPop ? "scale(1)" : "scale(0)" }}
+                        >
+                          {NAV_ICONS.check}
+                        </svg>
+                      )}
                       {row.amt}
                     </span>
                   </div>
