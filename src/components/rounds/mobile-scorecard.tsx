@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FullScorecardTable } from "@/components/rounds/full-scorecard-table";
+import { ScoreCelebration } from "@/components/ui/celebration";
 import type { Database } from "@/lib/supabase/database.types";
 
 type RoundStatus = Database["public"]["Enums"]["round_status"];
@@ -248,6 +249,13 @@ export function MobileScorecard({
   const [isLocking, setIsLocking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // A quick particle-burst-and-label moment (see components/ui/celebration.tsx)
+  // fired whenever a saved score newly reads as birdie-or-better relative to
+  // par -- purely a celebratory nicety layered on top of scoring, which
+  // already computed this same "diff vs. par" via relativeScoreLabel above
+  // for the skins detail breakdown.
+  const celebrationSeed = useRef(0);
+  const [celebration, setCelebration] = useState<{ id: number; label: string } | null>(null);
 
   const isLocked = roundStatus === "locked" || roundStatus === "completed";
 
@@ -364,12 +372,24 @@ export function MobileScorecard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId]);
 
-  function setScore(roundPlayerId: string, holeNumber: number, value: number | null) {
+  function maybeCelebrate(previous: number | null, next: number | null, par: number | null | undefined) {
+    if (par == null || next == null) return;
+    const nextDiff = next - par;
+    if (nextDiff > -1) return;
+    const previousDiff = previous != null ? previous - par : null;
+    if (previousDiff != null && previousDiff <= -1) return;
+    celebrationSeed.current += 1;
+    setCelebration({ id: celebrationSeed.current, label: `${relativeScoreLabel(nextDiff)}!` });
+  }
+
+  function setScore(roundPlayerId: string, holeNumber: number, value: number | null, par?: number | null) {
     const key = scoreKey(roundPlayerId, holeNumber);
+    const previous = scores.get(key) ?? null;
     setScores((prev) => new Map(prev).set(key, value));
     pendingQueueRef.current[key] = value;
     scheduleQueueWrite();
     persist(roundPlayerId, holeNumber, value);
+    if (par !== undefined) maybeCelebrate(previous, value, par);
   }
 
   // The redesign shows every editable golfer's row for the current
@@ -484,11 +504,12 @@ export function MobileScorecard({
     const current = scores.get(scoreKey(player.roundPlayerId, currentHole)) ?? null;
     const base = current ?? par;
     const next = Math.min(20, Math.max(1, base + delta));
-    setScore(player.roundPlayerId, currentHole, next);
+    setScore(player.roundPlayerId, currentHole, next, par);
   }
 
   return (
     <div className="space-y-4 pb-safe">
+      <ScoreCelebration trigger={celebration?.id ?? null} label={celebration?.label ?? ""} fixed />
       {actionError && <p className="text-sm text-red-600">{actionError}</p>}
 
       {roundStatus === "scheduled" && isCaptain && (
@@ -648,13 +669,13 @@ export function MobileScorecard({
                           // as the actual score, same one-tap-confirm model the
                           // old single-golfer view used.
                           if (gross == null && par != null) {
-                            setScore(player.roundPlayerId, currentHole, par);
+                            setScore(player.roundPlayerId, currentHole, par, par);
                           }
                           e.target.select();
                         }}
                         onChange={(e) => {
                           const v = e.target.value === "" ? null : Number(e.target.value);
-                          setScore(player.roundPlayerId, currentHole, v === null ? null : Math.min(20, Math.max(1, v)));
+                          setScore(player.roundPlayerId, currentHole, v === null ? null : Math.min(20, Math.max(1, v)), par);
                         }}
                         className="h-12 w-14 rounded-xl border border-charcoal-400/25 bg-white text-center font-serif text-2xl text-forest-900 focus:border-forest-600"
                       />

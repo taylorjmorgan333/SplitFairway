@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/logo";
+import { ScoreCelebration } from "@/components/ui/celebration";
 
 const NAV_ICONS = {
   home: (
@@ -51,7 +52,7 @@ const ROW_STAGGER_MS = 160;
 // how long each little tap/press effect lasts along the way.
 const HOLD_DASHBOARD_MS = 3200;
 const HOLD_GAMES_MS = 2000;
-const HOLD_SCORE_MS = 2400;
+const HOLD_SCORE_MS = 2800;
 const PRESS_MS = 140;
 
 /** A tiny segmented-control echo of the real round nav (Scorecard / Games /
@@ -113,8 +114,9 @@ export function PhonePreview() {
   const [gamePressed, setGamePressed] = useState<GameKey | null>(null);
   const [gameSelected, setGameSelected] = useState<GameKey | null>(null);
   const [scoreValue, setScoreValue] = useState(4);
-  const [scorePressed, setScorePressed] = useState<"plus" | null>(null);
+  const [scorePressed, setScorePressed] = useState<"plus" | "minus" | null>(null);
   const [scoreSaved, setScoreSaved] = useState(false);
+  const [birdieTrigger, setBirdieTrigger] = useState<number | null>(null);
 
   const hasAnimated = useRef(false);
 
@@ -189,23 +191,18 @@ export function PhonePreview() {
         setScoreValue(4);
         setScoreSaved(false);
         setScorePressed(null);
+        setBirdieTrigger(null);
         await wait(650, timers);
         if (cancelled) return;
-        setScorePressed("plus");
+        setScorePressed("minus");
         await wait(PRESS_MS, timers);
         if (cancelled) return;
         setScorePressed(null);
-        setScoreValue(5);
-        await wait(500, timers);
-        if (cancelled) return;
-        setScorePressed("plus");
-        await wait(PRESS_MS, timers);
-        if (cancelled) return;
-        setScorePressed(null);
-        setScoreValue(6);
-        await wait(350, timers);
+        setScoreValue(3);
+        await wait(400, timers);
         if (cancelled) return;
         setScoreSaved(true);
+        setBirdieTrigger((n) => (n ?? 0) + 1);
         await wait(HOLD_SCORE_MS, timers);
         if (cancelled) return;
 
@@ -374,7 +371,10 @@ export function PhonePreview() {
                 <div className="flex items-center justify-between rounded-xl bg-cream-100 px-3 py-2.5">
                   <span className="text-[11px] font-medium text-charcoal-700">Mike</span>
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-forest-900/10 text-forest-900">
+                    <div
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-forest-900/10 text-forest-900 transition-transform duration-150 ease-out"
+                      style={{ transform: scorePressed === "minus" ? "scale(0.85)" : "scale(1)" }}
+                    >
                       <span className="text-xs font-medium leading-none">–</span>
                     </div>
                     <span className="w-4 text-center font-serif text-sm tabular-nums text-forest-900">
@@ -394,6 +394,7 @@ export function PhonePreview() {
                 >
                   Saved
                 </p>
+                <ScoreCelebration trigger={birdieTrigger} label="Birdie!" />
               </div>
             </div>
 
