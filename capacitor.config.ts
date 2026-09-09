@@ -19,6 +19,18 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
+    // Capacitor disables pinch-to-zoom by default: unless this is set,
+    // CAPBridgeViewController installs itself as the WKWebView's
+    // scrollView delegate purely to implement
+    // `scrollViewWillBeginZooming` -> `pinchGestureRecognizer.isEnabled
+    // = false`, cancelling every pinch gesture the instant it starts.
+    // That's true of every Capacitor app, not just this one -- it was
+    // just never noticed here until the separate iPhone 17 Pro Max
+    // zoom-scale bug (see MainViewController.swift) got fixed enough to
+    // even try pinching. Setting this to true skips assigning that
+    // delegate at all, so WKWebView falls back to its normal (Safari-
+    // like) pinch behavior.
+    zoomEnabled: true,
     // Matches the forest-900 brand color already used for the manifest
     // theme_color and the launch screen background, so there's no flash
     // of a mismatched color between the native launch screen and the
