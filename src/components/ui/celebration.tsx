@@ -17,21 +17,21 @@ type Particle = {
 // existing brand palette rather than reaching for arbitrary confetti
 // colors.
 const PARTICLE_COLORS = ["#C9A24E", "#DAB86D", "#5C8768", "#84A68D", "#FDFBF6"];
-const PARTICLE_COUNT = 14;
-const BURST_MS = 900;
+const PARTICLE_COUNT = 22;
+const BURST_MS = 1000;
 const LABEL_MS = 1300;
 
 function makeParticles(seed: number): Particle[] {
   const particles: Particle[] = [];
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const angle = (i / PARTICLE_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
-    const distance = 46 + Math.random() * 42;
+    const distance = 74 + Math.random() * 74;
     particles.push({
       id: seed * 100 + i,
       tx: Math.cos(angle) * distance,
       ty: Math.sin(angle) * distance,
       color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
-      size: 4 + Math.random() * 3,
+      size: 7 + Math.random() * 6,
       delay: Math.random() * 60,
     });
   }
@@ -124,7 +124,7 @@ export function ScoreCelebration({
           />
         ))}
         <span
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-forest-900 px-3 py-1 font-serif text-sm text-cream-50 shadow-card"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-forest-900 px-4 py-1.5 font-serif text-base text-cream-50 shadow-card"
           style={{ animation: `sf-celebration-label ${LABEL_MS}ms ease-out forwards` }}
         >
           {label}

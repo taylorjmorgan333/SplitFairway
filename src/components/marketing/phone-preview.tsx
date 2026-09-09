@@ -191,7 +191,6 @@ export function PhonePreview() {
         setScoreValue(4);
         setScoreSaved(false);
         setScorePressed(null);
-        setBirdieTrigger(null);
         await wait(650, timers);
         if (cancelled) return;
         setScorePressed("minus");
@@ -394,7 +393,6 @@ export function PhonePreview() {
                 >
                   Saved
                 </p>
-                <ScoreCelebration trigger={birdieTrigger} label="Birdie!" />
               </div>
             </div>
 
@@ -408,6 +406,12 @@ export function PhonePreview() {
               ))}
             </div>
           </div>
+
+          {/* Centered on the whole phone screen (not just the content
+              strip between the header and tab bar) so it reads as
+              centered on the phone, not just on whichever scene panel
+              happens to be showing. */}
+          <ScoreCelebration trigger={birdieTrigger} label="Birdie!" />
         </div>
       </div>
 
