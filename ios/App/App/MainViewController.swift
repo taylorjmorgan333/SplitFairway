@@ -8,36 +8,22 @@ import WebKit
 // confirmed via window.visualViewport.scale in Safari's Web Inspector,
 // and separately confirmed by hand: double-tapping the screen forces
 // WebKit to recompute its zoom and snaps straight to the correct layout,
-// even several seconds after the app opens. That timing is the key
-// clue: a single correction right after the network load finishes
-// (WKWebView's isLoading flag) wasn't enough, and neither was retrying a
-// few times over the following second -- something keeps re-deriving
-// the wrong scale well after that, most likely each time the page's own
-// rendered content changes size (web fonts swapping in, React/Next.js
-// hydration, images loading).
+// even several seconds after the app opens.
 //
-// Two things work together here, having been tried separately without
-// success:
-//
-// 1. ignoresViewportScaleLimits -- without this, WKWebView (unlike
-//    Mobile Safari, which sets it internally) clamps pinch-zoom to
-//    whatever min/max-scale the page's viewport meta tag implies, which
-//    is effectively locked at 1.0 here since only initial-scale=1 is
-//    declared. This alone was tried and reverted previously because,
-//    without any post-load correction, it made the wrong-initial-scale
-//    layout bug worse.
-// 2. Instead of correcting on a fixed timer, this observes the
-//    webview's own scrollView.contentSize -- which changes every time
-//    the page's rendered layout actually changes -- and re-applies the
-//    zoomScale=1.0 correction each time, for several seconds after
-//    load. That ties the fix directly to the event that keeps causing
-//    the problem, rather than guessing how long settling takes.
+// Two rounds of automatic correction (a fixed-delay retry, then tying it
+// to scrollView.contentSize changes) have not reproduced what a manual
+// double-tap does, so this version adds NSLog diagnostics at every step
+// -- did the class load at all, did the KVO observers fire, what scale
+// values were actually seen -- visible in Xcode's console while running
+// from Xcode, to find out WHERE this stops working rather than guessing
+// again blind.
 class MainViewController: CAPBridgeViewController {
     private var isLoadingObservation: NSKeyValueObservation?
     private var contentSizeObservation: NSKeyValueObservation?
     private var correctionDeadline: Date?
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
+        NSLog("[ZoomFix] webViewConfiguration called")
         let configuration = super.webViewConfiguration(for: instanceConfiguration)
         configuration.ignoresViewportScaleLimits = true
         return configuration
@@ -45,34 +31,45 @@ class MainViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        NSLog("[ZoomFix] capacitorDidLoad called, webView present: \(self.webView != nil)")
 
         guard let webView = self.webView else { return }
 
-        // Generous window: web fonts, hydration and images can keep
-        // reshaping the page for a few seconds after the network load
-        // itself finishes, each potentially re-triggering WebKit's own
-        // (incorrect) zoom computation.
         correctionDeadline = Date().addingTimeInterval(5.0)
 
         isLoadingObservation = webView.observe(\.isLoading, options: [.new]) { [weak self, weak webView] _, change in
+            NSLog("[ZoomFix] isLoading changed to \(String(describing: change.newValue))")
             guard change.newValue == false, let webView = webView else { return }
-            self?.correctZoom(on: webView)
+            self?.correctZoom(on: webView, source: "isLoading")
         }
 
-        contentSizeObservation = webView.scrollView.observe(\.contentSize, options: [.new]) { [weak self, weak webView] _, _ in
+        contentSizeObservation = webView.scrollView.observe(\.contentSize, options: [.new]) { [weak self, weak webView] _, change in
+            NSLog("[ZoomFix] contentSize changed to \(String(describing: change.newValue))")
             guard let webView = webView else { return }
-            self?.correctZoom(on: webView)
+            self?.correctZoom(on: webView, source: "contentSize")
         }
     }
 
-    private func correctZoom(on webView: WKWebView) {
-        guard let deadline = correctionDeadline, Date() < deadline else { return }
+    private func correctZoom(on webView: WKWebView, source: String) {
         let scrollView = webView.scrollView
-        // Never fight a zoom the person is actively performing themselves.
-        guard !scrollView.isDragging, !scrollView.isDecelerating, !scrollView.isZooming else { return }
-        guard abs(scrollView.zoomScale - 1.0) > 0.001 else { return }
+        NSLog("[ZoomFix] correctZoom(\(source)) checking -- zoomScale=\(scrollView.zoomScale) dragging=\(scrollView.isDragging) decelerating=\(scrollView.isDecelerating) zooming=\(scrollView.isZooming) deadlinePassed=\(!(correctionDeadline.map { Date() < $0 } ?? false))")
+
+        guard let deadline = correctionDeadline, Date() < deadline else {
+            NSLog("[ZoomFix] skipped -- past correction deadline")
+            return
+        }
+        guard !scrollView.isDragging, !scrollView.isDecelerating, !scrollView.isZooming else {
+            NSLog("[ZoomFix] skipped -- user is interacting")
+            return
+        }
+        guard abs(scrollView.zoomScale - 1.0) > 0.001 else {
+            NSLog("[ZoomFix] skipped -- zoomScale already ~1.0")
+            return
+        }
+        NSLog("[ZoomFix] APPLYING correction: zoomScale \(scrollView.zoomScale) -> 1.0")
         DispatchQueue.main.async {
             scrollView.setZoomScale(1.0, animated: false)
+            NSLog("[ZoomFix] after setZoomScale, actual zoomScale=\(scrollView.zoomScale)")
         }
     }
 }
