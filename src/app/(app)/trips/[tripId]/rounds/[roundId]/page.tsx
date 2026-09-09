@@ -174,7 +174,12 @@ export default async function RoundDetailPage({
 
         <PlayersAndGroups />
 
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-forest-900/10 bg-cream-50/95 p-4 backdrop-blur sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0">
+        {/* Sits just above the mobile tab bar (app-shell.tsx: fixed,
+            bottom-0, z-40, hidden at md+) instead of at bottom-0 itself --
+            both are fixed to the same edge on a phone, and the tab bar's
+            higher z-index was rendering directly over this bar, hiding the
+            primary action entirely with no way to advance the wizard. */}
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-forest-900/10 bg-cream-50/95 p-4 backdrop-blur md:static md:bottom-auto md:mt-8 md:border-0 md:bg-transparent md:p-0">
           <div className="mx-auto max-w-2xl">
             <ButtonLink
               href={`/trips/${tripId}/rounds/${safeRound.id}/setup/games`}

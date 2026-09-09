@@ -6,24 +6,19 @@ import WebKit
 // of roughly 1.14x (exactly 8/7) instead of the 1.0 the page's own
 // `<meta name="viewport" content="...initial-scale=1...">` declares --
 // confirmed via window.visualViewport.scale in Safari's Web Inspector.
-// The layout-cutoff half of this bug is fixed by correctZoom() below,
-// confirmed working on-device.
-//
-// Pinch-to-zoom, however, still didn't work even with that fix in place.
-// NSLog diagnostics captured on the Dashboard showed correctZoom() firing
-// repeatedly with the SAME wrong zoomScale (1.143181818181818) on nearly
-// every layout pass -- meaning WebKit keeps recomputing and re-imposing
-// that incorrect scale on its own, over and over, not just once at load.
-// That points to WebKit's internal min/max zoom range also being
-// miscalculated alongside the initial scale on this device: even with
+// WebKit was also observed re-imposing that same wrong scale repeatedly
+// on nearly every layout pass, not just once at load, and its internal
+// min/max zoom range appeared to collapse toward 1.0 alongside it --
+// leaving no range for a pinch gesture to zoom into even with
 // ignoresViewportScaleLimits enabled (which only overrides limits the
-// *page* declares), if WebKit's own derived minimumZoomScale and
-// maximumZoomScale collapse down near 1.0, there is no range left for a
-// pinch gesture to zoom into, regardless of how hard someone pinches.
+// *page* itself declares, not WebKit's own derived range).
 //
-// This version explicitly forces a real, fixed zoom range on the
-// scrollView (1.0-5.0) every time it's touched, instead of trusting
-// WebKit's own (buggy, on this device) calculation of that range.
+// This forces a real, fixed zoom range on the scrollView (1.0-5.0) and
+// corrects the zoom scale back to 1.0 for the lifetime of the app,
+// re-applying both on every load/layout change since WebKit keeps
+// resetting them on its own. It backs off permanently the moment a
+// genuine user pinch/decelerate gesture is detected, so it can never
+// fight a deliberate zoom.
 class MainViewController: CAPBridgeViewController {
     private var isLoadingObservation: NSKeyValueObservation?
     private var contentSizeObservation: NSKeyValueObservation?
@@ -41,25 +36,23 @@ class MainViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
-        NSLog("[ZoomFix] capacitorDidLoad called, webView present: \(self.webView != nil)")
 
         guard let webView = self.webView else { return }
 
-        applyZoomRange(to: webView.scrollView, source: "capacitorDidLoad")
+        applyZoomRange(to: webView.scrollView)
 
         isLoadingObservation = webView.observe(\.isLoading, options: [.new]) { [weak self, weak webView] _, change in
             guard change.newValue == false, let webView = webView else { return }
-            self?.correctZoom(on: webView, source: "isLoading")
+            self?.correctZoom(on: webView)
         }
 
-        contentSizeObservation = webView.scrollView.observe(\.contentSize, options: [.new]) { [weak self, weak webView] _, change in
+        contentSizeObservation = webView.scrollView.observe(\.contentSize, options: [.new]) { [weak self, weak webView] _, _ in
             guard let webView = webView else { return }
-            self?.correctZoom(on: webView, source: "contentSize=\(String(describing: change.newValue))")
+            self?.correctZoom(on: webView)
         }
 
         zoomScaleObservation = webView.scrollView.observe(\.zoomScale, options: []) { [weak self] scrollView, _ in
             if scrollView.isZooming || scrollView.isDecelerating {
-                NSLog("[ZoomFix] user is manually zooming -- disabling auto-correction from now on")
                 self?.hasUserManuallyZoomed = true
             }
         }
@@ -69,24 +62,22 @@ class MainViewController: CAPBridgeViewController {
     /// recomputes its own idea of this range during layout on this device
     /// (alongside the zoomScale bug above), so this is re-applied every
     /// time we touch the scrollView, not just once at load.
-    private func applyZoomRange(to scrollView: UIScrollView, source: String) {
+    private func applyZoomRange(to scrollView: UIScrollView) {
         if scrollView.minimumZoomScale != minZoom || scrollView.maximumZoomScale != maxZoom {
-            NSLog("[ZoomFix] (\(source)) fixing zoom range \(scrollView.minimumZoomScale)-\(scrollView.maximumZoomScale) -> \(minZoom)-\(maxZoom)")
             scrollView.minimumZoomScale = minZoom
             scrollView.maximumZoomScale = maxZoom
         }
         scrollView.pinchGestureRecognizer?.isEnabled = true
     }
 
-    private func correctZoom(on webView: WKWebView, source: String) {
+    private func correctZoom(on webView: WKWebView) {
         guard !hasUserManuallyZoomed else { return }
         let scrollView = webView.scrollView
         guard !scrollView.isDragging, !scrollView.isDecelerating, !scrollView.isZooming else { return }
 
-        applyZoomRange(to: scrollView, source: source)
+        applyZoomRange(to: scrollView)
 
         guard abs(scrollView.zoomScale - 1.0) > 0.001 else { return }
-        NSLog("[ZoomFix] (\(source)) correcting zoomScale \(scrollView.zoomScale) -> 1.0")
         DispatchQueue.main.async {
             scrollView.setZoomScale(1.0, animated: false)
         }
