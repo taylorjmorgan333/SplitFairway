@@ -1408,6 +1408,7 @@ export type Database = {
           id: string
           joined_at: string | null
           payment_handle: string | null
+          phone: string | null
           preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
@@ -1421,6 +1422,7 @@ export type Database = {
           id?: string
           joined_at?: string | null
           payment_handle?: string | null
+          phone?: string | null
           preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
@@ -1434,6 +1436,7 @@ export type Database = {
           id?: string
           joined_at?: string | null
           payment_handle?: string | null
+          phone?: string | null
           preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
@@ -1534,6 +1537,7 @@ export type Database = {
           id: string
           joined_at: string | null
           payment_handle: string | null
+          phone: string | null
           preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
@@ -1729,10 +1733,12 @@ export type Database = {
         Args: { p_trip_member_id: string }
         Returns: undefined
       }
-      set_trip_member_payment_info: {
+      set_trip_member_details: {
         Args: {
+          p_email: string
           p_payment_handle: string
           p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_phone: string
           p_trip_member_id: string
         }
         Returns: {
@@ -1742,6 +1748,7 @@ export type Database = {
           id: string
           joined_at: string | null
           payment_handle: string | null
+          phone: string | null
           preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
@@ -1767,6 +1774,7 @@ export type Database = {
           id: string
           joined_at: string | null
           payment_handle: string | null
+          phone: string | null
           preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]

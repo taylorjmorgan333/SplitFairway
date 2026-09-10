@@ -2,8 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { addMemberManuallySchema, inviteMemberSchema, transferOwnershipSchema } from "@/lib/validation/trip";
-import { memberPaymentInfoSchema } from "@/lib/validation/payment";
+import {
+  addMemberManuallySchema,
+  inviteMemberSchema,
+  memberDetailsSchema,
+  transferOwnershipSchema,
+} from "@/lib/validation/trip";
 import { trackEvent } from "@/lib/analytics";
 import type { ActionState } from "@/actions/auth";
 import type { Enums } from "@/lib/supabase/database.types";
@@ -239,13 +243,15 @@ export async function removeMemberAction(tripId: string, tripMemberId: string) {
   revalidatePath(`/trips/${tripId}`);
 }
 
-export async function updateMemberPaymentInfoAction(
+export async function updateMemberDetailsAction(
   tripId: string,
   tripMemberId: string,
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = memberPaymentInfoSchema.safeParse({
+  const parsed = memberDetailsSchema.safeParse({
+    email: formData.get("email"),
+    phone: formData.get("phone"),
     preferredPaymentMethod: formData.get("preferredPaymentMethod"),
     paymentHandle: formData.get("paymentHandle"),
   });
@@ -255,18 +261,21 @@ export async function updateMemberPaymentInfoAction(
   }
 
   const supabase = await createClient();
-  // set_trip_member_payment_info() checks internally that the caller is
+  // set_trip_member_details() checks internally that the caller is
   // either this trip's captain or the golfer themselves -- same
   // SECURITY DEFINER pattern as set_trip_member_role -- so this is safe
   // even though the "Edit" affordance is offered from the captain's
-  // Golfers-tab management view. Both args are genuinely nullable in
-  // the function (clearing a previously-set method/handle is valid),
+  // Golfers-tab management view. It also re-checks the same duplicate
+  // email rule add_trip_member_manually() enforces at creation. Every
+  // field here is genuinely nullable (clearing any of them is valid),
   // but Supabase's generated RPC arg types never include `| null` for a
   // required (non-defaulted) parameter -- only `?` for one with a SQL
   // default -- so the casts below just get past that codegen gap; the
   // value sent over the wire is still a real JSON null when cleared.
-  const { error } = await supabase.rpc("set_trip_member_payment_info", {
+  const { error } = await supabase.rpc("set_trip_member_details", {
     p_trip_member_id: tripMemberId,
+    p_email: (parsed.data.email || null) as string,
+    p_phone: (parsed.data.phone || null) as string,
     p_payment_method: (parsed.data.preferredPaymentMethod || null) as Enums<"payment_method">,
     p_payment_handle: (parsed.data.paymentHandle || null) as string,
   });
@@ -276,5 +285,5 @@ export async function updateMemberPaymentInfoAction(
   }
 
   revalidatePath(`/trips/${tripId}`);
-  return { status: "success", message: "Payment info updated." };
+  return { status: "success", message: "Golfer info updated." };
 }

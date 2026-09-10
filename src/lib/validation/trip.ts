@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PAYMENT_METHOD_VALUES } from "@/lib/validation/payment";
 
 const TRIP_STATUS_VALUES = ["planning", "active", "completed", "cancelled"] as const;
 
@@ -58,3 +59,29 @@ export const transferOwnershipSchema = z.object({
 });
 
 export type TransferOwnershipInput = z.infer<typeof transferOwnershipSchema>;
+
+// The Golfers-tab "Edit" dialog: contact info plus a standing payment
+// preference for one golfer, all optional and independent of each
+// other. Distinct from reportPaymentSchema (payment.ts), which records
+// a specific payment that actually happened -- this is just reference
+// info so trip mates know how to reach/pay someone. Either the trip
+// captain or the golfer themselves can save it (enforced server-side
+// by set_trip_member_details, not just by which UI shows the button),
+// which matters since a manually-added golfer has no account to do it
+// themselves and needs the captain to fill it in on their behalf.
+export const memberDetailsSchema = z.object({
+  email: z
+    .union([z.string().trim().email("Enter a valid email address"), z.literal("")])
+    .optional(),
+  phone: z
+    .string()
+    .trim()
+    .max(40, "Phone number is too long")
+    .regex(/^[0-9+\-().\s]*$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  preferredPaymentMethod: z.enum(PAYMENT_METHOD_VALUES).optional().or(z.literal("")),
+  paymentHandle: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
+export type MemberDetailsInput = z.infer<typeof memberDetailsSchema>;

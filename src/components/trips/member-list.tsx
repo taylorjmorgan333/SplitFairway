@@ -9,7 +9,7 @@ import {
   resendInvitationAction,
   revokeInvitationAction,
   transferOwnershipAction,
-  updateMemberPaymentInfoAction,
+  updateMemberDetailsAction,
 } from "@/actions/members";
 import type { ActionState } from "@/actions/auth";
 import { PAYMENT_METHOD_VALUES, PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
@@ -29,6 +29,7 @@ export type MemberRow = Pick<
   | "role"
   | "status"
   | "user_id"
+  | "phone"
   | "preferred_payment_method"
   | "payment_handle"
 >;
@@ -148,7 +149,7 @@ function MemberRowItem({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const canEditPaymentInfo = (isCaptain || isSelf) && member.status !== "removed";
+  const canEditDetails = (isCaptain || isSelf) && member.status !== "removed";
   const paymentLabel = member.preferred_payment_method
     ? PAYMENT_METHOD_LABELS[member.preferred_payment_method]
     : null;
@@ -225,13 +226,14 @@ function MemberRowItem({
               {member.display_name}
               {isSelf && <span className="text-charcoal-400"> (you)</span>}
             </p>
-            {canEditPaymentInfo && (
-              <MemberPaymentInfoForm tripId={tripId} member={member} isSelf={isSelf} />
+            {canEditDetails && (
+              <MemberDetailsForm tripId={tripId} member={member} isSelf={isSelf} />
             )}
           </div>
           <p className="text-xs text-charcoal-400">
             {member.email ?? <span className="italic">No email on file</span>}
           </p>
+          {member.phone && <p className="text-xs text-charcoal-400">{member.phone}</p>}
           {paymentSummary && <p className="text-xs text-charcoal-400">{paymentSummary}</p>}
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>
@@ -385,17 +387,18 @@ function TransferOwnershipForm({
 const initialPaymentInfoState: ActionState = { status: "idle" };
 
 /**
- * The "how do I pay this golfer" info shown on their Golfers-tab row --
- * a preferred app plus their username/handle on it. Separate from
+ * The "Edit" affordance next to each golfer on the Golfers tab: their
+ * email, phone, and a standing payment preference (a preferred app
+ * plus their username/handle on it), all optional. Separate from
  * PaymentForm/reportPaymentSchema (which record an actual payment that
- * happened): this is just a standing preference so trip mates know
- * where to send money before they ever open that form. Either the
+ * happened) -- this is just reference info so trip mates know how to
+ * reach or pay someone before they ever open that form. Either the
  * captain (who may have added this golfer manually, before they ever
  * signed in) or the golfer themselves can edit it -- enforced by
- * set_trip_member_payment_info() server-side, not just by hiding this
+ * set_trip_member_details() server-side, not just by hiding this
  * button.
  */
-function MemberPaymentInfoForm({
+function MemberDetailsForm({
   tripId,
   member,
   isSelf,
@@ -405,7 +408,7 @@ function MemberPaymentInfoForm({
   isSelf: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const boundAction = updateMemberPaymentInfoAction.bind(null, tripId, member.id);
+  const boundAction = updateMemberDetailsAction.bind(null, tripId, member.id);
   const [state, formAction] = useActionState(boundAction, initialPaymentInfoState);
 
   return (
@@ -413,7 +416,7 @@ function MemberPaymentInfoForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Edit payment info for ${member.display_name}`}
+        aria-label={`Edit info for ${member.display_name}`}
         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-charcoal-400 hover:bg-cream-100 hover:text-forest-700"
       >
         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -422,11 +425,11 @@ function MemberPaymentInfoForm({
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        title="Payment Info"
+        title="Golfer Info"
         description={
           isSelf
-            ? "Let your trip mates know where to send you money."
-            : `Set how ${member.display_name} prefers to get paid.`
+            ? "Keep your contact and payment info current for your trip mates."
+            : `Update ${member.display_name}'s contact and payment info.`
         }
       >
         <form action={formAction} className="space-y-4" noValidate>
@@ -437,9 +440,31 @@ function MemberPaymentInfoForm({
             <Alert variant="success">{state.message}</Alert>
           )}
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField id={`email-${member.id}`} label="Email" hint="Optional" errors={state.fieldErrors?.email}>
+              <Input
+                name="email"
+                type="email"
+                defaultValue={member.email ?? ""}
+                placeholder="golfer@example.com"
+              />
+            </FormField>
+
+            <FormField id={`phone-${member.id}`} label="Phone" hint="Optional" errors={state.fieldErrors?.phone}>
+              <Input
+                name="phone"
+                type="tel"
+                defaultValue={member.phone ?? ""}
+                placeholder="(555) 555-5555"
+                maxLength={40}
+              />
+            </FormField>
+          </div>
+
           <FormField
             id={`preferredPaymentMethod-${member.id}`}
             label="Payment app"
+            hint="Optional"
             errors={state.fieldErrors?.preferredPaymentMethod}
           >
             <select
