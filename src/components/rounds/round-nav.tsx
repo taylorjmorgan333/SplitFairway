@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { phaseForStatus, type RoundStatus } from "@/components/rounds/round-phase";
 
@@ -132,38 +133,41 @@ export function RoundPhaseTabs({
 
   return (
     <nav aria-label="Round" className="mb-5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-1 gap-1 rounded-full bg-cream-100 p-1">
-          {tabs.map((tab) => {
-            const active = pathname === tab.href || pathname?.startsWith(`${tab.href}/`);
-            return (
-              <Link
-                key={tab.key}
-                href={tab.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex-1 rounded-full px-2 py-2.5 text-center text-base font-medium transition-colors",
-                  active ? "bg-white text-forest-900 shadow-sm" : "text-charcoal-500 hover:text-forest-800",
-                )}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
+      {/* -mx-5 px-5 lets this bleed to the screen edge and scroll
+          horizontally if it's ever too tight for both the tab pill and
+          the "Round Details" label to fit side by side, instead of
+          wrapping or clipping either one. */}
+      <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+        <div className="flex w-fit min-w-full items-center justify-between gap-2">
+          <div className="flex flex-1 gap-1 rounded-full bg-cream-100 p-1">
+            {tabs.map((tab) => {
+              const active = pathname === tab.href || pathname?.startsWith(`${tab.href}/`);
+              return (
+                <Link
+                  key={tab.key}
+                  href={tab.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex-1 whitespace-nowrap rounded-full px-2 py-2.5 text-center text-base font-medium transition-colors",
+                    active ? "bg-white text-forest-900 shadow-sm" : "text-charcoal-500 hover:text-forest-800",
+                  )}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
+          <Link
+            href={base}
+            className="flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-base font-medium text-charcoal-500 hover:bg-cream-100 hover:text-forest-800"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+            Round Details
+          </Link>
         </div>
-        <Link
-          href={base}
-          aria-label="Round details, players and groups"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-charcoal-500 hover:bg-cream-100 hover:text-forest-800"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">
-            ⋯
-          </span>
-        </Link>
       </div>
       <p className="mt-2 text-sm text-charcoal-400">
-        {phase === "play" ? (scoresComplete ? "Scores Complete" : "Round in progress") : "Round finished"}{" "}
-        · Tap ⋯ for round details, players and groups.
+        {phase === "play" ? (scoresComplete ? "Scores Complete" : "Round in progress") : "Round finished"}
       </p>
     </nav>
   );

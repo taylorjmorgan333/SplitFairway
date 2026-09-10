@@ -192,6 +192,18 @@ export interface StandingsEntry {
  * Gross/net are ascending (lower is better); Stableford is descending
  * (higher is better). Players with no recorded score are left out
  * entirely rather than ranked last with a 0/blank value.
+ *
+ * Gross/net rank (and tie) on `toPar`, not the raw stroke `value` --
+ * mid-round, players are routinely thru different numbers of holes, and
+ * comparing raw stroke totals across different hole counts isn't a fair
+ * comparison (someone thru 3 holes will always have a lower raw total
+ * than someone thru 15, regardless of who's actually playing better).
+ * `toPar` already normalizes for exactly that by comparing each player
+ * only against the par of the holes they've completed, which is also
+ * why two players who happen to share a raw stroke total but are thru
+ * different hole counts must NOT be shown tied -- their toPar differs.
+ * Stableford has no such issue (its points already self-normalize per
+ * hole against par), so it keeps ranking on `value` directly.
  */
 export function computeStandings(players: PlayerScoreInput[], metric: StandingsMetric): StandingsEntry[] {
   const rows = players
@@ -221,15 +233,19 @@ export function computeStandings(players: PlayerScoreInput[], metric: StandingsM
     })
     .filter((r): r is Omit<StandingsEntry, "rank"> => r !== null);
 
+  // The key both the sort and the tie-check use: toPar for gross/net
+  // (fair across different thru-counts), raw points for Stableford.
+  const rankKey = (row: Omit<StandingsEntry, "rank">) => (metric === "stableford" ? row.value : row.toPar);
   const better = metric === "stableford" ? (a: number, b: number) => b - a : (a: number, b: number) => a - b;
-  rows.sort((a, b) => better(a.value, b.value));
+  rows.sort((a, b) => better(rankKey(a), rankKey(b)));
 
   let rank = 0;
-  let lastValue: number | null = null;
+  let lastKey: number | null = null;
   return rows.map((row, i) => {
-    if (lastValue === null || row.value !== lastValue) {
+    const key = rankKey(row);
+    if (lastKey === null || key !== lastKey) {
       rank = i + 1;
-      lastValue = row.value;
+      lastKey = key;
     }
     return { ...row, rank };
   });

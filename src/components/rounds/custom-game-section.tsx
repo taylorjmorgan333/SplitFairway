@@ -14,6 +14,7 @@ import {
   MonetarySection,
   SubmitButton,
   DeleteGameButton,
+  PlayerCheckboxGroup,
   type PlayerOption,
 } from "@/components/rounds/side-game-shared";
 
@@ -62,13 +63,8 @@ export function CreateCustomForm({
       {players.length > 0 && (
         <div>
           <p className="text-sm font-medium text-charcoal-500">Who&apos;s in?</p>
-          <div className="mt-1 space-y-1">
-            {players.map((p) => (
-              <label key={p.roundPlayerId} className="flex items-center gap-2 text-base text-charcoal-700">
-                <input type="checkbox" name="playerIds" value={p.roundPlayerId} className="h-4 w-4" />
-                {p.displayName}
-              </label>
-            ))}
+          <div className="mt-1">
+            <PlayerCheckboxGroup players={players} name="playerIds" itemClassName="text-base text-charcoal-700" />
           </div>
           <p className="mt-1 text-xs text-charcoal-400">Optional — leave everyone unchecked to mean the whole group.</p>
         </div>

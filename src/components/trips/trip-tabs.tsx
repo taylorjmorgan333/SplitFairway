@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { BalanceCards } from "@/components/trips/balance-cards";
 import { SettlementView } from "@/components/trips/settlement-view";
 import { ActivityFeed, type ActivityRow } from "@/components/trips/activity-feed";
@@ -88,6 +89,10 @@ export function TripTabs({
   const expenseFormRef = useRef<HTMLDivElement>(null);
   const paymentFormRef = useRef<HTMLDivElement>(null);
   const [pendingFocus, setPendingFocus] = useState<"expense" | "payment" | null>(null);
+  // The Add Expense form starts collapsed so the Expenses tab leads with
+  // the list of what's already logged, not an empty form -- it opens on
+  // request (the button below, or a quick action that targets it).
+  const [expenseFormOpen, setExpenseFormOpen] = useState(false);
 
   useEffect(() => {
     setReviewedBalances(isStepDoneLocally(trip.id, "reviewedBalances"));
@@ -105,6 +110,7 @@ export function TripTabs({
   function goToQuickAction(destination: Tab, focus: "expense" | "payment" | null) {
     setTab(destination);
     setPendingFocus(focus);
+    if (focus === "expense") setExpenseFormOpen(true);
   }
 
   function handleReviewBalances() {
@@ -139,7 +145,7 @@ export function TripTabs({
       label: "Add the first expense",
       description: "Lodging, tee times, whatever it was — add it from the Expenses tab.",
       done: expenses.length > 0,
-      onGo: () => setTab("Expenses"),
+      onGo: () => goToQuickAction("Expenses", "expense"),
       goLabel: "Add expense",
     },
     {
@@ -282,11 +288,33 @@ export function TripTabs({
             {isCaptain && activeMembers.length > 0 && (
               <div ref={expenseFormRef}>
                 <Card>
-                  <CardHeader>
+                  <CardHeader
+                    className={
+                      expenseFormOpen
+                        ? "flex flex-row items-center justify-between gap-3"
+                        : undefined
+                    }
+                  >
                     <CardTitle>Add an expense</CardTitle>
+                    {expenseFormOpen && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpenseFormOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
-                    <ExpenseForm tripId={trip.id} members={activeMembers} />
+                    {expenseFormOpen ? (
+                      <ExpenseForm tripId={trip.id} members={activeMembers} />
+                    ) : (
+                      <Button type="button" onClick={() => setExpenseFormOpen(true)}>
+                        Add Expense
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>

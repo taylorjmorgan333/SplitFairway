@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteSideGameAction } from "@/actions/side-games";
 import type { ActionState } from "@/actions/auth";
@@ -123,7 +123,7 @@ export function TwoSidedPlayerPicker({
       <div className="space-y-1">
         {players.map((p) => (
           <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-            <input type="checkbox" name={name} value={p.roundPlayerId} />
+            <input type="checkbox" name={name} value={p.roundPlayerId} className="h-4 w-4 accent-forest-700" />
             {p.displayName}
           </label>
         ))}
@@ -140,6 +140,75 @@ export function TwoSidedPlayerPicker({
       <div>
         <p className="text-xs font-medium text-charcoal-500">{side2Label}</p>
         <div className="mt-1">{renderSide("side2PlayerIds", side2Mode)}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A single-pool "who's in" checkbox list -- the pattern every one-sided
+ * game form (Quota, Nines, Twos, Stroke Play, Stableford, Custom Game,
+ * Skins) and the Expenses "Split with" picker all repeated by hand.
+ * Adds Select all/Clear all above the list so the captain isn't tapping
+ * every golfer one at a time on a phone, and tints the checkboxes with
+ * the brand green instead of leaving the browser's default blue.
+ *
+ * Deliberately uncontrolled, same as the raw `<input type="checkbox">`
+ * list it replaces: these forms read the checked boxes straight off the
+ * submitted FormData server-side, so Select all/Clear all just flips the
+ * native `.checked` property on the boxes in this group rather than
+ * introducing React state the form doesn't otherwise need.
+ */
+export function PlayerCheckboxGroup({
+  players,
+  name,
+  itemClassName = "text-sm text-charcoal-700",
+}: {
+  players: PlayerOption[];
+  name: string;
+  itemClassName?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  function setAll(checked: boolean) {
+    const boxes = containerRef.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+    boxes?.forEach((box) => {
+      box.checked = checked;
+    });
+  }
+
+  if (players.length === 0) return null;
+
+  return (
+    <div>
+      <div className="mb-1 flex justify-end gap-3 text-xs">
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          className="font-medium text-forest-700 underline hover:no-underline"
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          onClick={() => setAll(false)}
+          className="font-medium text-forest-700 underline hover:no-underline"
+        >
+          Clear all
+        </button>
+      </div>
+      <div ref={containerRef} className="space-y-1">
+        {players.map((p) => (
+          <label key={p.roundPlayerId} className={`flex items-center gap-2 ${itemClassName}`}>
+            <input
+              type="checkbox"
+              name={name}
+              value={p.roundPlayerId}
+              className="h-4 w-4 accent-forest-700"
+            />
+            {p.displayName}
+          </label>
+        ))}
       </div>
     </div>
   );

@@ -43,15 +43,35 @@ export function OnboardingChecklist({
 
   if (dismissed) return null;
 
+  // Once every step is done, the full checklist has nothing left to teach
+  // -- swap it for a small, still-dismissible confirmation instead of a
+  // card full of checked-off boxes nobody needs to read again.
+  if (allDone) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-full border border-gold-300/60 bg-gold-50 px-4 py-2.5">
+        <p className="text-sm font-medium text-forest-900">Trip setup complete ✓</p>
+        <button
+          type="button"
+          onClick={() => {
+            dismissChecklist(tripId);
+            setDismissed(true);
+          }}
+          aria-label="Dismiss"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-charcoal-400 hover:bg-gold-100 hover:text-charcoal-600"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-gold-300/60 bg-gold-50 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg text-forest-900">Get your trip set up</h2>
           <p className="mt-1 text-sm text-charcoal-500">
-            {allDone
-              ? "You've done everything below — nice work."
-              : `${doneCount} of ${steps.length} steps done. Finish these and everyone will know exactly what they owe.`}
+            {`${doneCount} of ${steps.length} steps done. Finish these and everyone will know exactly what they owe.`}
           </p>
         </div>
         <button

@@ -428,11 +428,40 @@ export function MobileScorecard({
     [players, scores, holeCount, holesByTeeSet, teeSets],
   );
 
+  // Same "every hole, every golfer" rule isScoringComplete() applies
+  // server-side (round-phase.ts), computed here from the live local
+  // `playerScoreInputs` instead so "Review & Finish" enables the
+  // instant the last score is typed in, with no page reload needed.
+  const scoresComplete = useMemo(
+    () =>
+      players.length > 0 &&
+      playerScoreInputs.every((p) => {
+        for (let h = 1; h <= holeCount; h++) {
+          if (p.grossByHole.get(h) == null) return false;
+        }
+        return true;
+      }),
+    [players.length, playerScoreInputs, holeCount],
+  );
+
   const [standingsMetric, setStandingsMetric] = useState<StandingsMetric>("gross");
+  // "Points" (Stableford) is only a meaningful format to pick if some
+  // game this round is actually being scored that way -- otherwise it
+  // is just a confusing extra tab that always reads 0 for everyone.
+  const hasPointsGame = sideGames.some((g) => g.gameType === "stableford");
+  const standingsMetricOptions = (["gross", "net", "stableford"] as const).filter(
+    (m) => m !== "stableford" || hasPointsGame,
+  );
   const standings = useMemo(
     () => computeStandings(playerScoreInputs, standingsMetric),
     [playerScoreInputs, standingsMetric],
   );
+  // If the Points game that made "Points" available gets removed while
+  // it's selected, fall back to Gross rather than leaving the picker on
+  // a now-hidden option with nothing shown as active.
+  useEffect(() => {
+    if (standingsMetric === "stableford" && !hasPointsGame) setStandingsMetric("gross");
+  }, [standingsMetric, hasPointsGame]);
   const standingsById = new Map(players.map((p) => [p.roundPlayerId, p]));
 
   // Which game the Standings card is showing -- "overall" is the
@@ -537,7 +566,16 @@ export function MobileScorecard({
           widths (md:) -- a single column on mobile, in the same order
           entry-then-leaderboard the phone view always used, so nothing
           about the mobile layout changes here. */}
-      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_20rem] md:items-start">
+      {/* The Full Scorecard needs real width to show all 18 holes plus
+          Out/In/Tot without scrolling -- squeezed into the same
+          minmax(0,1fr) column the one-hole entry card uses, alongside a
+          fixed 20rem leaderboard sidebar, it only had room for about a
+          dozen columns before the browser had to scroll, which read as
+          "clipped." Dropping to one full-width column while viewing it
+          gives the table the whole container's width; the sidebar just
+          moves below instead of squeezing beside it. Entering scores
+          one hole at a time keeps the two-column layout as before. */}
+      <div className={cn("grid min-w-0 gap-4 md:items-start", viewMode === "full" ? "md:grid-cols-1" : "md:grid-cols-[minmax(0,1fr)_20rem]")}>
       <div className="min-w-0 space-y-4">
       {/* Entry vs. full-scorecard toggle. Entering scores one hole at a
           time (below) is what's actually fast on a phone mid-round; the
@@ -728,7 +766,7 @@ export function MobileScorecard({
             </p>
             {selectedGameId === "overall" && (
               <div className="flex gap-1">
-                {(["gross", "net", "stableford"] as const).map((m) => (
+                {standingsMetricOptions.map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -897,9 +935,18 @@ export function MobileScorecard({
       </div>
 
       {isCaptain && roundStatus !== "locked" && roundStatus !== "completed" && (
-        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}/results`} variant="outline" size="sm">
-          Review &amp; Finish
-        </ButtonLink>
+        scoresComplete ? (
+          <ButtonLink href={`/trips/${tripId}/rounds/${roundId}/results`} variant="outline" size="sm">
+            Review &amp; Finish
+          </ButtonLink>
+        ) : (
+          <div>
+            <Button variant="outline" size="sm" disabled title="Complete all scores to finish">
+              Review &amp; Finish
+            </Button>
+            <p className="mt-1.5 text-xs text-charcoal-400">Complete all scores to finish.</p>
+          </div>
+        )
       )}
     </div>
   );

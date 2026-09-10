@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { netScore } from "@/lib/golf/handicap";
 import { computePlayerTotals, strokesReceivedByHole, type PlayerScoreInput } from "@/lib/golf/scoring";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,33 @@ export function FullScorecardTable({
   // always renders regardless of this, since the widened desktop
   // container (see score/page.tsx) has room for the whole card.
   const [mobileNine, setMobileNine] = useState<Nine>("front");
+
+  // Whether the table is actually wider than the visible scroll area
+  // right now -- drives a small "scroll for more" hint so a table that
+  // needs scrolling never just looks cut off with no indication more
+  // holes exist. Re-checked on resize and after scrolling, and cleared
+  // once scrolled all the way to the end.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollMore, setCanScrollMore] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    function update() {
+      if (!el) return;
+      setCanScrollMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    }
+
+    update();
+    el.addEventListener("scroll", update);
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      resizeObserver.disconnect();
+    };
+  }, [holeCount, mobileNine]);
 
   const holeNumbers = useMemo(() => Array.from({ length: holeCount }, (_, i) => i + 1), [holeCount]);
   const hasBack = holeCount > 9;
@@ -132,7 +159,8 @@ export function FullScorecardTable({
         </div>
       )}
 
-      <div className="mt-3 -mx-4 overflow-x-auto px-4">
+      <div className="relative mt-3">
+        <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4">
         <table className="w-full min-w-max border-separate border-spacing-0 text-center text-sm">
           <thead>
             <tr>
@@ -286,6 +314,15 @@ export function FullScorecardTable({
             })}
           </tbody>
         </table>
+        </div>
+        {canScrollMore && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 right-0 top-0 flex w-8 items-center justify-end bg-gradient-to-l from-white to-transparent"
+          >
+            <span className="mr-0.5 text-charcoal-400">›</span>
+          </div>
+        )}
       </div>
 
       <p className="mt-3 text-xs text-charcoal-400">

@@ -185,7 +185,25 @@ export function ExpenseForm({
       </FormField>
 
       <div>
-        <Label>Split with</Label>
+        <div className="flex items-center justify-between">
+          <Label>Split with</Label>
+          <div className="flex gap-3 text-xs">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set(members.map((m) => m.id)))}
+              className="font-medium text-forest-700 underline hover:no-underline"
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="font-medium text-forest-700 underline hover:no-underline"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
           {members.map((m) => (
             <label
@@ -198,7 +216,7 @@ export function ExpenseForm({
                 value={m.id}
                 checked={selectedIds.has(m.id)}
                 onChange={() => toggleMember(m.id)}
-                className="h-4 w-4"
+                className="h-4 w-4 accent-forest-700"
               />
               {m.display_name}
             </label>

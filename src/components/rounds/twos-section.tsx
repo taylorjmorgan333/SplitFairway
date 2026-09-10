@@ -14,6 +14,7 @@ import {
   MonetaryToggle,
   SubmitButton,
   DeleteGameButton,
+  PlayerCheckboxGroup,
   type PlayerOption,
 } from "@/components/rounds/side-game-shared";
 
@@ -145,13 +146,8 @@ export function CreateTwosForm({
 
       <div>
         <p className="text-xs font-medium text-charcoal-500">Golfers</p>
-        <div className="mt-1 space-y-1">
-          {players.map((p) => (
-            <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-              <input type="checkbox" name="playerIds" value={p.roundPlayerId} />
-              {p.displayName}
-            </label>
-          ))}
+        <div className="mt-1">
+          <PlayerCheckboxGroup players={players} name="playerIds" />
         </div>
       </div>
 

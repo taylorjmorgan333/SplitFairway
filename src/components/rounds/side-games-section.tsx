@@ -18,6 +18,8 @@ import {
   MonetaryToggle,
   SubmitButton,
   DeleteGameButton,
+  PlayerCheckboxGroup,
+  TwoSidedPlayerPicker,
   type PlayerOption,
 } from "@/components/rounds/side-game-shared";
 
@@ -294,30 +296,7 @@ export function CreateNassauForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-xs font-medium text-charcoal-500">Side 1</p>
-          <div className="mt-1 space-y-1">
-            {players.map((p) => (
-              <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-                <input type="checkbox" name="side1PlayerIds" value={p.roundPlayerId} />
-                {p.displayName}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-charcoal-500">Side 2</p>
-          <div className="mt-1 space-y-1">
-            {players.map((p) => (
-              <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-                <input type="checkbox" name="side2PlayerIds" value={p.roundPlayerId} />
-                {p.displayName}
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TwoSidedPlayerPicker players={players} side1Label="Side 1" side2Label="Side 2" />
 
       <MonetaryToggle monetaryEnabled={monetaryEnabled} isMonetary={isMonetary} onChange={setIsMonetary} />
       <MonetarySection show={monetaryEnabled && isMonetary} />
@@ -386,13 +365,8 @@ export function CreateSkinsForm({
 
       <div>
         <p className="text-xs font-medium text-charcoal-500">Golfers</p>
-        <div className="mt-1 space-y-1">
-          {players.map((p) => (
-            <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-              <input type="checkbox" name="playerIds" value={p.roundPlayerId} />
-              {p.displayName}
-            </label>
-          ))}
+        <div className="mt-1">
+          <PlayerCheckboxGroup players={players} name="playerIds" />
         </div>
       </div>
 

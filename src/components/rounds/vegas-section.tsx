@@ -14,6 +14,7 @@ import {
   MonetaryToggle,
   SubmitButton,
   DeleteGameButton,
+  TwoSidedPlayerPicker,
   type PlayerOption,
 } from "@/components/rounds/side-game-shared";
 
@@ -128,30 +129,11 @@ export function CreateVegasForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-xs font-medium text-charcoal-500">Team 1 (exactly two)</p>
-          <div className="mt-1 space-y-1">
-            {players.map((p) => (
-              <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-                <input type="checkbox" name="side1PlayerIds" value={p.roundPlayerId} />
-                {p.displayName}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-charcoal-500">Team 2 (exactly two)</p>
-          <div className="mt-1 space-y-1">
-            {players.map((p) => (
-              <label key={p.roundPlayerId} className="flex items-center gap-2 text-sm text-charcoal-700">
-                <input type="checkbox" name="side2PlayerIds" value={p.roundPlayerId} />
-                {p.displayName}
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TwoSidedPlayerPicker
+        players={players}
+        side1Label="Team 1 (exactly two)"
+        side2Label="Team 2 (exactly two)"
+      />
 
       <MonetaryToggle monetaryEnabled={monetaryEnabled} isMonetary={isMonetary} onChange={setIsMonetary} />
       <MonetarySection show={monetaryEnabled && isMonetary} />
