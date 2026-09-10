@@ -14,8 +14,7 @@ export default async function LoginPage({
   const safeNext = isSafeRelativePath(next) ? next : undefined;
 
   return (
-    <div>
-      <NativeSessionRecovery next={safeNext} />
+    <NativeSessionRecovery next={safeNext}>
       <h1 className="text-2xl">Welcome back</h1>
       <p className="mt-1.5 text-sm text-charcoal-500">
         Log in to see your trips and balances.
@@ -23,6 +22,6 @@ export default async function LoginPage({
       <div className="mt-7">
         <LoginForm next={safeNext} />
       </div>
-    </div>
+    </NativeSessionRecovery>
   );
 }
