@@ -240,7 +240,7 @@ function SkinsGameCard({
             {game.holes.map((h) => (
               <li key={h.holeNumber}>
                 Hole {h.holeNumber}:{" "}
-                {h.winnerName ? `${h.winnerName} (${h.skinsWon} skin${h.skinsWon === 1 ? "" : "s"})` : "Tied — carried over"}
+                {h.winnerName ? `${h.winnerName} (${h.skinsWon} skin${h.skinsWon === 1 ? "" : "s"})` : "Pushed"}
               </li>
             ))}
           </ul>
