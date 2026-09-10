@@ -123,6 +123,16 @@ class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
 
+        // Capacitor does NOT auto-discover local (non-npm-package)
+        // plugins just by conforming to CAPBridgedPlugin -- confirmed
+        // the hard way (JS calls failed with "plugin is not
+        // implemented on ios" until this was added). Manual
+        // registration is the documented, required step for a plugin
+        // that lives directly in the app target instead of its own
+        // package: https://capacitorjs.com/docs/ios/custom-code
+        bridge?.registerPluginInstance(SessionCookieStorePlugin())
+        NSLog("[SessionCookieStore] registerPluginInstance(SessionCookieStorePlugin()) called")
+
         guard let webView = self.webView else { return }
 
         applyZoomRange(to: webView.scrollView)
