@@ -21,25 +21,28 @@ const ATTEMPTED_KEY = "sf-native-restore-attempted";
  * awaitable, since a plugin call isn't on any synchronous return
  * path) and, on success, do a full reload -- that's what actually
  * sends the newly-set cookie to the server, letting middleware
- * recognize the session on the very next request.
+ * recognize the session on the very next request. This part runs
+ * unconditionally on every native mount (via Capacitor.
+ * isNativePlatform(), the real ground truth), regardless of what the
+ * server guessed -- confirmed the hard way that gating the actual
+ * recovery attempt on the server's guess is a real bug, not just a
+ * missed optimization: a native build from before the User-Agent
+ * token existed (see below) makes the server guess wrong, and if that
+ * guess also gates whether recovery is *attempted*, a real, working
+ * session gets thrown away instead of restored.
  *
- * An earlier version tried to hide the form client-side, in a
- * useEffect, once a retry was about to start. That doesn't actually
- * work: the server has no way to know this is the native app, so its
- * response already contains the full, real login form -- WKWebView
- * paints that HTML the instant it arrives, well before any JS runs at
- * all, let alone a React effect after hydration. No client-side
- * timing trick can hide content that was already painted.
- *
- * The real fix has to start on the server: shouldAttemptRecovery is
- * computed in login/page.tsx from the request itself (a custom
- * User-Agent token the native app appends, plus middleware's `next`
- * param, present only when this visit is a bounce-off-a-protected-
- * route rather than a direct visit) and passed in as this component's
- * *initial* state -- so for the case worth hiding for, the server's
- * own HTML never includes the form to begin with. Nothing changes for
- * web visitors or a direct /login visit: shouldAttemptRecovery is
- * false there and children render immediately, exactly as always.
+ * shouldAttemptRecovery, computed in login/page.tsx from a custom
+ * User-Agent token the native app appends plus middleware's `next`
+ * param (present only when this visit is a bounce-off-a-protected-
+ * route, not a direct visit), is used ONLY as this component's
+ * *initial* render state -- purely a flash-avoidance optimization.
+ * When the server guesses right, the real form is never in the HTML
+ * WKWebView paints, so there's nothing to flash. When it guesses
+ * wrong (e.g. a stale native build), the form may flash briefly
+ * before the effect below hides it and the recovery still runs --
+ * degraded, not broken. Nothing changes for web visitors or a direct
+ * /login visit: shouldAttemptRecovery is false there and the form
+ * renders immediately either way.
  *
  * Guarded by sessionStorage to attempt the retry only once per loaded
  * session: a genuinely expired/invalid session (e.g. the refresh
@@ -62,11 +65,9 @@ export function NativeSessionRecovery({
     if (attempted.current) return;
     attempted.current = true;
 
-    if (!shouldAttemptRecovery) return;
-
-    // Belt-and-suspenders: the server's guess (from the User-Agent
-    // token) should always agree with this, but if it somehow doesn't,
-    // don't leave the form hidden.
+    // The real, ground-truth check -- independent of the server's
+    // UA-based guess above. Always run this on native, whatever the
+    // server assumed.
     if (!Capacitor.isNativePlatform()) {
       setRecovering(false);
       return;
@@ -77,6 +78,11 @@ export function NativeSessionRecovery({
     }
     sessionStorage.setItem(ATTEMPTED_KEY, "1");
 
+    // In case the server guessed wrong and the form is currently
+    // visible (shouldAttemptRecovery was false): hide it now, even
+    // though that's a frame or two later than ideal.
+    setRecovering(true);
+
     void restoreSessionCookiesFromNative().then((restored) => {
       if (restored) {
         window.location.href = isSafeRelativePath(next) ? next : "/dashboard";
@@ -84,7 +90,7 @@ export function NativeSessionRecovery({
       }
       setRecovering(false);
     });
-  }, [next, shouldAttemptRecovery]);
+  }, [next]);
 
   if (recovering) {
     return (
