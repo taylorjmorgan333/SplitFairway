@@ -1,5 +1,6 @@
 import Capacitor
 import Foundation
+import UIKit
 import WebKit
 
 // iPhone 17 Pro Max (and possibly other very new screen sizes) has been
@@ -34,6 +35,18 @@ class MainViewController: CAPBridgeViewController {
     // since they're separate top-level types in this file.
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
     private static let cookieDomain = "www.splitfairwaygolf.com"
+
+    // TEMPORARY: shows the restore diagnostic as an on-screen popup
+    // instead of relying on Xcode's console or Console.app -- both
+    // have proven unreliable for observing a genuine force-quit +
+    // manual relaunch cycle (Xcode's console detaches from a process
+    // it didn't itself launch/attach to; Console.app requires
+    // "Start streaming" to be clicked *before* the relaunch happens,
+    // which is easy to miss). Remove this block, showRestoreDiagnosticIfNeeded,
+    // viewDidAppear, and the diagnostic-string-building below once the
+    // force-quit restore is confirmed working.
+    private var restoreDiagnostic = "restoreSessionCookies never ran"
+    private var hasShownRestoreDiagnostic = false
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
         NSLog("[SessionCookieStore] webViewConfiguration(for:) called")
@@ -70,6 +83,7 @@ class MainViewController: CAPBridgeViewController {
 
         guard let json = UserDefaults.standard.string(forKey: MainViewController.sessionCookiesKey) else {
             NSLog("[SessionCookieStore] no saved snapshot found in UserDefaults for key %@", MainViewController.sessionCookiesKey)
+            restoreDiagnostic = "No saved snapshot found in UserDefaults.\n\nThis means either save() never ran (not signed in with \"Stay signed in\" checked yet), or something cleared it."
             return
         }
         NSLog("[SessionCookieStore] found saved snapshot, %d chars", json.count)
@@ -78,6 +92,7 @@ class MainViewController: CAPBridgeViewController {
               let entries = (try? JSONSerialization.jsonObject(with: data)) as? [[String: String]],
               !entries.isEmpty else {
             NSLog("[SessionCookieStore] snapshot failed to parse as [[String: String]]")
+            restoreDiagnostic = "Found a snapshot (\(json.count) chars) but failed to parse it as cookie entries."
             return
         }
         NSLog("[SessionCookieStore] parsed %d entrie(s) to restore", entries.count)
@@ -91,6 +106,8 @@ class MainViewController: CAPBridgeViewController {
         // side expiry here doesn't change what that check can do.
         let farFuture = Date().addingTimeInterval(400 * 24 * 60 * 60)
         let group = DispatchGroup()
+        var injectedNames: [String] = []
+        var failedNames: [String] = []
 
         for entry in entries {
             guard let name = entry["name"], let value = entry["value"] else {
@@ -106,6 +123,7 @@ class MainViewController: CAPBridgeViewController {
                     .sameSitePolicy: "Lax",
                   ]) else {
                 NSLog("[SessionCookieStore] HTTPCookie(properties:) returned nil for cookie named %@", name)
+                failedNames.append(name)
                 continue
             }
             NSLog("[SessionCookieStore] injecting cookie %@ (domain=%@, %d chars)", name, MainViewController.cookieDomain, value.count)
@@ -114,10 +132,39 @@ class MainViewController: CAPBridgeViewController {
                 NSLog("[SessionCookieStore] setCookie completion fired for %@", name)
                 group.leave()
             }
+            injectedNames.append(name)
         }
 
         let waitResult = group.wait(timeout: .now() + 1.0)
         NSLog("[SessionCookieStore] restore wait finished, result=%@", waitResult == .success ? "success" : "timedOut")
+
+        var lines = [
+            "Snapshot found: \(json.count) chars, \(entries.count) entrie(s) parsed.",
+            "Injected: \(injectedNames.isEmpty ? "(none)" : injectedNames.joined(separator: ", "))",
+        ]
+        if !failedNames.isEmpty {
+            lines.append("Failed to build cookie for: \(failedNames.joined(separator: ", "))")
+        }
+        lines.append("Cookie store wait: \(waitResult == .success ? "completed" : "timed out")")
+        restoreDiagnostic = lines.joined(separator: "\n")
+    }
+
+    /// TEMPORARY: shows restoreDiagnostic as an alert once the view is
+    /// actually on screen (webViewConfiguration(for:) runs too early
+    /// to safely present anything). Guarded to only show once per
+    /// launch so it doesn't reappear on every foreground/background.
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !hasShownRestoreDiagnostic else { return }
+        hasShownRestoreDiagnostic = true
+
+        let alert = UIAlertController(
+            title: "Session restore diagnostic",
+            message: restoreDiagnostic,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 
     override func capacitorDidLoad() {
