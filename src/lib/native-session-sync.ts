@@ -3,10 +3,6 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 interface SessionCookieStorePlugin {
   save(options: { json: string }): Promise<void>;
   clear(): Promise<void>;
-  // Diagnostic-only: routes a message to NSLog so it shows up in
-  // Xcode's console without needing Safari's separate Web Inspector.
-  // Temporary -- see the removal note near the bottom of this file.
-  log(options: { message: string }): Promise<void>;
 }
 
 /**
@@ -21,23 +17,6 @@ interface SessionCookieStorePlugin {
 const SessionCookieStore = registerPlugin<SessionCookieStorePlugin>("SessionCookieStore");
 
 const REMEMBER_COOKIE_NAME = "sf-remember";
-
-/**
- * TEMPORARY diagnostic helper. The first attempt at this feature
- * didn't survive a force-quit and there's no way to tell, from here,
- * which link in the chain broke: this logs to both the normal JS
- * console (visible via Safari's Web Inspector) and, via the plugin, to
- * NSLog (visible directly in Xcode's console while running from
- * Xcode) -- so a real device test tells us exactly where this stops
- * working. Remove this and the plugin's `log` method once the feature
- * is confirmed working.
- */
-function diag(message: string): void {
-  console.log(`[SessionCookieStore] ${message}`);
-  if (Capacitor.isNativePlatform()) {
-    void SessionCookieStore.log({ message }).catch(() => {});
-  }
-}
 
 function readCookies(): Array<{ name: string; value: string }> {
   if (typeof document === "undefined" || !document.cookie) return [];
@@ -82,30 +61,23 @@ function isRemembered(cookies: Array<{ name: string; value: string }>): boolean 
  * the checkbox.
  */
 export async function syncSessionCookiesToNative(): Promise<void> {
-  diag(`sync start, isNativePlatform=${Capacitor.isNativePlatform()}`);
   if (!Capacitor.isNativePlatform()) return;
-
   const cookies = readCookies();
-  diag(`read ${cookies.length} cookie(s): ${cookies.map((c) => c.name).join(", ") || "(none)"}`);
 
   if (!isRemembered(cookies)) {
-    diag("not remembered (sf-remember=0) -- clearing native snapshot instead of saving");
     await clearNativeSessionCookies();
     return;
   }
 
   const sessionCookies = cookies.filter(({ name }) => name.startsWith("sb-"));
-  diag(`${sessionCookies.length} sb- cookie(s) to snapshot`);
   if (sessionCookies.length === 0) return;
 
   try {
     await SessionCookieStore.save({ json: JSON.stringify(sessionCookies) });
-    diag("save() resolved OK");
-  } catch (err) {
+  } catch {
     // Best-effort: this snapshot is only a fallback restore path, not
     // the source of truth for the session, so a failure here just
     // means the next cold launch falls back to a normal login.
-    diag(`save() threw: ${String(err)}`);
   }
 }
 
@@ -113,9 +85,7 @@ export async function clearNativeSessionCookies(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   try {
     await SessionCookieStore.clear();
-    diag("clear() resolved OK");
-  } catch (err) {
+  } catch {
     // Best-effort, see above.
-    diag(`clear() threw: ${String(err)}`);
   }
 }

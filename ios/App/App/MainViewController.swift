@@ -1,6 +1,5 @@
 import Capacitor
 import Foundation
-import UIKit
 import WebKit
 
 // iPhone 17 Pro Max (and possibly other very new screen sizes) has been
@@ -36,20 +35,7 @@ class MainViewController: CAPBridgeViewController {
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
     private static let cookieDomain = "www.splitfairwaygolf.com"
 
-    // TEMPORARY: shows the restore diagnostic as an on-screen popup
-    // instead of relying on Xcode's console or Console.app -- both
-    // have proven unreliable for observing a genuine force-quit +
-    // manual relaunch cycle (Xcode's console detaches from a process
-    // it didn't itself launch/attach to; Console.app requires
-    // "Start streaming" to be clicked *before* the relaunch happens,
-    // which is easy to miss). Remove this block, showRestoreDiagnosticIfNeeded,
-    // viewDidAppear, and the diagnostic-string-building below once the
-    // force-quit restore is confirmed working.
-    private var restoreDiagnostic = "restoreSessionCookies never ran"
-    private var hasShownRestoreDiagnostic = false
-
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
-        NSLog("[SessionCookieStore] webViewConfiguration(for:) called")
         let configuration = super.webViewConfiguration(for: instanceConfiguration)
         configuration.ignoresViewportScaleLimits = true
         restoreSessionCookies(into: configuration.websiteDataStore.httpCookieStore)
@@ -73,29 +59,22 @@ class MainViewController: CAPBridgeViewController {
     /// before any page script runs. So this has to happen here,
     /// natively, before that first request goes out.
     ///
-    /// Runs synchronously (bounded by a 1s timeout) because this method
-    /// must return a fully-configured WKWebViewConfiguration before
-    /// Capacitor creates the webview and starts loading it -- there's
-    /// no later, safe hook to inject cookies into a configuration
-    /// that's already in use.
+    /// Must return before Capacitor creates the webview and starts
+    /// loading it -- there's no later, safe hook to inject cookies into
+    /// a configuration that's already in use. The setCookie calls below
+    /// are issued synchronously but NOT waited on: their completion
+    /// handler fires back on the main thread (per Apple's docs), and
+    /// this method already runs on the main thread (Capacitor calls
+    /// webViewConfiguration(for:) during UI setup), so blocking here
+    /// for that same completion would be a guaranteed self-deadlock --
+    /// confirmed on a real device before this was corrected.
     private func restoreSessionCookies(into cookieStore: WKHTTPCookieStore) {
-        NSLog("[SessionCookieStore] restoreSessionCookies called")
-
-        guard let json = UserDefaults.standard.string(forKey: MainViewController.sessionCookiesKey) else {
-            NSLog("[SessionCookieStore] no saved snapshot found in UserDefaults for key %@", MainViewController.sessionCookiesKey)
-            restoreDiagnostic = "No saved snapshot found in UserDefaults.\n\nThis means either save() never ran (not signed in with \"Stay signed in\" checked yet), or something cleared it."
-            return
-        }
-        NSLog("[SessionCookieStore] found saved snapshot, %d chars", json.count)
-
-        guard let data = json.data(using: .utf8),
+        guard let json = UserDefaults.standard.string(forKey: MainViewController.sessionCookiesKey),
+              let data = json.data(using: .utf8),
               let entries = (try? JSONSerialization.jsonObject(with: data)) as? [[String: String]],
               !entries.isEmpty else {
-            NSLog("[SessionCookieStore] snapshot failed to parse as [[String: String]]")
-            restoreDiagnostic = "Found a snapshot (\(json.count) chars) but failed to parse it as cookie entries."
             return
         }
-        NSLog("[SessionCookieStore] parsed %d entrie(s) to restore", entries.count)
 
         // We only ever captured name/value pairs (document.cookie never
         // exposes a cookie's real expiry to JS), so there's no original
@@ -105,16 +84,10 @@ class MainViewController: CAPBridgeViewController {
         // server-side on the next request; an overly generous client-
         // side expiry here doesn't change what that check can do.
         let farFuture = Date().addingTimeInterval(400 * 24 * 60 * 60)
-        let group = DispatchGroup()
-        var injectedNames: [String] = []
-        var failedNames: [String] = []
 
         for entry in entries {
-            guard let name = entry["name"], let value = entry["value"] else {
-                NSLog("[SessionCookieStore] entry missing name/value, skipping: %@", entry)
-                continue
-            }
-            guard let cookie = HTTPCookie(properties: [
+            guard let name = entry["name"], let value = entry["value"],
+                  let cookie = HTTPCookie(properties: [
                     .name: name,
                     .value: value,
                     .domain: MainViewController.cookieDomain,
@@ -122,58 +95,10 @@ class MainViewController: CAPBridgeViewController {
                     .expires: farFuture,
                     .sameSitePolicy: "Lax",
                   ]) else {
-                NSLog("[SessionCookieStore] HTTPCookie(properties:) returned nil for cookie named %@", name)
-                failedNames.append(name)
                 continue
             }
-            NSLog("[SessionCookieStore] injecting cookie %@ (domain=%@, %d chars)", name, MainViewController.cookieDomain, value.count)
-            group.enter()
-            cookieStore.setCookie(cookie) {
-                NSLog("[SessionCookieStore] setCookie completion fired for %@", name)
-                group.leave()
-            }
-            injectedNames.append(name)
+            cookieStore.setCookie(cookie)
         }
-
-        // NOT blocking here on purpose. setCookie's completion handler
-        // fires back on the main thread (per Apple's docs), and this
-        // whole method already runs on the main thread (Capacitor calls
-        // webViewConfiguration(for:) during UI setup) -- a synchronous
-        // group.wait() here would block the very thread the completion
-        // needs in order to fire, i.e. a guaranteed self-deadlock. That
-        // was confirmed on-device: every real test reported "timed
-        // out", which is consistent with this always happening
-        // regardless of whether the cookie injection itself worked.
-        // Logging the actual completion asynchronously instead -- still
-        // useful in Xcode's console if it happens to be attached, just
-        // not something we block on.
-        group.notify(queue: .main) {
-            NSLog("[SessionCookieStore] all setCookie completions fired")
-        }
-
-        restoreDiagnostic = [
-            "Snapshot found: \(json.count) chars, \(entries.count) entrie(s) parsed.",
-            "Requested injection of: \(injectedNames.isEmpty ? "(none)" : injectedNames.joined(separator: ", "))",
-            failedNames.isEmpty ? nil : "Failed to build cookie for: \(failedNames.joined(separator: ", "))",
-        ].compactMap { $0 }.joined(separator: "\n")
-    }
-
-    /// TEMPORARY: shows restoreDiagnostic as an alert once the view is
-    /// actually on screen (webViewConfiguration(for:) runs too early
-    /// to safely present anything). Guarded to only show once per
-    /// launch so it doesn't reappear on every foreground/background.
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        guard !hasShownRestoreDiagnostic else { return }
-        hasShownRestoreDiagnostic = true
-
-        let alert = UIAlertController(
-            title: "Session restore diagnostic",
-            message: restoreDiagnostic,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
     }
 
     override func capacitorDidLoad() {
@@ -187,7 +112,6 @@ class MainViewController: CAPBridgeViewController {
         // that lives directly in the app target instead of its own
         // package: https://capacitorjs.com/docs/ios/custom-code
         bridge?.registerPluginInstance(SessionCookieStorePlugin())
-        NSLog("[SessionCookieStore] registerPluginInstance(SessionCookieStorePlugin()) called")
 
         guard let webView = self.webView else { return }
 
@@ -250,7 +174,6 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "save", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "log", returnType: CAPPluginReturnPromise),
     ]
 
     // Must match MainViewController.sessionCookiesKey above exactly.
@@ -258,28 +181,15 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func save(_ call: CAPPluginCall) {
         guard let json = call.getString("json"), !json.isEmpty else {
-            NSLog("[SessionCookieStore] save() called with empty/missing json -- ignoring")
             call.resolve()
             return
         }
-        NSLog("[SessionCookieStore] save() called, %d chars", json.count)
         UserDefaults.standard.set(json, forKey: SessionCookieStorePlugin.sessionCookiesKey)
         call.resolve()
     }
 
     @objc func clear(_ call: CAPPluginCall) {
-        NSLog("[SessionCookieStore] clear() called")
         UserDefaults.standard.removeObject(forKey: SessionCookieStorePlugin.sessionCookiesKey)
-        call.resolve()
-    }
-
-    // TEMPORARY: lets the JS side (src/lib/native-session-sync.ts) route
-    // its own diagnostic messages into NSLog/Xcode's console, so a real
-    // device test shows the whole JS + native chain in one place. Remove
-    // this method (and the JS-side `diag()` helper that calls it) once
-    // the force-quit restore is confirmed working.
-    @objc func log(_ call: CAPPluginCall) {
-        NSLog("[SessionCookieStore][JS] %@", call.getString("message") ?? "(no message)")
         call.resolve()
     }
 }
