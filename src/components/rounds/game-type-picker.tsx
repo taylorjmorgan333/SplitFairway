@@ -291,19 +291,40 @@ export function GameTypePicker({
   isCaptain,
   players,
   monetaryEnabled,
+  hasAnyGames,
 }: {
   roundId: string;
   tripId: string;
   isCaptain: boolean;
   players: PlayerOption[];
   monetaryEnabled: boolean;
+  /** True once the round already has at least one saved game -- when true,
+   * this never re-asks "is your group playing any games?" and instead
+   * collapses to a subtle "+ Add Another Game" link. */
+  hasAnyGames: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<GameTypeId | null>(null);
   const [mainGameId, setMainGameId] = useState<GameTypeId | "none" | null>(null);
   const [gate, setGate] = useState<"unset" | "none" | "add">("unset");
   const [showMore, setShowMore] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   if (!isCaptain) return null;
+
+  // A game already exists for this round -- never re-ask whether the
+  // group is playing games. Collapse to a subtle link instead; the
+  // full picker below only reappears once the captain taps it.
+  if (hasAnyGames && !addOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAddOpen(true)}
+        className="flex min-h-12 items-center text-base font-medium text-forest-800 underline-offset-2 hover:underline"
+      >
+        + Add Another Game
+      </button>
+    );
+  }
 
   function renderForm(id: GameTypeId) {
     const onSuccess = () => setExpandedId(null);
@@ -459,7 +480,7 @@ export function GameTypePicker({
     );
   }
 
-  if (gate === "unset") {
+  if (!hasAnyGames && gate === "unset") {
     return (
       <Card>
         <CardContent className="space-y-4 p-5 text-center sm:p-6">
@@ -477,7 +498,7 @@ export function GameTypePicker({
               No games—just keep score
             </Button>
             <Button type="button" size="lg" onClick={() => setGate("add")}>
-              Add a game
+              Add a Game
             </Button>
           </div>
         </CardContent>
@@ -485,7 +506,7 @@ export function GameTypePicker({
     );
   }
 
-  if (gate === "none") {
+  if (!hasAnyGames && gate === "none") {
     return (
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6">
@@ -500,9 +521,22 @@ export function GameTypePicker({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Add a game</CardTitle>
-        <CardDescription>Pick as many as you&apos;d like — or none, if you&apos;d rather just keep score.</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle>Add a game</CardTitle>
+          <CardDescription>Pick as many as you&apos;d like — or none, if you&apos;d rather just keep score.</CardDescription>
+        </div>
+        {hasAnyGames && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-base"
+            onClick={() => setAddOpen(false)}
+          >
+            Cancel
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {COMMON_GAMES.map((g) => renderCard(g))}

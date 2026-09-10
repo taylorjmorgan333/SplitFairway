@@ -37,7 +37,7 @@ export default async function SetupGamesPage({
     redirect("/login");
   }
 
-  const [{ data: round }, { data: myMembership }] = await Promise.all([
+  const [{ data: round }, { data: myMembership }, { data: gameRows }] = await Promise.all([
     supabase.from("rounds").select("id, trip_id, status").eq("id", roundId).maybeSingle(),
     supabase
       .from("trip_members")
@@ -45,6 +45,7 @@ export default async function SetupGamesPage({
       .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase.from("side_games").select("id").eq("round_id", roundId),
   ]);
 
   if (!round || round.trip_id !== tripId) {
@@ -62,6 +63,8 @@ export default async function SetupGamesPage({
     const member = Array.isArray(r.trip_members) ? r.trip_members[0] : r.trip_members;
     return { roundPlayerId: r.id, displayName: member?.display_name ?? "Unknown golfer" };
   });
+
+  const hasAnyGames = (gameRows ?? []).length > 0;
 
   return (
     <div className="mx-auto max-w-2xl pb-28">
@@ -89,6 +92,7 @@ export default async function SetupGamesPage({
             isCaptain={isCaptain}
             players={playerOptions}
             monetaryEnabled={MONETARY_GAME_VALUES_ENABLED}
+            hasAnyGames={hasAnyGames}
           />
         </div>
       )}
