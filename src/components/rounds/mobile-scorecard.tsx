@@ -537,8 +537,8 @@ export function MobileScorecard({
           widths (md:) -- a single column on mobile, in the same order
           entry-then-leaderboard the phone view always used, so nothing
           about the mobile layout changes here. */}
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem] md:items-start">
-      <div className="space-y-4">
+      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_20rem] md:items-start">
+      <div className="min-w-0 space-y-4">
       {/* Entry vs. full-scorecard toggle. Entering scores one hole at a
           time (below) is what's actually fast on a phone mid-round; the
           full scorecard is the "see everything at once, like a printed
@@ -719,7 +719,7 @@ export function MobileScorecard({
       )}
       </div>
 
-      <div>
+      <div className="min-w-0">
       {standings.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
           <div className="flex items-center justify-between gap-2">
