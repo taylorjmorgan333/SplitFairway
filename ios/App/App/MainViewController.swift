@@ -135,18 +135,27 @@ class MainViewController: CAPBridgeViewController {
             injectedNames.append(name)
         }
 
-        let waitResult = group.wait(timeout: .now() + 1.0)
-        NSLog("[SessionCookieStore] restore wait finished, result=%@", waitResult == .success ? "success" : "timedOut")
-
-        var lines = [
-            "Snapshot found: \(json.count) chars, \(entries.count) entrie(s) parsed.",
-            "Injected: \(injectedNames.isEmpty ? "(none)" : injectedNames.joined(separator: ", "))",
-        ]
-        if !failedNames.isEmpty {
-            lines.append("Failed to build cookie for: \(failedNames.joined(separator: ", "))")
+        // NOT blocking here on purpose. setCookie's completion handler
+        // fires back on the main thread (per Apple's docs), and this
+        // whole method already runs on the main thread (Capacitor calls
+        // webViewConfiguration(for:) during UI setup) -- a synchronous
+        // group.wait() here would block the very thread the completion
+        // needs in order to fire, i.e. a guaranteed self-deadlock. That
+        // was confirmed on-device: every real test reported "timed
+        // out", which is consistent with this always happening
+        // regardless of whether the cookie injection itself worked.
+        // Logging the actual completion asynchronously instead -- still
+        // useful in Xcode's console if it happens to be attached, just
+        // not something we block on.
+        group.notify(queue: .main) {
+            NSLog("[SessionCookieStore] all setCookie completions fired")
         }
-        lines.append("Cookie store wait: \(waitResult == .success ? "completed" : "timed out")")
-        restoreDiagnostic = lines.joined(separator: "\n")
+
+        restoreDiagnostic = [
+            "Snapshot found: \(json.count) chars, \(entries.count) entrie(s) parsed.",
+            "Requested injection of: \(injectedNames.isEmpty ? "(none)" : injectedNames.joined(separator: ", "))",
+            failedNames.isEmpty ? nil : "Failed to build cookie for: \(failedNames.joined(separator: ", "))",
+        ].compactMap { $0 }.joined(separator: "\n")
     }
 
     /// TEMPORARY: shows restoreDiagnostic as an alert once the view is
