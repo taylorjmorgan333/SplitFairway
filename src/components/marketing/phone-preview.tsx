@@ -55,12 +55,12 @@ const ROW_STAGGER_MS = 160;
 // Timing for the looping "tour" that plays after the initial dashboard
 // boot-up: how long each screen holds before the mockup moves on, and
 // how long each little tap/press effect lasts along the way.
-const HOLD_DASHBOARD_MS = 3200;
-const HOLD_GAMES_MS = 2000;
-const HOLD_SCORE_MS = 1800;
-const HOLD_EXPENSE_MS = 2800;
-const PRESS_MS = 140;
-const TYPE_CHAR_MS = 55;
+const HOLD_DASHBOARD_MS = 2200;
+const HOLD_GAMES_MS = 1400;
+const HOLD_SCORE_MS = 1300;
+const HOLD_EXPENSE_MS = 1900;
+const PRESS_MS = 110;
+const TYPE_CHAR_MS = 35;
 
 /** A tiny segmented-control echo of the real round nav (Scorecard / Games /
  * Leaderboard) so the games and score screens read as two tabs of one
@@ -205,7 +205,7 @@ export function PhonePreview() {
         setScene("games");
         setGameSelected(null);
         setGamePressed(null);
-        await wait(700, timers);
+        await wait(450, timers);
         if (cancelled) return;
         setGamePressed("skins");
         await wait(PRESS_MS, timers);
@@ -219,14 +219,14 @@ export function PhonePreview() {
         setScoreValue(4);
         setScoreSaved(false);
         setScorePressed(null);
-        await wait(650, timers);
+        await wait(450, timers);
         if (cancelled) return;
         setScorePressed("minus");
         await wait(PRESS_MS, timers);
         if (cancelled) return;
         setScorePressed(null);
         setScoreValue(3);
-        await wait(400, timers);
+        await wait(280, timers);
         if (cancelled) return;
         setScoreSaved(true);
         setBirdieTrigger((n) => (n ?? 0) + 1);
@@ -239,22 +239,22 @@ export function PhonePreview() {
         setExpensePayerSelected(null);
         setExpenseForText("");
         setExpenseSaved(false);
-        await wait(500, timers);
+        await wait(350, timers);
         if (cancelled) return;
         await typeText(setExpenseAmountText, EXPENSE_AMOUNT);
         if (cancelled) return;
-        await wait(350, timers);
+        await wait(220, timers);
         if (cancelled) return;
         setExpensePayerPressed("Mike");
         await wait(PRESS_MS, timers);
         if (cancelled) return;
         setExpensePayerPressed(null);
         setExpensePayerSelected("Mike");
-        await wait(350, timers);
+        await wait(220, timers);
         if (cancelled) return;
         await typeText(setExpenseForText, EXPENSE_FOR);
         if (cancelled) return;
-        await wait(350, timers);
+        await wait(220, timers);
         if (cancelled) return;
         setExpenseSaved(true);
         await wait(HOLD_EXPENSE_MS, timers);

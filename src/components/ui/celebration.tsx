@@ -123,12 +123,22 @@ export function ScoreCelebration({
             }
           />
         ))}
-        <span
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-forest-900 px-4 py-1.5 font-serif text-base text-cream-50 shadow-card"
-          style={{ animation: `sf-celebration-label ${LABEL_MS}ms ease-out forwards` }}
-        >
-          {label}
-        </span>
+        {/* The pop-in animation below drives this element's own
+            `transform` for its whole run, which would otherwise
+            silently override (not compose with) the static
+            translate(-50%, -50%) needed to center it -- a CSS
+            animation replaces the animated property's specified value
+            outright while it's playing. Splitting the centering onto
+            this static wrapper and the pop-in effect onto the span
+            inside keeps the two from fighting over the same property. */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <span
+            className="block whitespace-nowrap rounded-full bg-forest-900 px-4 py-1.5 font-serif text-base text-cream-50 shadow-card"
+            style={{ animation: `sf-celebration-label ${LABEL_MS}ms ease-out forwards` }}
+          >
+            {label}
+          </span>
+        </div>
       </div>
     </div>
   );
