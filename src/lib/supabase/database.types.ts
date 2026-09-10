@@ -1407,6 +1407,8 @@ export type Database = {
           email: string | null
           id: string
           joined_at: string | null
+          payment_handle: string | null
+          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1418,6 +1420,8 @@ export type Database = {
           email?: string | null
           id?: string
           joined_at?: string | null
+          payment_handle?: string | null
+          preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1429,6 +1433,8 @@ export type Database = {
           email?: string | null
           id?: string
           joined_at?: string | null
+          payment_handle?: string | null
+          preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
           trip_id?: string
@@ -1527,6 +1533,8 @@ export type Database = {
           email: string | null
           id: string
           joined_at: string | null
+          payment_handle: string | null
+          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1721,6 +1729,32 @@ export type Database = {
         Args: { p_trip_member_id: string }
         Returns: undefined
       }
+      set_trip_member_payment_info: {
+        Args: {
+          p_payment_handle: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_trip_member_id: string
+        }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          joined_at: string | null
+          payment_handle: string | null
+          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
+          role: Database["public"]["Enums"]["member_role"]
+          status: Database["public"]["Enums"]["member_status"]
+          trip_id: string
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trip_members"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_trip_member_role: {
         Args: {
           p_role: Database["public"]["Enums"]["member_role"]
@@ -1732,6 +1766,8 @@ export type Database = {
           email: string | null
           id: string
           joined_at: string | null
+          payment_handle: string | null
+          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1825,7 +1861,7 @@ export type Database = {
       invitation_status: "pending" | "accepted" | "declined" | "revoked"
       member_role: "captain" | "member"
       member_status: "invited" | "active" | "declined" | "removed"
-      payment_method: "venmo" | "zelle" | "paypal" | "cash" | "check" | "other"
+      payment_method: "venmo" | "zelle" | "paypal" | "cash" | "check" | "other" | "cashapp" | "apple_pay"
       payment_status: "reported" | "confirmed" | "rejected"
       player_team_color:
         | "red"

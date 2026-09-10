@@ -50,7 +50,7 @@ export default async function TripDetailPage({
     supabase.from("trips").select("*").eq("id", tripId).maybeSingle(),
     supabase
       .from("trip_members")
-      .select("id, display_name, email, role, status, user_id")
+      .select("id, display_name, email, role, status, user_id, preferred_payment_method, payment_handle")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: true }),
   ]);

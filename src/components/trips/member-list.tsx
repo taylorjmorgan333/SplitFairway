@@ -2,23 +2,35 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import { Pencil } from "lucide-react";
 import {
   setMemberRoleAction,
   removeMemberAction,
   resendInvitationAction,
   revokeInvitationAction,
   transferOwnershipAction,
+  updateMemberPaymentInfoAction,
 } from "@/actions/members";
 import type { ActionState } from "@/actions/auth";
+import { PAYMENT_METHOD_VALUES, PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { Dialog } from "@/components/ui/dialog";
+import { FormField } from "@/components/ui/form-field";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type MemberRow = Pick<
   Tables<"trip_members">,
-  "id" | "display_name" | "email" | "role" | "status" | "user_id"
+  | "id"
+  | "display_name"
+  | "email"
+  | "role"
+  | "status"
+  | "user_id"
+  | "preferred_payment_method"
+  | "payment_handle"
 >;
 
 const STATUS_FILTERS = ["all", "active", "invited", "declined", "removed"] as const;
@@ -136,6 +148,12 @@ function MemberRowItem({
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const canEditPaymentInfo = (isCaptain || isSelf) && member.status !== "removed";
+  const paymentLabel = member.preferred_payment_method
+    ? PAYMENT_METHOD_LABELS[member.preferred_payment_method]
+    : null;
+  const paymentSummary = [paymentLabel, member.payment_handle].filter(Boolean).join(" · ");
+
   function handleRoleChange(role: "captain" | "member") {
     setError(null);
     startTransition(async () => {
@@ -202,13 +220,19 @@ function MemberRowItem({
     <li className="flex flex-col gap-3 py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-charcoal">
-            {member.display_name}
-            {isSelf && <span className="text-charcoal-400"> (you)</span>}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-charcoal">
+              {member.display_name}
+              {isSelf && <span className="text-charcoal-400"> (you)</span>}
+            </p>
+            {canEditPaymentInfo && (
+              <MemberPaymentInfoForm tripId={tripId} member={member} isSelf={isSelf} />
+            )}
+          </div>
           <p className="text-xs text-charcoal-400">
             {member.email ?? <span className="italic">No email on file</span>}
           </p>
+          {paymentSummary && <p className="text-xs text-charcoal-400">{paymentSummary}</p>}
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>
 
@@ -357,3 +381,108 @@ function TransferOwnershipForm({
     </form>
   );
 }
+
+const initialPaymentInfoState: ActionState = { status: "idle" };
+
+/**
+ * The "how do I pay this golfer" info shown on their Golfers-tab row --
+ * a preferred app plus their username/handle on it. Separate from
+ * PaymentForm/reportPaymentSchema (which record an actual payment that
+ * happened): this is just a standing preference so trip mates know
+ * where to send money before they ever open that form. Either the
+ * captain (who may have added this golfer manually, before they ever
+ * signed in) or the golfer themselves can edit it -- enforced by
+ * set_trip_member_payment_info() server-side, not just by hiding this
+ * button.
+ */
+function MemberPaymentInfoForm({
+  tripId,
+  member,
+  isSelf,
+}: {
+  tripId: string;
+  member: MemberRow;
+  isSelf: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const boundAction = updateMemberPaymentInfoAction.bind(null, tripId, member.id);
+  const [state, formAction] = useActionState(boundAction, initialPaymentInfoState);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`Edit payment info for ${member.display_name}`}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-charcoal-400 hover:bg-cream-100 hover:text-forest-700"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Payment Info"
+        description={
+          isSelf
+            ? "Let your trip mates know where to send you money."
+            : `Set how ${member.display_name} prefers to get paid.`
+        }
+      >
+        <form action={formAction} className="space-y-4" noValidate>
+          {state.status === "error" && state.message && (
+            <Alert variant="error">{state.message}</Alert>
+          )}
+          {state.status === "success" && state.message && (
+            <Alert variant="success">{state.message}</Alert>
+          )}
+
+          <FormField
+            id={`preferredPaymentMethod-${member.id}`}
+            label="Payment app"
+            errors={state.fieldErrors?.preferredPaymentMethod}
+          >
+            <select
+              name="preferredPaymentMethod"
+              defaultValue={member.preferred_payment_method ?? ""}
+              className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal transition-colors focus:border-forest-600"
+            >
+              <option value="">No preference set</option>
+              {PAYMENT_METHOD_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {PAYMENT_METHOD_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField
+            id={`paymentHandle-${member.id}`}
+            label="Username / handle"
+            hint="Optional — e.g. @taylor-morgan"
+            errors={state.fieldErrors?.paymentHandle}
+          >
+            <Input
+              name="paymentHandle"
+              defaultValue={member.payment_handle ?? ""}
+              placeholder="@taylor-morgan"
+              maxLength={120}
+            />
+          </FormField>
+
+          <PaymentInfoSaveButton />
+        </form>
+      </Dialog>
+    </>
+  );
+}
+
+function PaymentInfoSaveButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+      {pending ? "Saving…" : "Save"}
+    </Button>
+  );
+}
+
