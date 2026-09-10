@@ -3,6 +3,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 interface SessionCookieStorePlugin {
   save(options: { json: string }): Promise<void>;
   clear(): Promise<void>;
+  restore(): Promise<{ restored: boolean }>;
 }
 
 /**
@@ -87,5 +88,28 @@ export async function clearNativeSessionCookies(): Promise<void> {
     await SessionCookieStore.clear();
   } catch {
     // Best-effort, see above.
+  }
+}
+
+/**
+ * Fallback for when the app lands on /login despite a native snapshot
+ * existing -- see src/components/auth/native-session-recovery.tsx,
+ * the only caller. This means the best-effort cookie injection in
+ * MainViewController's webViewConfiguration(for:) lost its race
+ * against the very first request going out on cold launch (that race
+ * can't be won 100% of the time without reintroducing a main-thread
+ * deadlock -- see git history). Re-issues the same injection here,
+ * where there's no synchronous-return constraint, so the native side
+ * can safely wait for it to actually finish before this resolves.
+ * Returns whether anything was injected; the caller decides what to
+ * do with that (reload, in practice).
+ */
+export async function restoreSessionCookiesFromNative(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    const { restored } = await SessionCookieStore.restore();
+    return restored;
+  } catch {
+    return false;
   }
 }

@@ -174,10 +174,12 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "save", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
     ]
 
-    // Must match MainViewController.sessionCookiesKey above exactly.
+    // Must match MainViewController's equivalents above exactly.
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
+    private static let cookieDomain = "www.splitfairwaygolf.com"
 
     @objc func save(_ call: CAPPluginCall) {
         guard let json = call.getString("json"), !json.isEmpty else {
@@ -191,5 +193,62 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func clear(_ call: CAPPluginCall) {
         UserDefaults.standard.removeObject(forKey: SessionCookieStorePlugin.sessionCookiesKey)
         call.resolve()
+    }
+
+    /// JS-callable fallback restore, called from the /login page itself
+    /// (see src/components/auth/native-session-recovery.tsx) when the
+    /// app lands there despite having a saved session -- meaning the
+    /// best-effort injection in MainViewController.webViewConfiguration
+    /// lost its race against the very first request going out (that
+    /// injection can't be blocked on without deadlocking the main
+    /// thread, so it isn't always guaranteed to win). By the time a
+    /// page has actually loaded and run this plugin call, there's no
+    /// synchronous-return constraint anymore, so this can safely wait
+    /// for every setCookie completion (via group.notify, still non-
+    /// blocking) before resolving -- the caller then does a real
+    /// reload, which is what actually gets the newly-set cookie sent
+    /// to the server.
+    @objc func restore(_ call: CAPPluginCall) {
+        guard let webView = self.bridge?.webView else {
+            call.resolve(["restored": false])
+            return
+        }
+        guard let json = UserDefaults.standard.string(forKey: SessionCookieStorePlugin.sessionCookiesKey),
+              let data = json.data(using: .utf8),
+              let entries = (try? JSONSerialization.jsonObject(with: data)) as? [[String: String]],
+              !entries.isEmpty else {
+            call.resolve(["restored": false])
+            return
+        }
+
+        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+        let farFuture = Date().addingTimeInterval(400 * 24 * 60 * 60)
+        let group = DispatchGroup()
+        var injectedAny = false
+
+        for entry in entries {
+            guard let name = entry["name"], let value = entry["value"],
+                  let cookie = HTTPCookie(properties: [
+                    .name: name,
+                    .value: value,
+                    .domain: SessionCookieStorePlugin.cookieDomain,
+                    .path: "/",
+                    .expires: farFuture,
+                    .sameSitePolicy: "Lax",
+                  ]) else {
+                continue
+            }
+            injectedAny = true
+            group.enter()
+            cookieStore.setCookie(cookie) { group.leave() }
+        }
+
+        guard injectedAny else {
+            call.resolve(["restored": false])
+            return
+        }
+        group.notify(queue: .main) {
+            call.resolve(["restored": true])
+        }
     }
 }
