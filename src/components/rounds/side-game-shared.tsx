@@ -32,8 +32,8 @@ export function formatDollars(value: number | null): string {
 /**
  * The dollar-value + accept-notice fields, shown inline in a create
  * form once "Play for money" is checked. `label` lets a specific game
- * use its own plain-language field name (Skins passes "Value per
- * skin") instead of the generic "Dollar value" every other game keeps.
+ * use its own plain-language field name (Skins passes "Total buy-in")
+ * instead of the generic "Dollar value" every other game keeps.
  */
 export function MonetarySection({ show, label = "Dollar value" }: { show: boolean; label?: string }) {
   if (!show) return null;
