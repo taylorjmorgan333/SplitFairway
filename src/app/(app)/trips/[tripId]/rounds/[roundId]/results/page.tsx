@@ -4,6 +4,8 @@ import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } fr
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
+import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { FinishRoundButton } from "@/components/rounds/finish-round-button";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
 
 export const dynamic = "force-dynamic";
@@ -29,29 +31,36 @@ export default async function ResultsPage({
   if (data.redirectToLogin) {
     redirect("/login");
   }
-  const { round, standings, totalsById, displayNameById, hasAnyMonetaryGame } = data;
+  const { round, isCaptain, courseName, courseLocation, standings, totalsById, displayNameById, hasAnyMonetaryGame } = data;
+  const golferCount = displayNameById.size;
+  const scoresComplete =
+    golferCount > 0 && standings.length === golferCount && standings.every((s) => s.thru >= round.hole_count);
 
   return (
     <div className="mx-auto max-w-2xl">
+      <RoundContextHeader
+        roundName={round.name}
+        courseName={courseName}
+        courseLocation={courseLocation}
+        roundDate={round.round_date}
+      />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        scoresComplete={scoresComplete}
       />
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl">{round.name || "Results"}</h1>
-        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">
-          Details
-        </ButtonLink>
-      </div>
 
       {round.status !== "locked" && round.status !== "completed" && (
-        <p className="mb-4 rounded-lg bg-cream-100 px-3.5 py-2.5 text-base text-charcoal-500">
-          This round isn&apos;t locked yet — scores (and everything below) can still change. Lock it
-          from the scorecard once everyone&apos;s done.
-        </p>
+        <div className="mb-4 rounded-lg bg-cream-100 px-3.5 py-2.5 text-base text-charcoal-500">
+          <p>
+            This round isn&apos;t locked yet — scores (and everything below) can still change.
+            {isCaptain ? " Review the standings below, then lock it in when everyone's done." : " Ask your captain to lock it in once everyone's done."}
+          </p>
+          {isCaptain && <FinishRoundButton tripId={tripId} roundId={roundId} />}
+        </div>
       )}
 
       <Card>
@@ -75,7 +84,7 @@ export default async function ResultsPage({
                           {displayNameById.get(s.roundPlayerId) ?? "Golfer"}
                         </p>
                         <p className="text-sm text-charcoal-400">
-                          thru {s.thru}
+                          {s.thru >= round.hole_count ? "Final" : `thru ${s.thru}`}
                           {totals?.front.gross != null && totals?.back.gross != null
                             ? ` · gross ${totals.front.gross + totals.back.gross}`
                             : ""}

@@ -6,6 +6,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { GameTypePicker } from "@/components/rounds/game-type-picker";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
+import { RoundContextHeader } from "@/components/rounds/round-context-header";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
 import { formatSignedCents } from "@/lib/golf/settlement";
 
@@ -41,8 +42,9 @@ export default async function GamesPage({
     redirect("/login");
   }
 
-  const [{ data: round }, { data: myMembership }, { data: gameRows }] = await Promise.all([
+  const [{ data: round }, { data: snapshot }, { data: myMembership }, { data: gameRows }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).maybeSingle(),
+    supabase.from("round_course_snapshots").select("*").eq("round_id", roundId).maybeSingle(),
     supabase.from("trip_members").select("role, status").eq("trip_id", tripId).eq("user_id", user.id).maybeSingle(),
     supabase.from("side_games").select("id").eq("round_id", roundId),
   ]);
@@ -87,21 +89,26 @@ export default async function GamesPage({
   const leader = standings[0] ?? null;
   const leaderBalance = leader ? (roundNetEntries.find(([id]) => id === leader.roundPlayerId)?.[1] ?? null) : null;
 
+  const scoresComplete = golferCount > 0 && holesRemaining === 0;
+
   return (
     <div className="mx-auto max-w-2xl">
+      <RoundContextHeader
+        roundName={round.name}
+        courseName={snapshot?.course_name ?? "Course"}
+        courseLocation={
+          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
+        }
+        roundDate={round.round_date}
+      />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        scoresComplete={scoresComplete}
       />
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl">Games</h1>
-        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">
-          Details
-        </ButtonLink>
-      </div>
 
       {leader ? (
         <Card className="mb-6">

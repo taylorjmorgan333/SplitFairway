@@ -12,7 +12,7 @@ import { RoundPlayerRow } from "@/components/rounds/round-player-row";
 import { CourseTeesDisclosure } from "@/components/rounds/course-tees-disclosure";
 import { EditRoundDetailsForm } from "@/components/rounds/edit-round-details-form";
 import { SetupStepNav, RoundPhaseTabs } from "@/components/rounds/round-nav";
-import { phaseForStatus } from "@/components/rounds/round-phase";
+import { phaseForStatus, isScoringComplete } from "@/components/rounds/round-phase";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 export const dynamic = "force-dynamic";
@@ -82,15 +82,25 @@ export default async function RoundDetailPage({
   const memberRows = activeMembers ?? [];
   const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
+  const roundPlayerIds = playerRows.map((p) => p.id);
+  const { data: scoreRows } =
+    roundPlayerIds.length > 0
+      ? await supabase.from("hole_scores").select("hole_number, gross_strokes").in("round_player_id", roundPlayerIds)
+      : { data: [] };
+  const scoresComplete = isScoringComplete(safeRound.hole_count, playerRows.length, scoreRows ?? []);
+
   const takenMemberIds = new Set(playerRows.map((p) => p.trip_member_id));
   const availableMembers = memberRows.filter((m) => !takenMemberIds.has(m.id));
 
   const teeSets = (snapshot?.tee_sets as SnapshotTeeSet[] | null) ?? [];
   const teeSetNames = teeSets.map((t) => t.name);
 
-  const badge = STATUS_BADGE[safeRound.status];
-  const myPlayerMembership = memberRows.find((m) => m.user_id === safeUser.id);
   const phase = phaseForStatus(safeRound.status);
+  const badge =
+    phase === "play" && scoresComplete
+      ? { label: "Scores Complete", variant: "success" as const }
+      : STATUS_BADGE[safeRound.status];
+  const myPlayerMembership = memberRows.find((m) => m.user_id === safeUser.id);
 
   const playerNameList = playerRows.map((p) => ({
     id: p.id,
@@ -211,6 +221,7 @@ export default async function RoundDetailPage({
         status={safeRound.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        scoresComplete={scoresComplete}
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +239,7 @@ export default async function RoundDetailPage({
       <p className="mt-1 text-sm text-charcoal-500">
         {formatDate(safeRound.round_date)}
         {safeRound.start_time ? ` · ${safeRound.start_time.slice(0, 5)}` : ""} · {safeRound.hole_count} holes ·{" "}
-        {phase === "play" ? "In progress" : "Finished"}
+        {phase === "play" ? (scoresComplete ? "Scores Complete" : "In progress") : "Finished"}
       </p>
       <div className="mt-2">
         <EditRoundDetailsForm

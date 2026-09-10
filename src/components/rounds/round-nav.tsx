@@ -105,12 +105,15 @@ export function RoundPhaseTabs({
   status,
   sideGamesEnabled,
   leaderboardEnabled,
+  scoresComplete = false,
 }: {
   tripId: string;
   roundId: string;
   status: RoundStatus;
   sideGamesEnabled: boolean;
   leaderboardEnabled: boolean;
+  /** True once every golfer has a score posted for every hole -- swaps the "Round in progress" caption for "Scores Complete" instead of leaving it stuck mid-round after the last putt drops. */
+  scoresComplete?: boolean;
 }) {
   const pathname = usePathname();
   const base = `/trips/${tripId}/rounds/${roundId}`;
@@ -159,8 +162,8 @@ export function RoundPhaseTabs({
         </Link>
       </div>
       <p className="mt-2 text-sm text-charcoal-400">
-        {phase === "play" ? "Round in progress" : "Round finished"} · Tap ⋯ for round details, players
-        and groups.
+        {phase === "play" ? (scoresComplete ? "Scores Complete" : "Round in progress") : "Round finished"}{" "}
+        · Tap ⋯ for round details, players and groups.
       </p>
     </nav>
   );

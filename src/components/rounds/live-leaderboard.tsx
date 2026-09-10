@@ -227,7 +227,7 @@ export function LiveLeaderboard({
                       <div>
                         <p className="text-base font-medium text-charcoal-800">{player?.displayName ?? "Golfer"}</p>
                         <p className="text-sm text-charcoal-400">
-                          thru {s.thru}
+                          {s.thru >= holeCount ? "Final" : `thru ${s.thru}`}
                           {totals?.front.gross != null && totals?.back.gross != null
                             ? ` · ${totals.front.gross} / ${totals.back.gross}`
                             : ""}

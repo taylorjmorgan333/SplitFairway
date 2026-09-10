@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED } from "@/lib/config";
-import { ButtonLink } from "@/components/ui/button";
 import { LiveLeaderboard } from "@/components/rounds/live-leaderboard";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
+import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { isScoringComplete } from "@/components/rounds/round-phase";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 export const dynamic = "force-dynamic";
@@ -81,21 +82,26 @@ export default async function LeaderboardPage({
     };
   });
 
+  const scoresComplete = isScoringComplete(round.hole_count, rows.length, scoreRows ?? []);
+
   return (
     <div className="mx-auto max-w-md">
+      <RoundContextHeader
+        roundName={round.name}
+        courseName={snapshot?.course_name ?? "Course"}
+        courseLocation={
+          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
+        }
+        roundDate={round.round_date}
+      />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        scoresComplete={scoresComplete}
       />
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl">{round.name || "Leaderboard"}</h1>
-        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">
-          Details
-        </ButtonLink>
-      </div>
 
       <LiveLeaderboard
         roundId={roundId}

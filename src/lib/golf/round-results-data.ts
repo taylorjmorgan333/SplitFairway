@@ -52,14 +52,22 @@ export async function loadRoundResultsData(tripId: string, roundId: string) {
     return { redirectToLogin: true as const };
   }
 
-  const [{ data: round }, { data: snapshot }] = await Promise.all([
+  const [{ data: round }, { data: snapshot }, { data: myMembership }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).maybeSingle(),
     supabase.from("round_course_snapshots").select("*").eq("round_id", roundId).maybeSingle(),
+    supabase
+      .from("trip_members")
+      .select("role, status")
+      .eq("trip_id", tripId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
 
   if (!round || round.trip_id !== tripId) {
     notFound();
   }
+
+  const isCaptain = myMembership?.role === "captain" && myMembership.status === "active";
 
   const { data: playerRows } = await supabase
     .from("round_players")
@@ -315,9 +323,17 @@ export async function loadRoundResultsData(tripId: string, roundId: string) {
     ninesSections.length > 0 ||
     twosSections.length > 0;
 
+  const courseName = snapshot?.course_name ?? "Course";
+  const courseLocation = snapshot?.course_city
+    ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}`
+    : null;
+
   return {
     redirectToLogin: false as const,
     round,
+    isCaptain,
+    courseName,
+    courseLocation,
     displayNameById,
     standings,
     totalsById,

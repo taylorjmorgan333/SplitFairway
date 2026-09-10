@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
-import { ButtonLink } from "@/components/ui/button";
 import { MobileScorecard, type SnapshotTeeSet, type ScorecardSideGame } from "@/components/rounds/mobile-scorecard";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
+import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { isScoringComplete } from "@/components/rounds/round-phase";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Scorecard" };
@@ -107,21 +108,26 @@ export default async function ScorePage({
       })()
     : [];
 
+  const scoresComplete = isScoringComplete(round.hole_count, rows.length, scoreRows ?? []);
+
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md md:max-w-4xl">
+      <RoundContextHeader
+        roundName={round.name}
+        courseName={snapshot?.course_name ?? "Course"}
+        courseLocation={
+          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
+        }
+        roundDate={round.round_date}
+      />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        scoresComplete={scoresComplete}
       />
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl">{round.name || "Scorecard"}</h1>
-        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}`} variant="ghost" size="sm">
-          Details
-        </ButtonLink>
-      </div>
 
       <MobileScorecard
         tripId={tripId}

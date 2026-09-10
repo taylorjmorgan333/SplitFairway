@@ -20,6 +20,36 @@ export type RoundPhase = "setup" | "play" | "finish";
  * directly while round-nav.tsx's Client Components still import and use
  * it too.
  */
+/**
+ * True once every hole has a score entered for every golfer in the
+ * round -- the single source of truth for "Scores Complete" across the
+ * nav caption, the round hub status line, and the Results page, so
+ * those three places can never disagree about whether a round is done.
+ * Mirrors the per-hole "how many golfers have posted a score" count
+ * already computed inline on the Games page, just generalized and
+ * shared. Deliberately takes plain data (not a Supabase client) so it
+ * works the same whether the caller already has `hole_scores` rows in
+ * hand (score/games/leaderboard pages) or derives counts from
+ * `computeStandings` output (Results page).
+ */
+export function isScoringComplete(
+  holeCount: number,
+  golferCount: number,
+  scoreRows: { hole_number: number; gross_strokes: number | null }[],
+): boolean {
+  if (golferCount === 0 || holeCount === 0) return false;
+  const enteredCountByHole = new Map<number, number>();
+  for (const row of scoreRows) {
+    if (row.gross_strokes == null) continue;
+    enteredCountByHole.set(row.hole_number, (enteredCountByHole.get(row.hole_number) ?? 0) + 1);
+  }
+  let holesCompleted = 0;
+  for (const count of enteredCountByHole.values()) {
+    if (count >= golferCount) holesCompleted++;
+  }
+  return holesCompleted >= holeCount;
+}
+
 export function phaseForStatus(status: RoundStatus): RoundPhase {
   if (status === "scheduled") return "setup";
   if (status === "in_progress") return "play";

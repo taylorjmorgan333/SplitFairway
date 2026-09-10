@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { saveHoleScoreAction, startRoundAction, lockRoundAction } from "@/actions/scores";
+import { saveHoleScoreAction, startRoundAction } from "@/actions/scores";
 import { netScore } from "@/lib/golf/handicap";
 import {
   strokesReceivedByHole,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/golf/scoring";
 import { computeSkins } from "@/lib/golf/skins";
 import { computeSkinsSettlement, dollarsToCents, formatCents, formatSignedCents } from "@/lib/golf/settlement";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FullScorecardTable } from "@/components/rounds/full-scorecard-table";
@@ -246,7 +246,6 @@ export function MobileScorecard({
     delete pendingQueueRef.current[key];
     flushPendingQueue();
   }
-  const [isLocking, setIsLocking] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // A quick particle-burst-and-label moment (see components/ui/celebration.tsx)
@@ -533,6 +532,12 @@ export function MobileScorecard({
         <Badge variant="neutral">This round is {roundStatus === "locked" ? "locked" : "completed"} — scores can no longer be edited.</Badge>
       )}
 
+      {/* Score entry on the left, leaderboard on the right at desktop
+          widths (md:) -- a single column on mobile, in the same order
+          entry-then-leaderboard the phone view always used, so nothing
+          about the mobile layout changes here. */}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem] md:items-start">
+      <div className="space-y-4">
       {/* Entry vs. full-scorecard toggle. Entering scores one hole at a
           time (below) is what's actually fast on a phone mid-round; the
           full scorecard is the "see everything at once, like a printed
@@ -540,7 +545,7 @@ export function MobileScorecard({
       <div className="flex gap-1 rounded-full bg-cream-100 p-1">
         {(
           [
-            { key: "hole", label: "Enter score" },
+            { key: "hole", label: "Enter Scores" },
             { key: "full", label: "Full scorecard" },
           ] as const
         ).map((opt) => (
@@ -592,29 +597,6 @@ export function MobileScorecard({
               {headerHoleInfo?.stroke_index ? ` · Handicap ${headerHoleInfo.stroke_index}` : ""}
               {headerHoleInfo?.yardage ? ` · ${headerHoleInfo.yardage} yds` : ""}
             </p>
-          </div>
-
-          {/* Large, text-labeled Previous/Next Hole buttons -- the old
-              nav was a pair of small icon-only circles flanking the hole
-              number. These are full-width, plain-language, and a real
-              tap target rather than a 48px chevron. */}
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              disabled={currentHole <= 1}
-              onClick={() => setCurrentHole((h) => Math.max(1, h - 1))}
-              className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
-            >
-              <span aria-hidden="true">‹</span> Previous Hole
-            </button>
-            <button
-              type="button"
-              disabled={currentHole >= holeCount}
-              onClick={() => setCurrentHole((h) => Math.min(holeCount, h + 1))}
-              className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
-            >
-              Next Hole <span aria-hidden="true">›</span>
-            </button>
           </div>
 
           {/* Every golfer this scorekeeper can enter for, on this same
@@ -677,7 +659,7 @@ export function MobileScorecard({
                           const v = e.target.value === "" ? null : Number(e.target.value);
                           setScore(player.roundPlayerId, currentHole, v === null ? null : Math.min(20, Math.max(1, v)), par);
                         }}
-                        className="h-12 w-14 rounded-xl border border-charcoal-400/25 bg-white text-center font-serif text-2xl text-forest-900 focus:border-forest-600"
+                        className="h-12 w-14 rounded-xl border border-charcoal-400/25 bg-white text-center font-serif text-2xl text-forest-900 focus:border-forest-600 [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
                       <button
                         type="button"
@@ -699,13 +681,49 @@ export function MobileScorecard({
               );
             })}
           </div>
+
+          {/* Large, text-labeled Previous/Next Hole buttons -- moved below
+              the golfer rows so the score grid itself sits right under the
+              hole header. On the last hole, "Next Hole" becomes a live
+              link into Review Round instead of a permanently-disabled
+              button, since there's nowhere further to advance the hole
+              picker to. */}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={currentHole <= 1}
+              onClick={() => setCurrentHole((h) => Math.max(1, h - 1))}
+              className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
+            >
+              <span aria-hidden="true">‹</span> Previous Hole
+            </button>
+            {currentHole >= holeCount ? (
+              <Link
+                href={`/trips/${tripId}/rounds/${roundId}/results`}
+                className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-forest-800 text-base font-medium text-cream-50 active:bg-forest-900"
+              >
+                Review Round <span aria-hidden="true">›</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentHole((h) => Math.min(holeCount, h + 1))}
+                className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200"
+              >
+                Next Hole <span aria-hidden="true">›</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
+      </div>
+
+      <div>
       {standings.length > 0 && (
         <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">
-              {selectedSideGame ? selectedSideGame.name : "Standings"}
+              {selectedSideGame ? selectedSideGame.name : "Leaderboard"}
             </p>
             {selectedGameId === "overall" && (
               <div className="flex gap-1">
@@ -734,7 +752,7 @@ export function MobileScorecard({
               onChange={(e) => setSelectedGameId(e.target.value)}
               className="mt-2 h-9 w-full rounded-lg border border-charcoal-400/25 bg-white px-2.5 text-sm text-charcoal-700 focus:border-forest-600"
             >
-              <option value="overall">Overall (Gross/Net/Points)</option>
+              <option value="overall">Overall</option>
               {sideGames.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
@@ -754,7 +772,9 @@ export function MobileScorecard({
                     <span className="font-medium text-forest-900">
                       {s.value}
                       {standingsMetric === "stableford" && <span className="text-xs text-charcoal-400"> pts</span>}{" "}
-                      <span className="text-xs text-charcoal-400">thru {s.thru}</span>
+                      <span className="text-xs text-charcoal-400">
+                        {s.thru >= holeCount ? "Final" : `thru ${s.thru}`}
+                      </span>
                     </span>
                   </li>
                 ))}
@@ -866,24 +886,13 @@ export function MobileScorecard({
           )}
         </div>
       )}
+      </div>
+      </div>
 
       {isCaptain && roundStatus !== "locked" && roundStatus !== "completed" && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isLocking}
-          className="border-red-200 text-red-700 hover:bg-red-50"
-          onClick={() => {
-            if (!window.confirm("Lock this round? No one will be able to change scores after this.")) return;
-            setIsLocking(true);
-            setActionError(null);
-            lockRoundAction(tripId, roundId).catch((err) => {
-              setActionError(err instanceof Error ? err.message : "Couldn't lock the round.");
-            }).finally(() => setIsLocking(false));
-          }}
-        >
-          {isLocking ? "Locking…" : "Lock round"}
-        </Button>
+        <ButtonLink href={`/trips/${tripId}/rounds/${roundId}/results`} variant="outline" size="sm">
+          Review &amp; Finish
+        </ButtonLink>
       )}
     </div>
   );

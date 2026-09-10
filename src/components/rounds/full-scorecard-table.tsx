@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { ScorecardPlayer, SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 type Metric = "gross" | "net";
+type Nine = "front" | "back";
 
 /**
  * The traditional, all-holes-at-once scorecard: one row per golfer, one
@@ -41,11 +42,23 @@ export function FullScorecardTable({
   onCellSelect?: (roundPlayerId: string, holeNumber: number) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("gross");
+  // Which nine's hole-by-hole columns show on a phone-width screen --
+  // there isn't room for all 18 plus Out/In/Tot without horizontal
+  // scrolling that read as "cut off." At md: and wider every column
+  // always renders regardless of this, since the widened desktop
+  // container (see score/page.tsx) has room for the whole card.
+  const [mobileNine, setMobileNine] = useState<Nine>("front");
 
   const holeNumbers = useMemo(() => Array.from({ length: holeCount }, (_, i) => i + 1), [holeCount]);
   const hasBack = holeCount > 9;
   const frontHoles = holeNumbers.filter((h) => h <= 9);
   const backHoles = holeNumbers.filter((h) => h > 9);
+
+  // Out/In/Tot and the sticky golfer-name column are never hidden --
+  // only the individual per-hole columns for whichever nine isn't
+  // selected collapse below md:.
+  const frontHiddenOnMobile = hasBack && mobileNine === "back";
+  const backHiddenOnMobile = hasBack && mobileNine === "front";
 
   // Par and stroke index don't vary by tee in the overwhelming majority
   // of real courses (only yardage does), so one reference tee's holes
@@ -79,7 +92,7 @@ export function FullScorecardTable({
 
   return (
     <div className="rounded-2xl border border-forest-900/[0.06] bg-white p-4 shadow-card">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Full scorecard</p>
         <div className="flex gap-1">
           {(["gross", "net"] as const).map((m) => (
@@ -98,6 +111,27 @@ export function FullScorecardTable({
         </div>
       </div>
 
+      {/* Front 9 / Back 9 tabs -- mobile-only (md:hidden), and only when
+          there is a back nine at all. Desktop always shows both nines
+          side by side, so this toggle would have nothing to do there. */}
+      {hasBack && (
+        <div className="mt-3 flex gap-1 rounded-full bg-cream-100 p-1 md:hidden">
+          {(["front", "back"] as const).map((nine) => (
+            <button
+              key={nine}
+              type="button"
+              onClick={() => setMobileNine(nine)}
+              className={cn(
+                "flex-1 rounded-full py-1.5 text-sm font-medium transition-colors",
+                mobileNine === nine ? "bg-forest-800 text-cream-50" : "text-charcoal-600",
+              )}
+            >
+              {nine === "front" ? "Front 9" : "Back 9"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 -mx-4 overflow-x-auto px-4">
         <table className="w-full min-w-max border-separate border-spacing-0 text-center text-sm">
           <thead>
@@ -106,14 +140,26 @@ export function FullScorecardTable({
                 Hole
               </th>
               {frontHoles.map((h) => (
-                <th key={h} className="min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500">
+                <th
+                  key={h}
+                  className={cn(
+                    "min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500",
+                    frontHiddenOnMobile && "hidden md:table-cell",
+                  )}
+                >
                   {h}
                 </th>
               ))}
               <th className="min-w-[2.75rem] pb-1 align-bottom font-medium text-charcoal-700">Out</th>
               {hasBack &&
                 backHoles.map((h) => (
-                  <th key={h} className="min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500">
+                  <th
+                    key={h}
+                    className={cn(
+                      "min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500",
+                      backHiddenOnMobile && "hidden md:table-cell",
+                    )}
+                  >
                     {h}
                   </th>
                 ))}
@@ -123,14 +169,14 @@ export function FullScorecardTable({
             <tr className="text-xs text-charcoal-400">
               <th className="sticky left-0 z-10 bg-white py-1 pr-3 text-left font-normal">Par</th>
               {frontHoles.map((h) => (
-                <td key={h} className="py-1">
+                <td key={h} className={cn("py-1", frontHiddenOnMobile && "hidden md:table-cell")}>
                   {parByHole.get(h) ?? "—"}
                 </td>
               ))}
               <td className="py-1 font-medium text-charcoal-600">{outPar || "—"}</td>
               {hasBack &&
                 backHoles.map((h) => (
-                  <td key={h} className="py-1">
+                  <td key={h} className={cn("py-1", backHiddenOnMobile && "hidden md:table-cell")}>
                     {parByHole.get(h) ?? "—"}
                   </td>
                 ))}
@@ -140,14 +186,14 @@ export function FullScorecardTable({
             <tr className="text-xs text-charcoal-400">
               <th className="sticky left-0 z-10 bg-white py-1 pr-3 text-left font-normal">SI</th>
               {frontHoles.map((h) => (
-                <td key={h} className="py-1">
+                <td key={h} className={cn("py-1", frontHiddenOnMobile && "hidden md:table-cell")}>
                   {siByHole.get(h) ?? "—"}
                 </td>
               ))}
               <td className="py-1" />
               {hasBack &&
                 backHoles.map((h) => (
-                  <td key={h} className="py-1">
+                  <td key={h} className={cn("py-1", backHiddenOnMobile && "hidden md:table-cell")}>
                     {siByHole.get(h) ?? "—"}
                   </td>
                 ))}
@@ -163,14 +209,14 @@ export function FullScorecardTable({
                 <tr key={name} className="text-xs text-charcoal-400">
                   <th className="sticky left-0 z-10 bg-white py-1 pr-3 text-left font-normal">{name}</th>
                   {frontHoles.map((h) => (
-                    <td key={h} className="py-1">
+                    <td key={h} className={cn("py-1", frontHiddenOnMobile && "hidden md:table-cell")}>
                       {yardageByHole.get(h) ?? "—"}
                     </td>
                   ))}
                   <td className="py-1">{outYards || "—"}</td>
                   {hasBack &&
                     backHoles.map((h) => (
-                      <td key={h} className="py-1">
+                      <td key={h} className={cn("py-1", backHiddenOnMobile && "hidden md:table-cell")}>
                         {yardageByHole.get(h) ?? "—"}
                       </td>
                     ))}
@@ -187,15 +233,16 @@ export function FullScorecardTable({
               const strokes = input ? strokesReceivedByHole(input.playingHandicap, input.holes) : new Map();
               const canEdit = editableIds.has(p.roundPlayerId);
 
-              function cellFor(h: number) {
+              function cellFor(h: number, section: Nine) {
                 const gross = input?.grossByHole.get(h) ?? null;
                 const par = parByHole.get(h) ?? null;
                 const display = metric === "net" ? (netScore(gross, strokes.get(h) ?? null) ?? gross) : gross;
                 const diff = gross != null && par != null ? gross - par : null;
                 const wonSkin = skinWinnerByHole?.get(h) === p.roundPlayerId;
+                const hiddenOnMobile = section === "front" ? frontHiddenOnMobile : backHiddenOnMobile;
 
                 return (
-                  <td key={h} className="py-1">
+                  <td key={h} className={cn("py-1", hiddenOnMobile && "hidden md:table-cell")}>
                     <button
                       type="button"
                       disabled={!onCellSelect}
@@ -223,9 +270,9 @@ export function FullScorecardTable({
                   <th className="sticky left-0 z-10 bg-white py-1.5 pr-3 text-left font-medium text-charcoal-800">
                     {p.displayName}
                   </th>
-                  {frontHoles.map(cellFor)}
+                  {frontHoles.map((h) => cellFor(h, "front"))}
                   <td className="py-1.5 font-medium text-charcoal-700">{rangeCell(frontHoles, totals, "front")}</td>
-                  {hasBack && backHoles.map(cellFor)}
+                  {hasBack && backHoles.map((h) => cellFor(h, "back"))}
                   {hasBack && (
                     <td className="py-1.5 font-medium text-charcoal-700">{rangeCell(backHoles, totals, "back")}</td>
                   )}
