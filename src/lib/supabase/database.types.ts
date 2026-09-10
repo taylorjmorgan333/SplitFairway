@@ -975,6 +975,7 @@ export type Database = {
           score_edit_scope: Database["public"]["Enums"]["round_score_edit_scope"]
           start_time: string | null
           status: Database["public"]["Enums"]["round_status"]
+          tournament_id: string | null
           trip_id: string
           updated_at: string
         }
@@ -990,6 +991,7 @@ export type Database = {
           score_edit_scope?: Database["public"]["Enums"]["round_score_edit_scope"]
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_status"]
+          tournament_id?: string | null
           trip_id: string
           updated_at?: string
         }
@@ -1005,6 +1007,7 @@ export type Database = {
           score_edit_scope?: Database["public"]["Enums"]["round_score_edit_scope"]
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_status"]
+          tournament_id?: string | null
           trip_id?: string
           updated_at?: string
         }
@@ -1021,6 +1024,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
           {
@@ -1293,6 +1303,48 @@ export type Database = {
             columns: ["round_id"]
             isOneToOne: false
             referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]

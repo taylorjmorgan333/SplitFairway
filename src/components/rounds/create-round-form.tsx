@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createRoundAction } from "@/actions/rounds";
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { FormField } from "@/components/ui/form-field";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+
+const NEW_TOURNAMENT_VALUE = "__new__";
 
 const initialState: ActionState = { status: "idle" };
 
@@ -24,12 +27,18 @@ function CreateButton() {
 export function CreateRoundForm({
   tripId,
   courses,
+  tournaments,
 }: {
   tripId: string;
   courses: { id: string; name: string; hole_count: number }[];
+  tournaments: { id: string; name: string }[];
 }) {
   const action = createRoundAction.bind(null, tripId);
   const [state, formAction] = useActionState(action, initialState);
+  // "" = no tournament, an id = an existing tournament, __new__ = show
+  // the "name your tournament" input below instead.
+  const [tournamentChoice, setTournamentChoice] = useState<string>("");
+  const [newTournamentName, setNewTournamentName] = useState("");
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -70,12 +79,65 @@ export function CreateRoundForm({
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="roundDate" label="Date" errors={state.fieldErrors?.roundDate}>
+        <FormField id="roundDate" label="Day" errors={state.fieldErrors?.roundDate}>
           <Input name="roundDate" type="date" required />
         </FormField>
-        <FormField id="startTime" label="Start time" hint="Optional" errors={state.fieldErrors?.startTime}>
+        <FormField id="startTime" label="Tee time" hint="Optional" errors={state.fieldErrors?.startTime}>
           <Input name="startTime" type="time" />
         </FormField>
+      </div>
+
+      <div>
+        <Label htmlFor="tournamentChoice">Tournament</Label>
+        <select
+          id="tournamentChoice"
+          value={tournamentChoice}
+          onChange={(e) => {
+            const next = e.target.value;
+            setTournamentChoice(next);
+            // Clear any half-typed tournament name the moment the
+            // captain steps away from "+ New tournament..." -- it's
+            // still mounted (hidden) below, and a stale value there
+            // would otherwise get submitted alongside an existing-
+            // tournament or no-tournament choice.
+            if (next !== NEW_TOURNAMENT_VALUE) setNewTournamentName("");
+          }}
+          className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal transition-colors focus:border-forest-600"
+        >
+          <option value="">No tournament — just this tee time</option>
+          {tournaments.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+          <option value={NEW_TOURNAMENT_VALUE}>+ New tournament…</option>
+        </select>
+        {/* Only one of these two ever reaches the server: whichever the
+            picker above is currently set to. See createRoundAction. */}
+        {tournamentChoice === NEW_TOURNAMENT_VALUE ? (
+          <input type="hidden" name="tournamentId" value="" />
+        ) : (
+          <input type="hidden" name="tournamentId" value={tournamentChoice} />
+        )}
+        {/* Always mounted (never conditionally removed from the DOM) so
+            formData.get("newTournamentName") is always a string, never
+            null -- only its visibility toggles with the picker above. */}
+        <div className={tournamentChoice === NEW_TOURNAMENT_VALUE ? "mt-2" : "mt-2 hidden"}>
+          <Input
+            name="newTournamentName"
+            value={newTournamentName}
+            onChange={(e) => setNewTournamentName(e.target.value)}
+            placeholder="e.g. Saturday Scramble"
+            required={tournamentChoice === NEW_TOURNAMENT_VALUE}
+            aria-label="Tournament name"
+          />
+          <p className="mt-1.5 text-xs text-charcoal-400">
+            Every tee time you add to this trip can be linked to this same tournament.
+          </p>
+        </div>
+        {state.status === "error" && state.fieldErrors?.newTournamentName && (
+          <p className="mt-1.5 text-xs text-red-600">{state.fieldErrors.newTournamentName[0]}</p>
+        )}
       </div>
 
       <div>

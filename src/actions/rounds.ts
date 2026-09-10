@@ -34,6 +34,8 @@ export async function createRoundAction(
     roundDate: formData.get("roundDate"),
     startTime: formData.get("startTime"),
     holeCount: formData.get("holeCount"),
+    tournamentId: formData.get("tournamentId"),
+    newTournamentName: formData.get("newTournamentName"),
   });
 
   if (!parsed.success) {
@@ -48,7 +50,30 @@ export async function createRoundAction(
     return { status: "error", message: "You need to be signed in to schedule a round." };
   }
 
-  const { courseId, name, roundDate, startTime, holeCount } = parsed.data;
+  const { courseId, name, roundDate, startTime, holeCount, tournamentId, newTournamentName } = parsed.data;
+
+  // A brand-new tournament name wins over picking an existing one --
+  // the form only ever shows one of the two inputs at a time (see
+  // CreateRoundForm), so this just resolves whichever was actually
+  // filled in to a single tournament_id for the round below.
+  let resolvedTournamentId: string | null = null;
+  if (newTournamentName) {
+    const { data: tournament, error: tournamentError } = await supabase
+      .from("tournaments")
+      .insert({ trip_id: tripId, name: newTournamentName, created_by: user.id })
+      .select("id")
+      .single();
+
+    if (tournamentError || !tournament) {
+      return {
+        status: "error",
+        message: "Something went wrong creating that tournament. Make sure you're a captain on this trip.",
+      };
+    }
+    resolvedTournamentId = tournament.id;
+  } else if (tournamentId) {
+    resolvedTournamentId = tournamentId;
+  }
 
   const { data: course } = await supabase
     .from("courses")
@@ -113,6 +138,7 @@ export async function createRoundAction(
       round_date: roundDate,
       start_time: startTime || null,
       hole_count: holeCount,
+      tournament_id: resolvedTournamentId,
       created_by: user.id,
     })
     .select("id")

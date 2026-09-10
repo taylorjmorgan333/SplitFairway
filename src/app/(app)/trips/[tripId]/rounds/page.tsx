@@ -45,7 +45,7 @@ export default async function RoundsPage({
   const [{ data: rounds }, { data: myMembership }] = await Promise.all([
     supabase
       .from("rounds")
-      .select("id, name, round_date, start_time, hole_count, status")
+      .select("id, name, round_date, start_time, hole_count, status, tournaments(name)")
       .eq("trip_id", tripId)
       .order("round_date", { ascending: false }),
     supabase
@@ -70,7 +70,7 @@ export default async function RoundsPage({
         </div>
         {isCaptain && (
           <ButtonLink href={`/trips/${tripId}/rounds/new`} variant="primary" size="sm">
-            Schedule a round
+            {rows.length === 0 ? "Add a Tee Time" : "Add Another Tee Time"}
           </ButtonLink>
         )}
       </div>
@@ -80,8 +80,8 @@ export default async function RoundsPage({
           <CardContent>
             <p className="text-sm text-charcoal-500">
               {isCaptain
-                ? "No rounds scheduled yet. Schedule one against a course from your library."
-                : "No rounds scheduled yet."}
+                ? "No tee times scheduled yet. Add one against a course from your library."
+                : "No tee times scheduled yet."}
             </p>
           </CardContent>
         </Card>
@@ -89,6 +89,10 @@ export default async function RoundsPage({
         <div className="mt-6 space-y-3">
           {rows.map((round) => {
             const badge = STATUS_BADGE[round.status];
+            // Supabase types the embedded to-one relation as an array
+            // even though a round has at most one tournament -- same
+            // quirk handled elsewhere for trip_members embeds.
+            const tournament = Array.isArray(round.tournaments) ? round.tournaments[0] : round.tournaments;
             return (
               <Link key={round.id} href={`/trips/${tripId}/rounds/${round.id}`}>
                 <Card className="transition-shadow hover:shadow-md">
@@ -98,6 +102,7 @@ export default async function RoundsPage({
                         {round.name || formatDate(round.round_date)}
                       </p>
                       <p className="mt-0.5 text-xs text-charcoal-400">
+                        {tournament ? `${tournament.name} · ` : ""}
                         {formatDate(round.round_date)}
                         {round.start_time ? ` · ${round.start_time.slice(0, 5)}` : ""}
                         {" · "}

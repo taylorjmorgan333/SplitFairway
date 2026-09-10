@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CreateRoundForm } from "@/components/rounds/create-round-form";
 import { SetupStepNav } from "@/components/rounds/round-nav";
 
-export const metadata: Metadata = { title: "Set Up Round" };
+export const metadata: Metadata = { title: "Set Up a Tee Time" };
 
 export default async function NewRoundPage({
   params,
@@ -29,23 +29,23 @@ export default async function NewRoundPage({
 
   // courses_select_visible already limits this to approved courses plus
   // ones the caller created themselves.
-  const { data: courses } = await supabase
-    .from("courses")
-    .select("id, name, hole_count")
-    .order("name", { ascending: true });
+  const [{ data: courses }, { data: tournaments }] = await Promise.all([
+    supabase.from("courses").select("id, name, hole_count").order("name", { ascending: true }),
+    supabase.from("tournaments").select("id, name").eq("trip_id", tripId).order("name", { ascending: true }),
+  ]);
 
   return (
     <div className="mx-auto max-w-xl">
       <SetupStepNav tripId={tripId} roundId={null} currentStep={1} />
 
-      <h1 className="text-2xl">Set Up Round</h1>
+      <h1 className="text-2xl">Set Up a Tee Time</h1>
       <p className="mt-1.5 text-sm text-charcoal-500">
         Pick a course from your library. You&apos;ll add golfers, choose tees and set up games next.
       </p>
 
       <Card className="mt-6">
         <CardContent>
-          <CreateRoundForm tripId={tripId} courses={courses ?? []} />
+          <CreateRoundForm tripId={tripId} courses={courses ?? []} tournaments={tournaments ?? []} />
         </CardContent>
       </Card>
     </div>

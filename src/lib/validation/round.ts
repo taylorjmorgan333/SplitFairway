@@ -24,6 +24,12 @@ export const createRoundSchema = z.object({
   holeCount: z.coerce
     .number()
     .refine((n) => ROUND_HOLE_COUNT_VALUES.includes(n as 9 | 18), { message: "Choose 9 or 18 holes" }),
+  // Optional link to a tournament (a named event that can group several
+  // tee times together) -- either an existing tournament's id, or a
+  // brand-new name to create one on the fly. At most one is ever set;
+  // see createRoundAction.
+  tournamentId: z.string().uuid().optional().or(z.literal("")),
+  newTournamentName: z.string().trim().max(120).optional().or(z.literal("")),
 });
 
 export type CreateRoundInput = z.infer<typeof createRoundSchema>;
