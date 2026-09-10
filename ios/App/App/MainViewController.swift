@@ -36,6 +36,7 @@ class MainViewController: CAPBridgeViewController {
     private static let cookieDomain = "www.splitfairwaygolf.com"
 
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
+        NSLog("[SessionCookieStore] webViewConfiguration(for:) called")
         let configuration = super.webViewConfiguration(for: instanceConfiguration)
         configuration.ignoresViewportScaleLimits = true
         restoreSessionCookies(into: configuration.websiteDataStore.httpCookieStore)
@@ -65,10 +66,21 @@ class MainViewController: CAPBridgeViewController {
     /// no later, safe hook to inject cookies into a configuration
     /// that's already in use.
     private func restoreSessionCookies(into cookieStore: WKHTTPCookieStore) {
-        guard let json = UserDefaults.standard.string(forKey: MainViewController.sessionCookiesKey),
-              let data = json.data(using: .utf8),
+        NSLog("[SessionCookieStore] restoreSessionCookies called")
+
+        guard let json = UserDefaults.standard.string(forKey: MainViewController.sessionCookiesKey) else {
+            NSLog("[SessionCookieStore] no saved snapshot found in UserDefaults for key %@", MainViewController.sessionCookiesKey)
+            return
+        }
+        NSLog("[SessionCookieStore] found saved snapshot, %d chars", json.count)
+
+        guard let data = json.data(using: .utf8),
               let entries = (try? JSONSerialization.jsonObject(with: data)) as? [[String: String]],
-              !entries.isEmpty else { return }
+              !entries.isEmpty else {
+            NSLog("[SessionCookieStore] snapshot failed to parse as [[String: String]]")
+            return
+        }
+        NSLog("[SessionCookieStore] parsed %d entrie(s) to restore", entries.count)
 
         // We only ever captured name/value pairs (document.cookie never
         // exposes a cookie's real expiry to JS), so there's no original
@@ -81,20 +93,31 @@ class MainViewController: CAPBridgeViewController {
         let group = DispatchGroup()
 
         for entry in entries {
-            guard let name = entry["name"], let value = entry["value"],
-                  let cookie = HTTPCookie(properties: [
+            guard let name = entry["name"], let value = entry["value"] else {
+                NSLog("[SessionCookieStore] entry missing name/value, skipping: %@", entry)
+                continue
+            }
+            guard let cookie = HTTPCookie(properties: [
                     .name: name,
                     .value: value,
                     .domain: MainViewController.cookieDomain,
                     .path: "/",
                     .expires: farFuture,
                     .sameSitePolicy: "Lax",
-                  ]) else { continue }
+                  ]) else {
+                NSLog("[SessionCookieStore] HTTPCookie(properties:) returned nil for cookie named %@", name)
+                continue
+            }
+            NSLog("[SessionCookieStore] injecting cookie %@ (domain=%@, %d chars)", name, MainViewController.cookieDomain, value.count)
             group.enter()
-            cookieStore.setCookie(cookie) { group.leave() }
+            cookieStore.setCookie(cookie) {
+                NSLog("[SessionCookieStore] setCookie completion fired for %@", name)
+                group.leave()
+            }
         }
 
-        _ = group.wait(timeout: .now() + 1.0)
+        let waitResult = group.wait(timeout: .now() + 1.0)
+        NSLog("[SessionCookieStore] restore wait finished, result=%@", waitResult == .success ? "success" : "timedOut")
     }
 
     override func capacitorDidLoad() {
@@ -161,6 +184,7 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "save", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "log", returnType: CAPPluginReturnPromise),
     ]
 
     // Must match MainViewController.sessionCookiesKey above exactly.
@@ -168,15 +192,28 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func save(_ call: CAPPluginCall) {
         guard let json = call.getString("json"), !json.isEmpty else {
+            NSLog("[SessionCookieStore] save() called with empty/missing json -- ignoring")
             call.resolve()
             return
         }
+        NSLog("[SessionCookieStore] save() called, %d chars", json.count)
         UserDefaults.standard.set(json, forKey: SessionCookieStorePlugin.sessionCookiesKey)
         call.resolve()
     }
 
     @objc func clear(_ call: CAPPluginCall) {
+        NSLog("[SessionCookieStore] clear() called")
         UserDefaults.standard.removeObject(forKey: SessionCookieStorePlugin.sessionCookiesKey)
+        call.resolve()
+    }
+
+    // TEMPORARY: lets the JS side (src/lib/native-session-sync.ts) route
+    // its own diagnostic messages into NSLog/Xcode's console, so a real
+    // device test shows the whole JS + native chain in one place. Remove
+    // this method (and the JS-side `diag()` helper that calls it) once
+    // the force-quit restore is confirmed working.
+    @objc func log(_ call: CAPPluginCall) {
+        NSLog("[SessionCookieStore][JS] %@", call.getString("message") ?? "(no message)")
         call.resolve()
     }
 }
