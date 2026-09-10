@@ -61,6 +61,11 @@ export function LoginForm({ next }: { next?: string }) {
         )}
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-charcoal-700">
+        <input type="checkbox" name="remember" defaultChecked className="h-4 w-4" />
+        Stay signed in
+      </label>
+
       <SubmitButton />
 
       <p className="text-center text-sm text-charcoal-500">

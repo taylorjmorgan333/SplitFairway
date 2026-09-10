@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { REMEMBER_COOKIE_NAME } from "@/lib/supabase/remember";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -86,6 +88,26 @@ export async function loginAction(
     };
   }
 
+  // "Stay signed in" is checked by default; unticking it is the only
+  // case that needs recording; a marker cookie's *absence* means
+  // "remembered" so accounts that logged in before this feature
+  // existed keep their current session instead of being logged out.
+  // It's written here (before createClient() below) as a plain
+  // session cookie -- no maxAge -- so it disappears alongside the
+  // auth cookies it governs. See applyRememberPolicy in
+  // src/lib/supabase/remember.ts for how it's actually enforced.
+  const remember = formData.get("remember") === "on";
+  const cookieStore = await cookies();
+  if (remember) {
+    cookieStore.delete(REMEMBER_COOKIE_NAME);
+  } else {
+    cookieStore.set(REMEMBER_COOKIE_NAME, "0", {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+    });
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
@@ -100,6 +122,8 @@ export async function loginAction(
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete(REMEMBER_COOKIE_NAME);
   revalidatePath("/", "layout");
   redirect("/login");
 }
