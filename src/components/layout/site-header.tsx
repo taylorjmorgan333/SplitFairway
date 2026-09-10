@@ -32,7 +32,18 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Plain text below sm: there isn't room for two full pill
+              buttons next to the logo on a phone, and this still reads
+              clearly as "the other option" without competing with the
+              primary CTA. The existing ghost button takes over at sm
+              and up, where there's space for it. */}
+          <Link
+            href="/login"
+            className="text-sm font-medium text-forest-900 transition-colors hover:text-forest-700 sm:hidden"
+          >
+            Log in
+          </Link>
           <ButtonLink href="/login" variant="ghost" size="sm" className="hidden sm:inline-flex">
             Log in
           </ButtonLink>
