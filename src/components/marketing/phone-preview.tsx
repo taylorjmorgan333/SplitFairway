@@ -42,7 +42,12 @@ const GAMES = [
 ] as const;
 
 type GameKey = (typeof GAMES)[number]["key"];
-type Scene = "dashboard" | "games" | "score";
+type Scene = "dashboard" | "games" | "score" | "expense";
+
+const EXPENSE_PAYERS = ["Mike", "Sam"] as const;
+type ExpensePayer = (typeof EXPENSE_PAYERS)[number];
+const EXPENSE_AMOUNT = "42";
+const EXPENSE_FOR = "Dinner at The Lodge";
 
 const TARGET_BALANCE = 342;
 const ROW_STAGGER_MS = 160;
@@ -52,8 +57,10 @@ const ROW_STAGGER_MS = 160;
 // how long each little tap/press effect lasts along the way.
 const HOLD_DASHBOARD_MS = 3200;
 const HOLD_GAMES_MS = 2000;
-const HOLD_SCORE_MS = 2800;
+const HOLD_SCORE_MS = 1800;
+const HOLD_EXPENSE_MS = 2800;
 const PRESS_MS = 140;
+const TYPE_CHAR_MS = 55;
 
 /** A tiny segmented-control echo of the real round nav (Scorecard / Games /
  * Leaderboard) so the games and score screens read as two tabs of one
@@ -88,17 +95,19 @@ function wait(ms: number, timers: number[]) {
 
 /**
  * A pure-CSS recreation of the actual mobile app — no stock device
- * photography, no glassy/skeuomorphic mockup styling. It mirrors three
+ * photography, no glassy/skeuomorphic mockup styling. It mirrors four
  * real screens at phone scale (the "your balance" dashboard, the round's
- * game picker, and hole-by-hole score entry — see MyBalanceHero in
- * trip-tabs.tsx, GameTypePicker, and mobile-scorecard.tsx), so what a
- * visitor sees here is what they'll actually get after signing up.
+ * game picker, hole-by-hole score entry, and adding an expense — see
+ * MyBalanceHero in trip-tabs.tsx, GameTypePicker, mobile-scorecard.tsx,
+ * and the expense form), so what a visitor sees here is what they'll
+ * actually get after signing up.
  *
  * On mount it plays the dashboard's boot-up once (balance counts up, rows
  * stagger in, Jordan's checkmark pops), then loops a short silent "tour":
  * dashboard -> tap into Games and pick Skins -> tap into the Scorecard and
- * log a couple of strokes -> back to the dashboard. Every step is a state
- * change on canned, clearly-fictional data, not a live simulation.
+ * log a birdie (with a little on-screen celebration) -> add an expense for
+ * the group -> back to the dashboard. Every step is a state change on
+ * canned, clearly-fictional data, not a live simulation.
  *
  * Purely decorative (the container stays aria-hidden, so none of this
  * reaches a screen reader), guarded against React StrictMode's
@@ -117,6 +126,12 @@ export function PhonePreview() {
   const [scorePressed, setScorePressed] = useState<"plus" | "minus" | null>(null);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [birdieTrigger, setBirdieTrigger] = useState<number | null>(null);
+
+  const [expenseAmountText, setExpenseAmountText] = useState("");
+  const [expensePayerPressed, setExpensePayerPressed] = useState<ExpensePayer | null>(null);
+  const [expensePayerSelected, setExpensePayerSelected] = useState<ExpensePayer | null>(null);
+  const [expenseForText, setExpenseForText] = useState("");
+  const [expenseSaved, setExpenseSaved] = useState(false);
 
   const hasAnimated = useRef(false);
 
@@ -153,6 +168,18 @@ export function PhonePreview() {
         frame = requestAnimationFrame(tick);
       });
 
+    // Reveals `value` into `setValue` a character at a time, like someone
+    // typing it into a text field -- used for the expense amount and
+    // description so that scene reads as data being entered, not just
+    // appearing.
+    async function typeText(setValue: (v: string) => void, value: string) {
+      for (let i = 1; i <= value.length; i++) {
+        setValue(value.slice(0, i));
+        await wait(TYPE_CHAR_MS, timers);
+        if (cancelled) return;
+      }
+    }
+
     async function run() {
       // One-time boot-up.
       setBalance(0);
@@ -169,7 +196,8 @@ export function PhonePreview() {
       if (cancelled) return;
       setSettledPop(true);
 
-      // Looping tour: dashboard -> pick a game -> log a score -> repeat.
+      // Looping tour: dashboard -> pick a game -> log a birdie -> add an
+      // expense -> repeat.
       while (!cancelled) {
         await wait(HOLD_DASHBOARD_MS, timers);
         if (cancelled) return;
@@ -203,6 +231,33 @@ export function PhonePreview() {
         setScoreSaved(true);
         setBirdieTrigger((n) => (n ?? 0) + 1);
         await wait(HOLD_SCORE_MS, timers);
+        if (cancelled) return;
+
+        setScene("expense");
+        setExpenseAmountText("");
+        setExpensePayerPressed(null);
+        setExpensePayerSelected(null);
+        setExpenseForText("");
+        setExpenseSaved(false);
+        await wait(500, timers);
+        if (cancelled) return;
+        await typeText(setExpenseAmountText, EXPENSE_AMOUNT);
+        if (cancelled) return;
+        await wait(350, timers);
+        if (cancelled) return;
+        setExpensePayerPressed("Mike");
+        await wait(PRESS_MS, timers);
+        if (cancelled) return;
+        setExpensePayerPressed(null);
+        setExpensePayerSelected("Mike");
+        await wait(350, timers);
+        if (cancelled) return;
+        await typeText(setExpenseForText, EXPENSE_FOR);
+        if (cancelled) return;
+        await wait(350, timers);
+        if (cancelled) return;
+        setExpenseSaved(true);
+        await wait(HOLD_EXPENSE_MS, timers);
         if (cancelled) return;
 
         setScene("dashboard");
@@ -394,6 +449,79 @@ export function PhonePreview() {
                   Saved
                 </p>
               </div>
+
+              {/* Add expense */}
+              <div
+                className="absolute inset-0 space-y-3 px-3.5 py-3.5 transition-opacity duration-300 ease-out"
+                style={{
+                  opacity: scene === "expense" ? 1 : 0,
+                  pointerEvents: scene === "expense" ? "auto" : "none",
+                }}
+              >
+                <p className="text-[10px] font-medium text-charcoal-400">New expense</p>
+
+                <div className="rounded-xl bg-cream-100 px-3 py-2.5">
+                  <p className="text-[9px] font-medium uppercase tracking-wide text-charcoal-400">Amount</p>
+                  <p className="mt-0.5 font-serif text-lg text-forest-900">
+                    <span className="tabular-nums">${expenseAmountText}</span>
+                    <span
+                      className="ml-0.5 inline-block h-3.5 w-px translate-y-[1px] bg-forest-900/40 transition-opacity duration-150"
+                      style={{ opacity: expenseAmountText.length < EXPENSE_AMOUNT.length ? 1 : 0 }}
+                    />
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[9px] font-medium uppercase tracking-wide text-charcoal-400">Paid by</p>
+                  <div className="flex gap-1.5">
+                    {EXPENSE_PAYERS.map((name) => {
+                      const isSelected = expensePayerSelected === name;
+                      const isPressed = expensePayerPressed === name;
+                      return (
+                        <div
+                          key={name}
+                          className={`rounded-full border px-3 py-1.5 text-[10px] font-medium transition-colors duration-200 ${
+                            isSelected
+                              ? "border-forest-900 bg-forest-900 text-cream-50"
+                              : "border-cream-200 bg-cream-50 text-charcoal-700"
+                          }`}
+                          style={{
+                            transform: isPressed ? "scale(0.92)" : "scale(1)",
+                            transition: "transform 150ms ease-out, background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out",
+                          }}
+                        >
+                          {name}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-cream-100 px-3 py-2.5">
+                  <p className="text-[9px] font-medium uppercase tracking-wide text-charcoal-400">For</p>
+                  <p className="mt-0.5 min-h-[14px] text-[11px] text-charcoal-700">
+                    {expenseForText}
+                    <span
+                      className="ml-0.5 inline-block h-3 w-px translate-y-[1px] bg-forest-900/40 transition-opacity duration-150"
+                      style={{ opacity: expenseForText.length < EXPENSE_FOR.length ? 1 : 0 }}
+                    />
+                  </p>
+                </div>
+
+                <p
+                  className="text-[9px] font-medium text-forest-700 transition-opacity duration-300 ease-out"
+                  style={{ opacity: expenseSaved ? 1 : 0 }}
+                >
+                  Saved
+                </p>
+              </div>
+
+              {/* Centered on the screen's own content area -- between the
+                  header and the tab bar, not the whole phone frame -- so
+                  the celebration reads as centered on what's actually on
+                  screen rather than drifting toward whichever chrome
+                  (status bar, nav) happens to be above or below it. */}
+              <ScoreCelebration trigger={birdieTrigger} label="Birdie!" />
             </div>
 
             <div className="flex border-t border-forest-900/[0.08] bg-cream-50/95 px-2 py-1.5">
@@ -406,12 +534,6 @@ export function PhonePreview() {
               ))}
             </div>
           </div>
-
-          {/* Centered on the whole phone screen (not just the content
-              strip between the header and tab bar) so it reads as
-              centered on the phone, not just on whichever scene panel
-              happens to be showing. */}
-          <ScoreCelebration trigger={birdieTrigger} label="Birdie!" />
         </div>
       </div>
 
