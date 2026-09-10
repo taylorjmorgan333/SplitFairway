@@ -1,6 +1,9 @@
+"use client";
+
 import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { signOutAction } from "@/actions/auth";
+import { clearNativeSessionCookies } from "@/lib/native-session-sync";
 
 export function UserMenu({ email }: { email: string }) {
   return (
@@ -21,7 +24,16 @@ export function UserMenu({ email }: { email: string }) {
       >
         <Settings className="h-4 w-4" aria-hidden="true" />
       </Link>
-      <form action={signOutAction}>
+      <form
+        action={signOutAction}
+        onSubmit={() => {
+          // Fire-and-forget: don't hold up the actual sign-out for
+          // this. Otherwise a stale native cookie snapshot (see
+          // src/lib/native-session-sync.ts) would silently sign the
+          // native app back in on its next cold launch.
+          void clearNativeSessionCookies();
+        }}
+      >
         <button
           type="submit"
           aria-label="Log out"

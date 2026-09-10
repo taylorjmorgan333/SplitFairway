@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Libre_Caslon_Display } from "next/font/google";
 import "./globals.css";
 import { FeedbackButton } from "@/components/layout/feedback-button";
+import { NativeSessionSync } from "@/components/layout/native-session-sync";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
 
 // Wordmark-only display face (src/components/ui/logo.tsx) — a bold,
@@ -90,6 +91,7 @@ export default function RootLayout({
         {children}
         <FeedbackButton />
         <ServiceWorkerRegister />
+        <NativeSessionSync />
       </body>
     </html>
   );
