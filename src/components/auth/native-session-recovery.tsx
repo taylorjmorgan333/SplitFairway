@@ -23,47 +23,59 @@ const ATTEMPTED_KEY = "sf-native-restore-attempted";
  * sends the newly-set cookie to the server, letting middleware
  * recognize the session on the very next request.
  *
- * Earlier versions of this let the login form render normally while
- * that retry happened in the background, which meant fully showing
- * "you're logged out" (a real, interactive password field included)
- * for the whole round trip before yanking the user away to their
- * dashboard -- confusing and, fairly, looked broken rather than like
- * a deliberate recovery. This instead hides the form the instant a
- * retry is going to be attempted (before that retry even starts, not
- * after it resolves), so what's briefly visible is a plain loading
- * state, not the form -- and nothing at all changes for web visitors
- * or for a native visitor with no snapshot to try, since Capacitor.
- * isNativePlatform() is false/there's nothing to retry and children
- * render immediately in both cases.
+ * An earlier version tried to hide the form client-side, in a
+ * useEffect, once a retry was about to start. That doesn't actually
+ * work: the server has no way to know this is the native app, so its
+ * response already contains the full, real login form -- WKWebView
+ * paints that HTML the instant it arrives, well before any JS runs at
+ * all, let alone a React effect after hydration. No client-side
+ * timing trick can hide content that was already painted.
  *
- * Guarded by sessionStorage to attempt this only once per loaded
+ * The real fix has to start on the server: shouldAttemptRecovery is
+ * computed in login/page.tsx from the request itself (a custom
+ * User-Agent token the native app appends, plus middleware's `next`
+ * param, present only when this visit is a bounce-off-a-protected-
+ * route rather than a direct visit) and passed in as this component's
+ * *initial* state -- so for the case worth hiding for, the server's
+ * own HTML never includes the form to begin with. Nothing changes for
+ * web visitors or a direct /login visit: shouldAttemptRecovery is
+ * false there and children render immediately, exactly as always.
+ *
+ * Guarded by sessionStorage to attempt the retry only once per loaded
  * session: a genuinely expired/invalid session (e.g. the refresh
- * token itself was revoked) shows the normal login form afterward
+ * token itself was revoked) reveals the normal login form afterward
  * instead of reload-looping forever.
  */
 export function NativeSessionRecovery({
   next,
+  shouldAttemptRecovery,
   children,
 }: {
   next?: string;
+  shouldAttemptRecovery: boolean;
   children: React.ReactNode;
 }) {
   const attempted = useRef(false);
-  const [recovering, setRecovering] = useState(false);
+  const [recovering, setRecovering] = useState(shouldAttemptRecovery);
 
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
 
-    if (!Capacitor.isNativePlatform()) return;
-    if (sessionStorage.getItem(ATTEMPTED_KEY)) return;
-    sessionStorage.setItem(ATTEMPTED_KEY, "1");
+    if (!shouldAttemptRecovery) return;
 
-    // Hide the form *before* starting the (necessarily async) retry,
-    // not after -- otherwise the form sits there fully visible and
-    // interactive for the whole round trip, which is the confusing
-    // part this is meant to fix.
-    setRecovering(true);
+    // Belt-and-suspenders: the server's guess (from the User-Agent
+    // token) should always agree with this, but if it somehow doesn't,
+    // don't leave the form hidden.
+    if (!Capacitor.isNativePlatform()) {
+      setRecovering(false);
+      return;
+    }
+    if (sessionStorage.getItem(ATTEMPTED_KEY)) {
+      setRecovering(false);
+      return;
+    }
+    sessionStorage.setItem(ATTEMPTED_KEY, "1");
 
     void restoreSessionCookiesFromNative().then((restored) => {
       if (restored) {
@@ -72,7 +84,7 @@ export function NativeSessionRecovery({
       }
       setRecovering(false);
     });
-  }, [next]);
+  }, [next, shouldAttemptRecovery]);
 
   if (recovering) {
     return (

@@ -35,9 +35,18 @@ class MainViewController: CAPBridgeViewController {
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
     private static let cookieDomain = "www.splitfairwaygolf.com"
 
+    // Appended to WKWebView's default user agent (not a replacement --
+    // this only adds a token at the end) so the server can tell a
+    // request came from this native app apart from a normal browser,
+    // straight from the request itself. Used by src/app/(auth)/login/
+    // page.tsx to decide whether to render the login form at all in
+    // the initial HTML -- see that file for why.
+    private static let userAgentToken = "SplitFairwayApp"
+
     override func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
         let configuration = super.webViewConfiguration(for: instanceConfiguration)
         configuration.ignoresViewportScaleLimits = true
+        configuration.applicationNameForUserAgent = MainViewController.userAgentToken
         restoreSessionCookies(into: configuration.websiteDataStore.httpCookieStore)
         return configuration
     }
