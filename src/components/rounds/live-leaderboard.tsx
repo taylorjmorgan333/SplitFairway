@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   computePlayerTotals,
   computeStandings,
+  formatToPar,
   type PlayerScoreInput,
   type StandingsMetric,
 } from "@/lib/golf/scoring";
@@ -234,7 +235,7 @@ export function LiveLeaderboard({
                         </p>
                       </div>
                     </div>
-                    <span className="font-serif text-lg text-forest-900">{s.value}</span>
+                    <span className="font-serif text-lg text-forest-900">{formatToPar(s.toPar)}</span>
                   </li>
                 );
               })}

@@ -7,6 +7,7 @@ import { netScore } from "@/lib/golf/handicap";
 import {
   strokesReceivedByHole,
   computeStandings,
+  formatToPar,
   type HoleSpec,
   type PlayerScoreInput,
   type StandingsMetric,
@@ -770,8 +771,14 @@ export function MobileScorecard({
                       {s.rank}. {standingsById.get(s.roundPlayerId)?.displayName ?? "Golfer"}
                     </span>
                     <span className="font-medium text-forest-900">
-                      {s.value}
-                      {standingsMetric === "stableford" && <span className="text-xs text-charcoal-400"> pts</span>}{" "}
+                      {standingsMetric === "stableford" ? (
+                        <>
+                          {s.value}
+                          <span className="text-xs text-charcoal-400"> pts</span>
+                        </>
+                      ) : (
+                        formatToPar(s.toPar)
+                      )}{" "}
                       <span className="text-xs text-charcoal-400">
                         {s.thru >= holeCount ? "Final" : `thru ${s.thru}`}
                       </span>

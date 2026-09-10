@@ -7,6 +7,7 @@ import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
 import { FinishRoundButton } from "@/components/rounds/finish-round-button";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
+import { formatToPar } from "@/lib/golf/scoring";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Results" };
@@ -91,7 +92,7 @@ export default async function ResultsPage({
                         </p>
                       </div>
                     </div>
-                    <span className="font-serif text-lg text-forest-900">{s.value}</span>
+                    <span className="font-serif text-lg text-forest-900">{formatToPar(s.toPar)}</span>
                   </li>
                 );
               })}

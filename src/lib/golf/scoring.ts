@@ -175,6 +175,12 @@ export interface StandingsEntry {
   roundPlayerId: string;
   rank: number;
   value: number;
+  /** Gross/net strokes relative to the par of only the holes played so
+   * far (e.g. -2 after an opening birdie-birdie), the conventional way
+   * a golf leaderboard reads a score -- not meaningful for Stableford
+   * (a points total, not a stroke count), where it's always 0 and the
+   * UI shows `value` instead. */
+  toPar: number;
   thru: number;
   holesCompleted: number;
 }
@@ -198,9 +204,17 @@ export function computeStandings(players: PlayerScoreInput[], metric: StandingsM
           : metric === "net"
             ? (totals.total.net ?? 0)
             : (totals.total.gross ?? 0);
+      // Par for just the holes with a recorded score -- not
+      // totals.total.par, which sums every hole in the player's tee
+      // set regardless of whether it's been played yet.
+      const completedPar = p.holes.reduce(
+        (sum, h) => (p.grossByHole.get(h.holeNumber) != null ? sum + h.par : sum),
+        0,
+      );
       return {
         roundPlayerId: p.roundPlayerId,
         value,
+        toPar: metric === "stableford" ? 0 : value - completedPar,
         thru: totals.thru,
         holesCompleted: totals.total.holesCompleted,
       };
@@ -219,6 +233,19 @@ export function computeStandings(players: PlayerScoreInput[], metric: StandingsM
     }
     return { ...row, rank };
   });
+}
+
+/**
+ * Standard golf notation for a stroke total relative to par: "E" at
+ * even, "+n" over par, "-n" under par (the minus sign comes from the
+ * number itself -- toPar is already signed). Shared by every screen
+ * that shows a gross or net standings value (the scorecard's
+ * Leaderboard card, the live leaderboard, and Results) so a birdie-
+ * birdie start reads as "-2", not a raw stroke count.
+ */
+export function formatToPar(toPar: number): string {
+  if (toPar === 0) return "E";
+  return toPar > 0 ? `+${toPar}` : `${toPar}`;
 }
 
 export interface BestOnHoleResult {

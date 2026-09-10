@@ -8,6 +8,7 @@ import { GameTypePicker } from "@/components/rounds/game-type-picker";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
+import { formatToPar } from "@/lib/golf/scoring";
 import { formatSignedCents } from "@/lib/golf/settlement";
 
 export const dynamic = "force-dynamic";
@@ -118,7 +119,7 @@ export default async function GamesPage({
             <p className="text-base text-charcoal-600">
               {hasAnyMonetaryGame && leaderBalance != null
                 ? `Up ${formatSignedCents(leaderBalance)} so far`
-                : `Net ${leader.value} so far`}
+                : `Net ${formatToPar(leader.toPar)} so far`}
             </p>
             <p className="text-base text-charcoal-600">
               {holesRemaining > 0
