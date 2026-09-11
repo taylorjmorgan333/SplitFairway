@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ScoreCelebration } from "@/components/ui/celebration";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -138,11 +139,19 @@ export function NineteenthHoleTab({
   }
 
   return (
-    <Card>
+    <Card className="border-gold-300/70 bg-gradient-to-br from-gold-50 via-cream-50 to-gold-100">
+      {/* One confetti burst each time this tab is opened -- the same
+          particle effect a birdie gets elsewhere in the app (see
+          ScoreCelebration), reused here so entering The 19th Hole
+          reads as a deliberate "the vibes just changed" moment rather
+          than a generic screen. `trigger` is a constant because this
+          whole component remounts every time the tab is switched to,
+          which is exactly the "each time you click in" cadence wanted. */}
+      <ScoreCelebration trigger="nineteenth-hole-opened" label="🎉 Welcome to the 19th Hole" fixed />
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle>The 19th Hole</CardTitle>
+            <CardTitle>🎉 The 19th Hole</CardTitle>
             <CardDescription>The stats that don&apos;t make the scorecard.</CardDescription>
           </div>
           {isCaptain && (
@@ -195,7 +204,7 @@ export function NineteenthHoleTab({
         )}
 
         <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-          <div className="flex w-fit gap-1 rounded-full bg-cream-200 p-1">
+          <div className="flex w-fit gap-1 rounded-full bg-gold-100/80 p-1">
             {SUB_VIEWS.map((v) => (
               <button
                 key={v.key}
@@ -204,8 +213,8 @@ export function NineteenthHoleTab({
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-base font-medium transition-colors",
                   subView === v.key
-                    ? "bg-white text-forest-900 shadow-sm"
-                    : "text-charcoal-500 hover:text-charcoal",
+                    ? "bg-forest-800 text-cream-50 shadow-sm"
+                    : "text-charcoal-600 hover:text-charcoal",
                 )}
               >
                 {v.label}

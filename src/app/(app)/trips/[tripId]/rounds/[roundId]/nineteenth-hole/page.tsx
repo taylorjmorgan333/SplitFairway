@@ -11,6 +11,7 @@ import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
 import { NineteenthHoleTab } from "@/components/nineteenth-hole/nineteenth-hole-tab";
 import { buildRecorderNameByUserId, loadNineteenthHoleTripData } from "@/lib/nineteenth-hole/data";
+import { sortMembersCaptainFirst } from "@/lib/member-order";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "19th Hole" };
@@ -47,7 +48,7 @@ export default async function RoundNineteenthHolePage({
     supabase.from("trip_members").select("id, role, status").eq("trip_id", tripId).eq("user_id", user.id).maybeSingle(),
     supabase
       .from("trip_members")
-      .select("id, display_name, user_id, status")
+      .select("id, display_name, user_id, status, role")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: true }),
   ]);
@@ -86,7 +87,7 @@ export default async function RoundNineteenthHolePage({
         tripId={tripId}
         isCaptain={isCaptain}
         currentUserId={user.id}
-        members={activeMembers.map((m) => ({ id: m.id, displayName: m.display_name }))}
+        members={sortMembersCaptainFirst(activeMembers).map((m) => ({ id: m.id, displayName: m.display_name }))}
         rounds={nh.rounds}
         recorderNameByUserId={recorderNameByUserId}
         initialSettings={nh.settings}

@@ -24,6 +24,7 @@ import {
 } from "@/components/trips/reminders-tab";
 import { OnboardingChecklist } from "@/components/trips/onboarding-checklist";
 import { NineteenthHoleTab } from "@/components/nineteenth-hole/nineteenth-hole-tab";
+import type { NineteenthHoleMember } from "@/components/nineteenth-hole/types";
 import type {
   NineteenthHoleActivityEntry,
   NineteenthHoleCounter,
@@ -76,6 +77,7 @@ export function TripTabs({
   nineteenthHoleCounters,
   nineteenthHoleActivity,
   nineteenthHoleRounds,
+  nineteenthHoleMembers,
   recorderNameByUserId,
 }: {
   trip: Tables<"trips">;
@@ -97,6 +99,7 @@ export function TripTabs({
   nineteenthHoleCounters: NineteenthHoleCounter[];
   nineteenthHoleActivity: NineteenthHoleActivityEntry[];
   nineteenthHoleRounds: NineteenthHoleRound[];
+  nineteenthHoleMembers: NineteenthHoleMember[];
   recorderNameByUserId: Record<string, string>;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
@@ -294,7 +297,7 @@ export function TripTabs({
             tripId={trip.id}
             isCaptain={isCaptain}
             currentUserId={currentUserId ?? ""}
-            members={activeMembers.map((m) => ({ id: m.id, displayName: m.display_name }))}
+            members={nineteenthHoleMembers}
             rounds={nineteenthHoleRounds}
             recorderNameByUserId={recorderNameByUserId}
             initialSettings={nineteenthHoleSettings}

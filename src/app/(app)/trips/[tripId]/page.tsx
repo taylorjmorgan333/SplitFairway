@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
 import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { buildRecorderNameByUserId, loadNineteenthHoleTripData } from "@/lib/nineteenth-hole/data";
+import { sortMembersCaptainFirst } from "@/lib/member-order";
 import type {
   NineteenthHoleActivityEntry,
   NineteenthHoleCounter,
@@ -454,6 +455,7 @@ export default async function TripDetailPage({
           nineteenthHoleCounters={nineteenthHoleCounters}
           nineteenthHoleActivity={nineteenthHoleActivity}
           nineteenthHoleRounds={nineteenthHoleRounds}
+          nineteenthHoleMembers={sortMembersCaptainFirst(activeMembers).map((m) => ({ id: m.id, displayName: m.display_name }))}
           recorderNameByUserId={recorderNameByUserId}
         />
       </div>
