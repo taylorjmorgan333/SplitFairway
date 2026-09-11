@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
 import {
   computeMatchStatus,
@@ -621,6 +621,7 @@ export default async function GameDetailsPage({
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
       />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl">Full game details</h1>

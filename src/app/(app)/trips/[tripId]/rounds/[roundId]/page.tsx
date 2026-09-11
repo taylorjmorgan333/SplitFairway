@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -221,6 +221,7 @@ export default async function RoundDetailPage({
         status={safeRound.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />
 

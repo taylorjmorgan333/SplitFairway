@@ -43,6 +43,16 @@ export const GHIN_SCREENSHOT_IMPORT_ENABLED = flagEnabled(
 export const LIVE_LEADERBOARD_ENABLED = flagEnabled(process.env.LIVE_LEADERBOARD_ENABLED);
 
 /**
+ * The 19th Hole -- optional, per-trip fun-stats tracker (drinks,
+ * birdies, three-putts, and whatever else a captain wants to count).
+ * This is the app-wide rollout switch; a trip's own captain still has
+ * to turn it on for that trip via nineteenth_hole_settings.enabled --
+ * this flag just controls whether the entry points (tabs/nav) exist
+ * at all while the feature is being finished and tested.
+ */
+export const NINETEENTH_HOLE_ENABLED = flagEnabled(process.env.NINETEENTH_HOLE_ENABLED);
+
+/**
  * GolfCourseAPI (external course-data provider) feature flags. Layered on
  * top of the existing "is GOLFCOURSEAPI_KEY set" check in
  * src/lib/golf/golfcourseapi.ts, not a replacement for it — a flag can be

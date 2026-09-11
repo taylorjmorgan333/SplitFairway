@@ -686,6 +686,171 @@ export type Database = {
           },
         ]
       }
+      nineteenth_hole_activity: {
+        Row: {
+          counter_id: string
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          quantity: number
+          recorded_by: string | null
+          round_id: string | null
+          trip_id: string
+          trip_member_id: string
+        }
+        Insert: {
+          counter_id: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          quantity: number
+          recorded_by?: string | null
+          round_id?: string | null
+          trip_id: string
+          trip_member_id: string
+        }
+        Update: {
+          counter_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string
+          quantity?: number
+          recorded_by?: string | null
+          round_id?: string | null
+          trip_id?: string
+          trip_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nineteenth_hole_activity_counter_id_fkey"
+            columns: ["counter_id"]
+            isOneToOne: false
+            referencedRelation: "nineteenth_hole_counters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_activity_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_activity_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_activity_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_activity_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_activity_trip_member_id_fkey"
+            columns: ["trip_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nineteenth_hole_counters: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          key: string
+          label: string
+          sort_order: number
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          key: string
+          label: string
+          sort_order?: number
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nineteenth_hole_counters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nineteenth_hole_counters_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nineteenth_hole_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          trip_id: string
+          updated_at: string
+          who_can_record: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          trip_id: string
+          updated_at?: string
+          who_can_record?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          trip_id?: string
+          updated_at?: string
+          who_can_record?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nineteenth_hole_settings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: true
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
@@ -1409,7 +1574,9 @@ export type Database = {
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
-          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1423,7 +1590,9 @@ export type Database = {
           joined_at?: string | null
           payment_handle?: string | null
           phone?: string | null
-          preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method?:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1437,7 +1606,9 @@ export type Database = {
           joined_at?: string | null
           payment_handle?: string | null
           phone?: string | null
-          preferred_payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method?:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role?: Database["public"]["Enums"]["member_role"]
           status?: Database["public"]["Enums"]["member_status"]
           trip_id?: string
@@ -1538,7 +1709,9 @@ export type Database = {
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
-          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1701,6 +1874,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      nineteenth_hole_can_record: {
+        Args: { p_trip_id: string }
+        Returns: boolean
+      }
       reject_payment: {
         Args: { p_payment_id: string; p_reason?: string }
         Returns: {
@@ -1749,7 +1926,9 @@ export type Database = {
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
-          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1775,7 +1954,9 @@ export type Database = {
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
-          preferred_payment_method: Database["public"]["Enums"]["payment_method"] | null
+          preferred_payment_method:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
           role: Database["public"]["Enums"]["member_role"]
           status: Database["public"]["Enums"]["member_status"]
           trip_id: string
@@ -1869,7 +2050,15 @@ export type Database = {
       invitation_status: "pending" | "accepted" | "declined" | "revoked"
       member_role: "captain" | "member"
       member_status: "invited" | "active" | "declined" | "removed"
-      payment_method: "venmo" | "zelle" | "paypal" | "cash" | "check" | "other" | "cashapp" | "apple_pay"
+      payment_method:
+        | "venmo"
+        | "zelle"
+        | "paypal"
+        | "cash"
+        | "check"
+        | "other"
+        | "cashapp"
+        | "apple_pay"
       payment_status: "reported" | "confirmed" | "rejected"
       player_team_color:
         | "red"
@@ -2049,7 +2238,16 @@ export const Constants = {
       invitation_status: ["pending", "accepted", "declined", "revoked"],
       member_role: ["captain", "member"],
       member_status: ["invited", "active", "declined", "removed"],
-      payment_method: ["venmo", "zelle", "paypal", "cash", "check", "other"],
+      payment_method: [
+        "venmo",
+        "zelle",
+        "paypal",
+        "cash",
+        "check",
+        "other",
+        "cashapp",
+        "apple_pay",
+      ],
       payment_status: ["reported", "confirmed", "rejected"],
       player_team_color: [
         "red",

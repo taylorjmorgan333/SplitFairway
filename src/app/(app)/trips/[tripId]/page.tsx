@@ -10,7 +10,14 @@ import type { ActivityRow } from "@/components/trips/activity-feed";
 import { calculateBalances, suggestSettlements } from "@/lib/balances";
 import { formatDate } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/validation/payment";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
+import { buildRecorderNameByUserId, loadNineteenthHoleTripData } from "@/lib/nineteenth-hole/data";
+import type {
+  NineteenthHoleActivityEntry,
+  NineteenthHoleCounter,
+  NineteenthHoleRound,
+  NineteenthHoleSettings,
+} from "@/components/nineteenth-hole/types";
 import {
   RoundsSection,
   type RoundSummary,
@@ -365,6 +372,26 @@ export default async function TripDetailPage({
     }
   }
 
+  // The 19th Hole -- gated on the app-wide rollout flag like every other
+  // golf-adjacent surface, and skipped entirely (not just hidden) when
+  // it's off so a trip never pays for these extra queries. Independent
+  // of GOLF_SCORING_ENABLED on purpose: this is a fun-stats tracker, not
+  // part of the scoring system, and a trip should be able to use it
+  // even before/without turning scoring on.
+  let nineteenthHoleSettings: NineteenthHoleSettings | null = null;
+  let nineteenthHoleCounters: NineteenthHoleCounter[] = [];
+  let nineteenthHoleActivity: NineteenthHoleActivityEntry[] = [];
+  let nineteenthHoleRounds: NineteenthHoleRound[] = [];
+
+  if (NINETEENTH_HOLE_ENABLED) {
+    const nh = await loadNineteenthHoleTripData(supabase, tripId);
+    nineteenthHoleSettings = nh.settings;
+    nineteenthHoleCounters = nh.counters;
+    nineteenthHoleActivity = nh.activity;
+    nineteenthHoleRounds = nh.rounds;
+  }
+  const recorderNameByUserId = buildRecorderNameByUserId(memberRows);
+
   const dateRange =
     trip.start_date && trip.end_date
       ? `${formatDate(trip.start_date)} – ${formatDate(trip.end_date)}`
@@ -414,6 +441,7 @@ export default async function TripDetailPage({
           activeMembers={activeMembers.map((m) => ({ id: m.id, display_name: m.display_name }))}
           memberRows={memberRows}
           currentUserMemberId={myMembership?.id ?? null}
+          currentUserId={user.id}
           expenses={expenses}
           payments={payments}
           activity={activity}
@@ -421,6 +449,12 @@ export default async function TripDetailPage({
           settlements={settlements}
           overview={overview}
           reminders={reminders}
+          nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
+          nineteenthHoleSettings={nineteenthHoleSettings}
+          nineteenthHoleCounters={nineteenthHoleCounters}
+          nineteenthHoleActivity={nineteenthHoleActivity}
+          nineteenthHoleRounds={nineteenthHoleRounds}
+          recorderNameByUserId={recorderNameByUserId}
         />
       </div>
 

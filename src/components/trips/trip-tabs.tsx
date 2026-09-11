@@ -23,6 +23,13 @@ import {
   type InvitationCandidate,
 } from "@/components/trips/reminders-tab";
 import { OnboardingChecklist } from "@/components/trips/onboarding-checklist";
+import { NineteenthHoleTab } from "@/components/nineteenth-hole/nineteenth-hole-tab";
+import type {
+  NineteenthHoleActivityEntry,
+  NineteenthHoleCounter,
+  NineteenthHoleRound,
+  NineteenthHoleSettings,
+} from "@/components/nineteenth-hole/types";
 import { isStepDoneLocally, markStepDone } from "@/lib/onboarding";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { MemberBalance, SettlementSuggestion } from "@/lib/balances";
@@ -30,8 +37,8 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 type Member = { id: string; display_name: string };
 
-const CAPTAIN_TABS = ["Overview", "Golfers", "Expenses", "Payments", "Reminders", "Activity", "Settings"] as const;
-const MEMBER_TABS = ["Overview", "Golfers", "Expenses", "Payments", "Activity", "Settings"] as const;
+const CAPTAIN_TABS = ["Overview", "Golfers", "19th Hole", "Expenses", "Payments", "Reminders", "Activity", "Settings"] as const;
+const MEMBER_TABS = ["Overview", "Golfers", "19th Hole", "Expenses", "Payments", "Activity", "Settings"] as const;
 type Tab = (typeof CAPTAIN_TABS)[number];
 
 export type OverviewStats = {
@@ -56,6 +63,7 @@ export function TripTabs({
   activeMembers,
   memberRows,
   currentUserMemberId,
+  currentUserId,
   expenses,
   payments,
   activity,
@@ -63,6 +71,12 @@ export function TripTabs({
   settlements,
   overview,
   reminders,
+  nineteenthHoleEnabled,
+  nineteenthHoleSettings,
+  nineteenthHoleCounters,
+  nineteenthHoleActivity,
+  nineteenthHoleRounds,
+  recorderNameByUserId,
 }: {
   trip: Tables<"trips">;
   isCaptain: boolean;
@@ -70,6 +84,7 @@ export function TripTabs({
   activeMembers: Member[];
   memberRows: MemberRow[];
   currentUserMemberId: string | null;
+  currentUserId: string | null;
   expenses: ExpenseRow[];
   payments: PaymentRow[];
   activity: ActivityRow[];
@@ -77,11 +92,19 @@ export function TripTabs({
   settlements: SettlementSuggestion[];
   overview: OverviewStats;
   reminders: ReminderData;
+  nineteenthHoleEnabled: boolean;
+  nineteenthHoleSettings: NineteenthHoleSettings | null;
+  nineteenthHoleCounters: NineteenthHoleCounter[];
+  nineteenthHoleActivity: NineteenthHoleActivityEntry[];
+  nineteenthHoleRounds: NineteenthHoleRound[];
+  recorderNameByUserId: Record<string, string>;
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   const [reviewedBalances, setReviewedBalances] = useState(false);
   const myMembership = memberRows.find((m) => m.id === currentUserMemberId) ?? null;
-  const tabs = isCaptain ? CAPTAIN_TABS : MEMBER_TABS;
+  const tabs = (isCaptain ? CAPTAIN_TABS : MEMBER_TABS).filter(
+    (t) => t !== "19th Hole" || nineteenthHoleEnabled,
+  );
 
   // Lets an Overview quick action ("Add expense", "Record payment") jump
   // straight to the right tab AND scroll/focus the form in one tap,
@@ -264,6 +287,20 @@ export function TripTabs({
               )}
             </CardContent>
           </Card>
+        )}
+
+        {tab === "19th Hole" && (
+          <NineteenthHoleTab
+            tripId={trip.id}
+            isCaptain={isCaptain}
+            currentUserId={currentUserId ?? ""}
+            members={activeMembers.map((m) => ({ id: m.id, displayName: m.display_name }))}
+            rounds={nineteenthHoleRounds}
+            recorderNameByUserId={recorderNameByUserId}
+            initialSettings={nineteenthHoleSettings}
+            initialCounters={nineteenthHoleCounters}
+            initialActivity={nineteenthHoleActivity}
+          />
         )}
 
         {tab === "Expenses" && (

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
@@ -51,6 +51,7 @@ export default async function ResultsPage({
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
         leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
+        nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />
 

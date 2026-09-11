@@ -106,6 +106,7 @@ export function RoundPhaseTabs({
   status,
   sideGamesEnabled,
   leaderboardEnabled,
+  nineteenthHoleEnabled = false,
   scoresComplete = false,
 }: {
   tripId: string;
@@ -113,6 +114,11 @@ export function RoundPhaseTabs({
   status: RoundStatus;
   sideGamesEnabled: boolean;
   leaderboardEnabled: boolean;
+  /** Shows "19th Hole" alongside Scorecard/Games -- the app-wide rollout
+   * flag, not the trip's own on/off switch, so the tab exists and links
+   * into the feature's own enable screen even before a captain has
+   * turned it on for this trip. */
+  nineteenthHoleEnabled?: boolean;
   /** True once every golfer has a score posted for every hole -- swaps the "Round in progress" caption for "Scores Complete" instead of leaving it stuck mid-round after the last putt drops. */
   scoresComplete?: boolean;
 }) {
@@ -124,6 +130,7 @@ export function RoundPhaseTabs({
     { key: "score", label: "Scorecard", href: `${base}/score`, show: true },
     { key: "games", label: "Games", href: `${base}/games`, show: sideGamesEnabled },
     { key: "leaderboard", label: "Leaderboard", href: `${base}/leaderboard`, show: leaderboardEnabled },
+    { key: "nineteenth-hole", label: "19th Hole", href: `${base}/nineteenth-hole`, show: nineteenthHoleEnabled },
   ];
   const finishTabs: PlayFinishTab[] = [
     { key: "results", label: "Results", href: `${base}/results`, show: true },
