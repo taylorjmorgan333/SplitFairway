@@ -67,7 +67,17 @@ export function MemberList({
     (m) => m.role === "captain" && m.status === "active",
   ).length;
 
-  const visibleMembers = filter === "all" ? members : members.filter((m) => m.status === filter);
+  const filteredMembers = filter === "all" ? members : members.filter((m) => m.status === filter);
+  // Active captain(s) first (so the trip organizer is always easy to
+  // find), then everyone else alphabetically by name -- rather than the
+  // underlying created_at/join order, which only looked "captain on
+  // top" because whoever creates a trip happens to join it first.
+  const visibleMembers = [...filteredMembers].sort((a, b) => {
+    const aIsActiveCaptain = a.role === "captain" && a.status === "active" ? 0 : 1;
+    const bIsActiveCaptain = b.role === "captain" && b.status === "active" ? 0 : 1;
+    if (aIsActiveCaptain !== bIsActiveCaptain) return aIsActiveCaptain - bIsActiveCaptain;
+    return a.display_name.localeCompare(b.display_name, undefined, { sensitivity: "base" });
+  });
   const transferTargets = members.filter(
     (m) => m.status === "active" && m.user_id !== null && m.user_id !== ownerUserId,
   );
