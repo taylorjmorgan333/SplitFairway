@@ -115,7 +115,7 @@ export function NineteenthHoleActivityList({
     .slice(0, limit);
 
   if (visible.length === 0) {
-    return <p className="text-sm text-charcoal-500">No activity recorded yet.</p>;
+    return <p className="text-sm text-gold-100/80">No activity recorded yet.</p>;
   }
 
   return (

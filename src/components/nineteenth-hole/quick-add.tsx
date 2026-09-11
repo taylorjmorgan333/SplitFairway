@@ -148,7 +148,7 @@ export function NineteenthHoleQuickAdd({
 
   if (activeCounters.length === 0) {
     return (
-      <p className="text-sm text-charcoal-500">
+      <p className="text-sm text-gold-100/80">
         No counters are active. A captain can turn some on from Configure above.
       </p>
     );
@@ -156,7 +156,7 @@ export function NineteenthHoleQuickAdd({
 
   if (!canRecord) {
     return (
-      <p className="text-sm text-charcoal-500">
+      <p className="text-sm text-gold-100/80">
         Only trip captains can record 19th Hole activity right now. Ask a captain to add it, or to change
         this from Configure above.
       </p>
@@ -178,8 +178,8 @@ export function NineteenthHoleQuickAdd({
               className={cn(
                 "shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-base font-medium transition-colors",
                 selectedCounter?.id === c.id
-                  ? "bg-forest-800 text-cream-50"
-                  : "bg-cream-100 text-charcoal-600 hover:bg-cream-200",
+                  ? "bg-gold-400 text-forest-950 shadow-sm"
+                  : "bg-white/10 text-gold-100/90 hover:bg-white/20",
               )}
             >
               {c.label}
@@ -190,7 +190,7 @@ export function NineteenthHoleQuickAdd({
 
       {rounds.length > 0 && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-charcoal-500" htmlFor="quickAddRound">
+          <label className="mb-1 block text-xs font-medium text-gold-100/80" htmlFor="quickAddRound">
             Attach new entries to
           </label>
           <select
@@ -209,10 +209,10 @@ export function NineteenthHoleQuickAdd({
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-300">{error}</p>}
 
       {lastAdded && (
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-forest-800 px-4 py-3 text-cream-50">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-gold-400/30 bg-forest-800 px-4 py-3 text-cream-50 shadow-card">
           <p className="text-sm">
             Added 1 {lastAdded.counterLabel.toLowerCase()} for {lastAdded.memberName}
           </p>

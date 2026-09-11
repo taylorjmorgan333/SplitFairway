@@ -28,6 +28,59 @@ const SUB_VIEWS: { key: SubView; label: string }[] = [
   { key: "activity", label: "Activity" },
 ];
 
+// The 19th Hole is the one place in the app meant to feel like the
+// clubhouse bar after a round rather than the scorecard -- a dark
+// "lounge" card (still built from the app's own forest/gold/cream
+// palette, nothing off-brand) instead of the usual white card, so
+// clicking into it reads as a real change of scene. Applies to both
+// the "come enable this" gate and the live view, so the vibe doesn't
+// jarringly flip only once a captain turns it on.
+const PARTY_CARD_CLASSES =
+  "relative overflow-hidden border-gold-400/25 bg-gradient-to-b from-forest-950 via-forest-900 to-forest-950 text-cream-50";
+
+const LIGHT_COLORS = ["#DAB86D", "#FDFBF6", "#C9A24E"];
+
+/** A string of small party lights along the top edge of the card, each
+ * gently twinkling out of phase. motion-safe: means the twinkle is a
+ * pure CSS media-query variant -- it simply doesn't apply (lights stay
+ * lit, no JS branching needed) under prefers-reduced-motion. */
+function PartyLights() {
+  const bulbs = Array.from({ length: 11 });
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-6 top-0 flex -translate-y-1/2 justify-between sm:inset-x-10"
+    >
+      {bulbs.map((_, i) => {
+        const color = LIGHT_COLORS[i % LIGHT_COLORS.length];
+        return (
+          <span
+            key={i}
+            className="motion-safe:animate-pulse h-2 w-2 rounded-full"
+            style={{
+              backgroundColor: color,
+              boxShadow: `0 0 6px 2px ${color}99`,
+              animationDelay: `${(i % 5) * 220}ms`,
+              animationDuration: "2600ms",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** A soft gold glow behind the header -- a stage-light wash rather
+ * than a hard edge, purely decorative and never interactive. */
+function PartyGlow() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute -top-24 left-1/2 h-56 w-72 -translate-x-1/2 rounded-full bg-gold-400/20 blur-3xl"
+    />
+  );
+}
+
 export function NineteenthHoleTab({
   tripId,
   isCaptain,
@@ -91,21 +144,27 @@ export function NineteenthHoleTab({
 
   if (!settings.enabled) {
     return (
-      <Card>
+      <Card className={PARTY_CARD_CLASSES}>
+        <PartyGlow />
+        <PartyLights />
         <CardHeader>
-          <CardTitle>The 19th Hole</CardTitle>
-          <CardDescription>The stats that don&apos;t make the scorecard.</CardDescription>
+          <CardTitle className="text-cream-50">🎉 The 19th Hole</CardTitle>
+          <CardDescription className="text-gold-200/80">
+            The stats that don&apos;t make the scorecard.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isCaptain ? (
             <div className="space-y-3">
-              <p className="text-sm text-charcoal-500">
+              <p className="text-sm text-cream-100/80">
                 Track drinks, birdies, three-putts, lost balls, and whatever else your group wants bragging
                 (or shaming) rights over. Off by default — turn it on whenever you&apos;re ready.
               </p>
-              {enableError && <p className="text-sm text-red-600">{enableError}</p>}
+              {enableError && <p className="text-sm text-red-300">{enableError}</p>}
               <Button
                 type="button"
+                variant="gold"
+                size="lg"
                 disabled={isEnabling}
                 onClick={() => {
                   setEnableError(null);
@@ -124,11 +183,11 @@ export function NineteenthHoleTab({
                   });
                 }}
               >
-                {isEnabling ? "Enabling…" : "Enable The 19th Hole"}
+                {isEnabling ? "Enabling…" : "🎉 Enable The 19th Hole"}
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-charcoal-500">
+            <p className="text-sm text-cream-100/80">
               The 19th Hole hasn&apos;t been turned on for this trip yet. Ask a captain to enable it from
               here.
             </p>
@@ -139,7 +198,9 @@ export function NineteenthHoleTab({
   }
 
   return (
-    <Card className="border-gold-300/70 bg-gradient-to-br from-gold-50 via-cream-50 to-gold-100">
+    <Card className={PARTY_CARD_CLASSES}>
+      <PartyGlow />
+      <PartyLights />
       {/* One confetti burst each time this tab is opened -- the same
           particle effect a birdie gets elsewhere in the app (see
           ScoreCelebration), reused here so entering The 19th Hole
@@ -151,8 +212,10 @@ export function NineteenthHoleTab({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle>🎉 The 19th Hole</CardTitle>
-            <CardDescription>The stats that don&apos;t make the scorecard.</CardDescription>
+            <CardTitle className="text-cream-50">🎉 The 19th Hole</CardTitle>
+            <CardDescription className="text-gold-200/80">
+              The stats that don&apos;t make the scorecard.
+            </CardDescription>
           </div>
           {isCaptain && (
             <button
@@ -162,7 +225,7 @@ export function NineteenthHoleTab({
               aria-pressed={showSetup}
               className={cn(
                 "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors",
-                showSetup ? "bg-forest-800 text-cream-50" : "text-charcoal-500 hover:bg-cream-100",
+                showSetup ? "bg-gold-400 text-forest-950" : "text-gold-200 hover:bg-white/10",
               )}
             >
               <Settings2 className="h-5 w-5" aria-hidden="true" />
@@ -204,7 +267,7 @@ export function NineteenthHoleTab({
         )}
 
         <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-          <div className="flex w-fit gap-1 rounded-full bg-gold-100/80 p-1">
+          <div className="flex w-fit gap-1 rounded-full bg-white/10 p-1 ring-1 ring-white/10">
             {SUB_VIEWS.map((v) => (
               <button
                 key={v.key}
@@ -213,8 +276,8 @@ export function NineteenthHoleTab({
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-base font-medium transition-colors",
                   subView === v.key
-                    ? "bg-forest-800 text-cream-50 shadow-sm"
-                    : "text-charcoal-600 hover:text-charcoal",
+                    ? "bg-gold-400 text-forest-950 shadow-sm"
+                    : "text-gold-100/80 hover:text-cream-50",
                 )}
               >
                 {v.label}

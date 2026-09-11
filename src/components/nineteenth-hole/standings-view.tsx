@@ -82,7 +82,7 @@ export function NineteenthHoleStandings({
   const selectedCounter = activeCounters.find((c) => c.id === selectedCounterId) ?? activeCounters[0] ?? null;
 
   if (activeCounters.length === 0 || !selectedCounter) {
-    return <p className="text-sm text-charcoal-500">No counters are active yet.</p>;
+    return <p className="text-sm text-gold-100/80">No counters are active yet.</p>;
   }
 
   const isPositive = selectedCounter.isDefault && POSITIVE_ACHIEVEMENT_KEYS.has(selectedCounter.key);
@@ -107,8 +107,8 @@ export function NineteenthHoleStandings({
               className={cn(
                 "shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-base font-medium transition-colors",
                 selectedCounter.id === c.id
-                  ? "bg-forest-800 text-cream-50"
-                  : "bg-cream-100 text-charcoal-600 hover:bg-cream-200",
+                  ? "bg-gold-400 text-forest-950 shadow-sm"
+                  : "bg-white/10 text-gold-100/90 hover:bg-white/20",
               )}
             >
               {c.label}
@@ -119,7 +119,7 @@ export function NineteenthHoleStandings({
 
       {rounds.length > 0 && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-charcoal-500" htmlFor="standingsRound">
+          <label className="mb-1 block text-xs font-medium text-gold-100/80" htmlFor="standingsRound">
             Also show this round
           </label>
           <select
