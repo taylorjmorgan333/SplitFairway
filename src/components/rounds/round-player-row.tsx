@@ -101,7 +101,7 @@ export function RoundPlayerRow({
     <div className="rounded-xl border border-charcoal-400/15 p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="flex items-center gap-2 text-base font-medium text-forest-900">
+          <h3 className="flex items-center gap-2 font-serif text-lg text-forest-900">
             {displayName}
             {teamColor && (
               <>
@@ -112,7 +112,7 @@ export function RoundPlayerRow({
                 <span className="sr-only">Team: {TEAM_COLOR_LABEL[teamColor]}</span>
               </>
             )}
-          </p>
+          </h3>
           {player.profile_handicap_index != null && (
             <p className="mt-0.5 text-xs text-charcoal-400">
               Profile handicap when added: {player.profile_handicap_index.toFixed(1)}
