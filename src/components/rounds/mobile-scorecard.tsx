@@ -536,6 +536,27 @@ export function MobileScorecard({
     setScore(player.roundPlayerId, currentHole, next, par);
   }
 
+  // Every editable golfer's row shows par as soon as a hole is visible
+  // (the input's `value={gross ?? par ?? ""}` fallback below), but that
+  // was only ever a display placeholder -- nothing was actually saved
+  // for it unless the scorekeeper tapped the field or the +/- buttons.
+  // A group that just pars a hole straight down the board had no way to
+  // move on without an artificial edit (bump the number up, then back
+  // down) just to make *something* register as a real, saved score.
+  // Called right before advancing off a hole, this commits par for
+  // anyone still showing that placeholder -- a genuinely entered score
+  // (including one already saved as exactly par) is never touched.
+  function commitParDefaults(holeNumber: number) {
+    if (isLocked) return;
+    for (const player of editablePlayers) {
+      const key = scoreKey(player.roundPlayerId, holeNumber);
+      if ((scores.get(key) ?? null) != null) continue;
+      const holes = player.teeSetName ? (holesByTeeSet.get(player.teeSetName) ?? []) : (teeSets[0]?.holes ?? []);
+      const par = holes.find((h) => h.hole_number === holeNumber)?.par ?? null;
+      if (par != null) setScore(player.roundPlayerId, holeNumber, par, par);
+    }
+  }
+
   return (
     <div className="space-y-4 pb-safe">
       <ScoreCelebration trigger={celebration?.id ?? null} label={celebration?.label ?? ""} fixed />
@@ -731,7 +752,10 @@ export function MobileScorecard({
             <button
               type="button"
               disabled={currentHole <= 1}
-              onClick={() => setCurrentHole((h) => Math.max(1, h - 1))}
+              onClick={() => {
+                commitParDefaults(currentHole);
+                setCurrentHole((h) => Math.max(1, h - 1));
+              }}
               className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200 disabled:opacity-30"
             >
               <span aria-hidden="true">‹</span> Previous Hole
@@ -739,6 +763,7 @@ export function MobileScorecard({
             {currentHole >= holeCount ? (
               <Link
                 href={`/trips/${tripId}/rounds/${roundId}/results`}
+                onClick={() => commitParDefaults(currentHole)}
                 className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-forest-800 text-base font-medium text-cream-50 active:bg-forest-900"
               >
                 Review Round <span aria-hidden="true">›</span>
@@ -746,7 +771,10 @@ export function MobileScorecard({
             ) : (
               <button
                 type="button"
-                onClick={() => setCurrentHole((h) => Math.min(holeCount, h + 1))}
+                onClick={() => {
+                  commitParDefaults(currentHole);
+                  setCurrentHole((h) => Math.min(holeCount, h + 1));
+                }}
                 className="flex h-14 items-center justify-center gap-1.5 rounded-xl bg-cream-100 text-base font-medium text-forest-800 active:bg-cream-200"
               >
                 Next Hole <span aria-hidden="true">›</span>
