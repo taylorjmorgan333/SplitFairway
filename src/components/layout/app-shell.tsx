@@ -35,6 +35,26 @@ const MOBILE_TABS = [
     label: "New Trip",
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />,
   },
+  // Same GOLF_SCORING_ENABLED gate as the desktop nav's "Courses" link
+  // above -- without this, the bottom tab bar (what mobile web and the
+  // native app actually navigate with, since the top nav row is hidden
+  // below md) had no way to reach /courses at all once the course
+  // library shipped, even though it was reachable from a desktop
+  // browser the whole time.
+  ...(GOLF_SCORING_ENABLED
+    ? [
+        {
+          href: "/courses",
+          label: "Courses",
+          icon: (
+            <>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 21V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 4h11l-3.5 3.5L17 11H6" />
+            </>
+          ),
+        },
+      ]
+    : []),
   {
     href: "/account",
     label: "Account",
