@@ -196,23 +196,39 @@ export function TripTabs({
     <div>
       {/* -mx-5 px-5 lets the pill row bleed to the screen edge and scroll
           horizontally on a phone (7 tabs don't fit in 320px) without the
-          page itself gaining horizontal scroll. */}
+          page itself gaining horizontal scroll.
+
+          WebKit (Safari / this app's native iOS WKWebView) doesn't count
+          an overflow-x scrolling element's own trailing padding toward
+          its scrollWidth, so the last few pixels of that px-5 gutter
+          were never reachable by scrolling -- on a phone with all 7-8
+          tabs, that was just enough to stop short of the last tab
+          ("Settings"), clipping it mid-word instead of leaving a clean
+          gap after it. round-nav.tsx's equivalent scroller never showed
+          this because it already has real trailing content (the "Round
+          Details" link) after its tab pill; the spacer div below gives
+          this one the same kind of genuine trailing content -- not just
+          padding -- so the browser has something real to scroll all the
+          way to. */}
       <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-        <div className="flex w-fit gap-1 rounded-full bg-cream-200 p-1">
-          {tabs.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={
-                tab === t
-                  ? "shrink-0 rounded-full bg-white px-4 py-3 text-sm font-medium text-forest-900 shadow-card sm:py-1.5"
-                  : "shrink-0 rounded-full px-4 py-3 text-sm text-charcoal-500 transition-colors hover:text-charcoal sm:py-1.5"
-              }
-            >
-              {t}
-            </button>
-          ))}
+        <div className="flex w-fit items-center gap-1">
+          <div className="flex w-fit gap-1 rounded-full bg-cream-200 p-1">
+            {tabs.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={
+                  tab === t
+                    ? "shrink-0 rounded-full bg-white px-4 py-3 text-sm font-medium text-forest-900 shadow-card sm:py-1.5"
+                    : "shrink-0 rounded-full px-4 py-3 text-sm text-charcoal-500 transition-colors hover:text-charcoal sm:py-1.5"
+                }
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <div aria-hidden="true" className="w-5 shrink-0 sm:hidden" />
         </div>
       </div>
 
