@@ -28,10 +28,12 @@ export function CreateRoundForm({
   tripId,
   courses,
   tournaments,
+  initialCourseId,
 }: {
   tripId: string;
   courses: { id: string; name: string; hole_count: number }[];
   tournaments: { id: string; name: string }[];
+  initialCourseId?: string;
 }) {
   const action = createRoundAction.bind(null, tripId);
   const [state, formAction] = useActionState(action, initialState);
@@ -53,7 +55,7 @@ export function CreateRoundForm({
           name="courseId"
           className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3.5 text-sm text-charcoal transition-colors focus:border-forest-600"
           required
-          defaultValue=""
+          defaultValue={initialCourseId ?? ""}
         >
           <option value="" disabled>
             Choose a course

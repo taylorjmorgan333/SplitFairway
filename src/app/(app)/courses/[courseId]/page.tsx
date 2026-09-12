@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
@@ -10,6 +11,7 @@ import { TeeSetSection } from "@/components/courses/tee-set-section";
 import { CourseDangerZone } from "@/components/courses/course-danger-zone";
 import { CourseCorrectionForm } from "@/components/courses/course-correction-form";
 import { RefreshCourseButton } from "@/components/courses/refresh-course-button";
+import { StartRoundControl } from "@/components/courses/start-round-control";
 import { GOLFCOURSE_API_ENABLED, GOLFCOURSE_API_REFRESH_ENABLED } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +71,20 @@ export default async function CourseDetailPage({
 
   const holeRows = holes ?? [];
   const { data: isAdmin } = await supabase.rpc("is_app_admin");
+
+  // rounds_insert_captain (see src/actions/rounds.ts) restricts creating
+  // a round to a trip's captain -- only offer "Start a Round" for trips
+  // this caller actually captains, same restriction the round-setup
+  // form itself would enforce anyway.
+  const { data: captainMemberships } = await supabase
+    .from("trip_members")
+    .select("trip_id, trips(name)")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .eq("role", "captain");
+  const captainTrips = (captainMemberships ?? [])
+    .filter((m) => m.trips !== null)
+    .map((m) => ({ id: m.trip_id, name: m.trips!.name }));
   const isProviderSourced = Boolean(course.external_source);
   // Provider-sourced course data may only be edited directly by an
   // admin (via a refresh from the provider, or a manual correction) --
@@ -79,7 +95,14 @@ export default async function CourseDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="flex flex-wrap items-center gap-2">
+      <Link
+        href="/courses"
+        className="inline-flex items-center gap-1 text-sm font-medium text-forest-800 hover:text-forest-700"
+      >
+        ← Back to Courses
+      </Link>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <h1 className="text-2xl">{course.name}</h1>
         {!isProviderSourced && course.created_by === user.id && course.status !== "approved" && (
           <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -93,6 +116,20 @@ export default async function CourseDetailPage({
         {" · "}
         {course.hole_count} holes
       </p>
+
+      <div className="mt-4">
+        {captainTrips.length > 0 ? (
+          <StartRoundControl courseId={course.id} trips={captainTrips} />
+        ) : (
+          <p className="text-sm text-charcoal-400">
+            You need to be a trip captain to start a round —{" "}
+            <Link href="/trips/new" className="underline underline-offset-2 hover:text-charcoal-500">
+              create a trip
+            </Link>{" "}
+            first.
+          </p>
+        )}
+      </div>
 
       {isProviderSourced && isAdmin && GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_REFRESH_ENABLED && (
         <div className="mt-4">

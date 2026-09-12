@@ -10,14 +10,17 @@ export const metadata: Metadata = { title: "Set Up a Tee Time" };
 
 export default async function NewRoundPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tripId: string }>;
+  searchParams: Promise<{ courseId?: string }>;
 }) {
   if (!GOLF_SCORING_ENABLED) {
     redirect("/dashboard");
   }
 
   const { tripId } = await params;
+  const { courseId } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,6 +37,11 @@ export default async function NewRoundPage({
     supabase.from("tournaments").select("id, name").eq("trip_id", tripId).order("name", { ascending: true }),
   ]);
 
+  // Only honor ?courseId= (e.g. arriving via "Start a Round" on a course's
+  // detail page) when it's actually one of the courses this trip can see
+  // -- otherwise silently fall through to the normal unselected picker.
+  const initialCourseId = courses?.some((c) => c.id === courseId) ? courseId : undefined;
+
   return (
     <div className="mx-auto max-w-xl">
       <SetupStepNav tripId={tripId} roundId={null} currentStep={1} />
@@ -45,7 +53,12 @@ export default async function NewRoundPage({
 
       <Card className="mt-6">
         <CardContent>
-          <CreateRoundForm tripId={tripId} courses={courses ?? []} tournaments={tournaments ?? []} />
+          <CreateRoundForm
+            tripId={tripId}
+            courses={courses ?? []}
+            tournaments={tournaments ?? []}
+            initialCourseId={initialCourseId}
+          />
         </CardContent>
       </Card>
     </div>
