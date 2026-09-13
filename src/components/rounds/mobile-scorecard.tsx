@@ -298,64 +298,90 @@ export function MobileScorecard({
     return strokesReceivedByHole(player.playingHandicap, holesFor(player));
   }
 
-  const persist = useCallback(
-    (roundPlayerId: string, holeNumber: number, value: number | null) => {
-      const key = scoreKey(roundPlayerId, holeNumber);
-      const existing = saveTimers.current.get(key);
-      if (existing) clearTimeout(existing);
-
+  // Actually saves one hole's score and updates its sync badge --
+  // shared by the debounced initial save (persist, below), the
+  // automatic retry sweep, and the mount-time replay of anything left
+  // in the durable local queue, so all three handle a failure
+  // (including a request that never completes, not just a graceful
+  // {ok:false} response) the same way: mark it "error" and let the
+  // retry sweep pick it back up. Reads the value to send from
+  // pendingQueueRef rather than the `scores` state -- `scores` is set
+  // by the time this runs (setScore sets the ref before ever calling
+  // persist), and unlike `scores`, the ref stays current even inside a
+  // callback created once per roundId (see the retry effect below),
+  // rather than going stale after the first score entered post-mount.
+  const saveOneScore = useCallback(
+    async (key: ScoreKey) => {
+      const [roundPlayerId, holeStr] = key.split(":");
+      const holeNumber = Number(holeStr);
+      const value = pendingQueueRef.current[key] ?? null;
       setSyncStatus((prev) => new Map(prev).set(key, "pending"));
-
-      const timer = setTimeout(async () => {
-        if (!navigator.onLine) {
-          setSyncStatus((prev) => new Map(prev).set(key, "error"));
-          return;
-        }
+      try {
         const result = await saveHoleScoreAction(roundId, roundPlayerId, holeNumber, value);
         setSyncStatus((prev) => new Map(prev).set(key, result.ok ? "synced" : "error"));
         if (result.ok) {
           clearFromPendingQueue(key);
           scheduleHideSaved(key);
         }
-      }, 350);
-
-      saveTimers.current.set(key, timer);
+      } catch {
+        setSyncStatus((prev) => new Map(prev).set(key, "error"));
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [roundId],
   );
 
-  // Retry every score still marked "error" as soon as the device comes
-  // back online -- the in-tab half of "offline-friendly entry with
-  // automatic sync on reconnect." The other half is the localStorage-
-  // backed queue above (loadPendingQueue/savePendingQueue), which covers
-  // the harder case of the app being closed or the tab killed with
-  // unsynced holes still pending.
-  useEffect(() => {
-    function retryAll() {
-      setSyncStatus((prev) => {
-        const next = new Map(prev);
-        for (const [key, status] of prev) {
-          if (status !== "error") continue;
-          const [roundPlayerId, holeStr] = key.split(":");
-          const holeNumber = Number(holeStr);
-          const value = scores.get(key) ?? null;
-          next.set(key, "pending");
-          saveHoleScoreAction(roundId, roundPlayerId, holeNumber, value).then((result) => {
-            setSyncStatus((p) => new Map(p).set(key, result.ok ? "synced" : "error"));
-            if (result.ok) {
-              clearFromPendingQueue(key);
-              scheduleHideSaved(key);
-            }
-          });
+  const persist = useCallback(
+    (roundPlayerId: string, holeNumber: number) => {
+      const key = scoreKey(roundPlayerId, holeNumber);
+      const existing = saveTimers.current.get(key);
+      if (existing) clearTimeout(existing);
+
+      setSyncStatus((prev) => new Map(prev).set(key, "pending"));
+
+      const timer = setTimeout(() => {
+        if (!navigator.onLine) {
+          setSyncStatus((prev) => new Map(prev).set(key, "error"));
+          return;
         }
-        return next;
-      });
-    }
-    window.addEventListener("online", retryAll);
-    return () => window.removeEventListener("online", retryAll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roundId]);
+        void saveOneScore(key);
+      }, 350);
+
+      saveTimers.current.set(key, timer);
+    },
+    [saveOneScore],
+  );
+
+  // Retries every score still marked "error", both the instant the
+  // device reports coming back online AND on a periodic sweep
+  // regardless of whether that event ever fires. navigator.onLine can
+  // stay true the whole time on a patchy course connection even while
+  // individual saves are actually failing (a few bars of a weak
+  // signal, not a clean offline/online transition), so relying only on
+  // the "online" event left failed holes stuck showing "Not synced —
+  // will retry" with nothing actually retrying them until the screen
+  // was closed and reopened. The other half of "offline-friendly entry
+  // with automatic sync on reconnect" is the localStorage-backed queue
+  // above (loadPendingQueue/savePendingQueue), which covers the app
+  // being closed outright with unsynced holes still pending.
+  const retryAllErrored = useCallback(() => {
+    if (!navigator.onLine) return;
+    setSyncStatus((prev) => {
+      for (const [key, status] of prev) {
+        if (status === "error") void saveOneScore(key);
+      }
+      return prev;
+    });
+  }, [saveOneScore]);
+
+  useEffect(() => {
+    window.addEventListener("online", retryAllErrored);
+    const interval = setInterval(retryAllErrored, 8000);
+    return () => {
+      window.removeEventListener("online", retryAllErrored);
+      clearInterval(interval);
+    };
+  }, [retryAllErrored]);
 
   // Once on mount: pick up anything left in this device's durable queue
   // from a previous visit -- a golfer who entered scores, lost signal,
@@ -380,16 +406,7 @@ export function MobileScorecard({
     });
 
     if (navigator.onLine) {
-      for (const key of keys) {
-        const [roundPlayerId, holeStr] = key.split(":");
-        saveHoleScoreAction(roundId, roundPlayerId, Number(holeStr), queue[key]).then((result) => {
-          setSyncStatus((p) => new Map(p).set(key, result.ok ? "synced" : "error"));
-          if (result.ok) {
-            clearFromPendingQueue(key);
-            scheduleHideSaved(key);
-          }
-        });
-      }
+      for (const key of keys) void saveOneScore(key);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId]);
@@ -410,7 +427,7 @@ export function MobileScorecard({
     setScores((prev) => new Map(prev).set(key, value));
     pendingQueueRef.current[key] = value;
     scheduleQueueWrite();
-    persist(roundPlayerId, holeNumber, value);
+    persist(roundPlayerId, holeNumber);
     if (par !== undefined) maybeCelebrate(previous, value, par);
   }
 
