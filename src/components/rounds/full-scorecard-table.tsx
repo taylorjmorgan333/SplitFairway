@@ -42,12 +42,6 @@ export function FullScorecardTable({
   onCellSelect?: (roundPlayerId: string, holeNumber: number) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("gross");
-  // Which nine's hole-by-hole columns show on a phone-width screen --
-  // there isn't room for all 18 plus Out/In/Tot without horizontal
-  // scrolling that read as "cut off." At md: and wider every column
-  // always renders regardless of this, since the widened desktop
-  // container (see score/page.tsx) has room for the whole card.
-  const [mobileNine, setMobileNine] = useState<Nine>("front");
 
   // Whether the table is actually wider than the visible scroll area
   // right now -- drives a small "scroll for more" hint so a table that
@@ -74,18 +68,22 @@ export function FullScorecardTable({
       el.removeEventListener("scroll", update);
       resizeObserver.disconnect();
     };
-  }, [holeCount, mobileNine]);
+  }, [holeCount]);
 
   const holeNumbers = useMemo(() => Array.from({ length: holeCount }, (_, i) => i + 1), [holeCount]);
   const hasBack = holeCount > 9;
   const frontHoles = holeNumbers.filter((h) => h <= 9);
   const backHoles = holeNumbers.filter((h) => h > 9);
 
-  // Out/In/Tot and the sticky golfer-name column are never hidden --
-  // only the individual per-hole columns for whichever nine isn't
-  // selected collapse below md:.
-  const frontHiddenOnMobile = hasBack && mobileNine === "back";
-  const backHiddenOnMobile = hasBack && mobileNine === "front";
+  // All 18 holes (plus Out/In/Tot) always render and scroll together
+  // horizontally, on a phone included -- an earlier version split
+  // mobile into a Front 9 / Back 9 toggle instead of one continuous
+  // scroll, which is exactly the "flip back and forth" experience a
+  // captain asked to get rid of after using it mid-round. The
+  // horizontal scroller and its "more to scroll" hint (canScrollMore
+  // above) already handle a table wider than the screen.
+  const frontHiddenOnMobile = false;
+  const backHiddenOnMobile = false;
 
   // Par and stroke index don't vary by tee in the overwhelming majority
   // of real courses (only yardage does), so one reference tee's holes
@@ -137,27 +135,6 @@ export function FullScorecardTable({
           ))}
         </div>
       </div>
-
-      {/* Front 9 / Back 9 tabs -- mobile-only (md:hidden), and only when
-          there is a back nine at all. Desktop always shows both nines
-          side by side, so this toggle would have nothing to do there. */}
-      {hasBack && (
-        <div className="mt-3 flex gap-1 rounded-full bg-cream-100 p-1 md:hidden">
-          {(["front", "back"] as const).map((nine) => (
-            <button
-              key={nine}
-              type="button"
-              onClick={() => setMobileNine(nine)}
-              className={cn(
-                "flex-1 rounded-full py-1.5 text-sm font-medium transition-colors",
-                mobileNine === nine ? "bg-forest-800 text-cream-50" : "text-charcoal-600",
-              )}
-            >
-              {nine === "front" ? "Front 9" : "Back 9"}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="relative mt-3">
         <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4">
