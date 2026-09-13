@@ -173,7 +173,29 @@ export function MobileScorecard({
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(
     myPlayer?.roundPlayerId ?? editablePlayers[0]?.roundPlayerId ?? players[0]?.roundPlayerId ?? "",
   );
-  const [currentHole, setCurrentHole] = useState(1);
+  // Resume on the first hole that still needs a score for someone this
+  // scorekeeper can enter for, instead of always reopening on hole 1.
+  // This screen remounts from scratch on things like a native
+  // background/foreground cycle or just navigating back to the
+  // Scorecard tab mid-round, and always starting over at hole 1 -- even
+  // though every score already entered was safely saved -- meant
+  // tapping back through however many holes were already done just to
+  // reach the one actually in progress. Falls back to hole 1 (nothing
+  // entered yet) or the last hole (everything already scored, e.g.
+  // reopening to review) when there's no single "next" hole to resume.
+  const [currentHole, setCurrentHole] = useState(() => {
+    if (editablePlayers.length === 0) return 1;
+    for (let h = 1; h <= holeCount; h++) {
+      const incomplete = editablePlayers.some((p) => {
+        const existing = initialScores.find(
+          (s) => s.roundPlayerId === p.roundPlayerId && s.holeNumber === h,
+        );
+        return (existing?.grossStrokes ?? null) == null;
+      });
+      if (incomplete) return h;
+    }
+    return holeCount;
+  });
   const [viewMode, setViewMode] = useState<"hole" | "full">("hole");
 
   const [scores, setScores] = useState<Map<ScoreKey, number | null>>(() => {
