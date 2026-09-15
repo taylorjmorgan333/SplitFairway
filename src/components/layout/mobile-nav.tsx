@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { SectionLink } from "@/components/marketing/section-link";
 
 /**
  * The public site's mobile nav menu -- follows the same click-outside-
@@ -49,7 +49,7 @@ export function MobileNav({ links }: { links: { href: string; label: string }[] 
           className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-lg border border-forest-900/10 bg-white shadow-lg"
         >
           {links.map((link) => (
-            <Link
+            <SectionLink
               key={link.href}
               href={link.href}
               role="menuitem"
@@ -57,7 +57,7 @@ export function MobileNav({ links }: { links: { href: string; label: string }[] 
               className="flex min-h-11 items-center px-4 py-2.5 text-base text-forest-900 hover:bg-cream-100"
             >
               {link.label}
-            </Link>
+            </SectionLink>
           ))}
         </div>
       )}

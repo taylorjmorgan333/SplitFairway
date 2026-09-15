@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
+import { SectionLink } from "@/components/marketing/section-link";
 
 const PRODUCT_LINKS = [
   { href: "/#how-it-works", label: "How It Works" },
@@ -40,12 +41,12 @@ export function SiteFooter() {
           <ul className="mt-4 space-y-2.5">
             {PRODUCT_LINKS.map((link) => (
               <li key={link.href}>
-                <Link
+                <SectionLink
                   href={link.href}
                   className="text-sm text-cream-100/75 transition-colors hover:text-cream-50"
                 >
                   {link.label}
-                </Link>
+                </SectionLink>
               </li>
             ))}
           </ul>

@@ -1,7 +1,7 @@
 import { Flag, Users, MapPin, Check } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
+import { SectionLink } from "@/components/marketing/section-link";
 
 type UseCase = {
   icon: typeof Flag;
@@ -98,9 +98,9 @@ export function UseCasesSection() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink href={useCase.href} variant="primary" className="mt-6 w-full">
+                <SectionLink href={useCase.href} variant="primary" className="mt-6 w-full">
                   {useCase.cta}
-                </ButtonLink>
+                </SectionLink>
               </CardContent>
             </Card>
           ))}

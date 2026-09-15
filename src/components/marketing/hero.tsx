@@ -1,4 +1,5 @@
 import { ButtonLink } from "@/components/ui/button";
+import { SectionLink } from "@/components/marketing/section-link";
 import { Container } from "@/components/ui/container";
 import { RoundPreview } from "@/components/marketing/round-preview";
 import { TripModeMiniPreview } from "@/components/marketing/trip-mode-mini-preview";
@@ -32,14 +33,14 @@ export function Hero() {
               <ButtonLink href="/signup" variant="gold" size="lg">
                 Start Playing Free
               </ButtonLink>
-              <ButtonLink
-                href="#trip-mode"
+              <SectionLink
+                href="/#trip-mode"
                 variant="outline"
                 size="lg"
                 className="border-cream-50/25 text-cream-50 hover:bg-cream-50/10"
               >
                 Explore Trip Mode
-              </ButtonLink>
+              </SectionLink>
             </div>
             <p className="mt-6 text-sm text-cream-100/60">
               Free for every golfer. No credit card required during beta.

@@ -3,6 +3,7 @@ import { Logo } from "@/components/ui/logo";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SectionLink } from "@/components/marketing/section-link";
 
 const NAV_LINKS = [
   { href: "/#how-it-works", label: "How It Works" },
@@ -27,13 +28,13 @@ export function SiteHeader() {
           className="hidden items-center gap-7 md:flex"
         >
           {NAV_LINKS.map((link) => (
-            <Link
+            <SectionLink
               key={link.href}
               href={link.href}
               className="text-sm font-medium text-charcoal-700 transition-colors hover:text-forest-800"
             >
               {link.label}
-            </Link>
+            </SectionLink>
           ))}
         </nav>
 

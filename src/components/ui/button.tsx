@@ -20,11 +20,27 @@ const SIZE_CLASSES = {
   lg: "h-12 px-7 text-base",
 } as const;
 
-type Variant = keyof typeof VARIANT_CLASSES;
-type Size = keyof typeof SIZE_CLASSES;
+export type Variant = keyof typeof VARIANT_CLASSES;
+export type Size = keyof typeof SIZE_CLASSES;
 
 const baseClasses =
   "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
+
+// Shared with SectionLink (src/components/marketing/section-link.tsx),
+// which needs this exact class composition but can't render through
+// ButtonLink directly -- it has to stay a "use client" component (it
+// attaches an onClick) while ButtonLink stays a server component.
+export function buttonClasses({
+  variant = "primary",
+  size = "md",
+  className,
+}: {
+  variant?: Variant;
+  size?: Size;
+  className?: string;
+}) {
+  return cn(baseClasses, VARIANT_CLASSES[variant], SIZE_CLASSES[size], className);
+}
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -39,12 +55,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(
-        baseClasses,
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        className,
-      )}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     />
   );
@@ -64,12 +75,7 @@ export function ButtonLink({
 }: ButtonLinkProps) {
   return (
     <Link
-      className={cn(
-        baseClasses,
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        className,
-      )}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     />
   );
