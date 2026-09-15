@@ -15,6 +15,7 @@ import { InviteMemberForm } from "@/components/trips/invite-member-form";
 import { AddMemberManuallyForm } from "@/components/trips/add-member-manually-form";
 import { EditTripForm } from "@/components/trips/edit-trip-form";
 import { TripDangerZone } from "@/components/trips/trip-danger-zone";
+import { AttachGroupForm } from "@/components/trips/attach-group-form";
 import {
   RemindersTab,
   type OverdueCandidate,
@@ -79,6 +80,7 @@ export function TripTabs({
   nineteenthHoleRounds,
   nineteenthHoleMembers,
   recorderNameByUserId,
+  myGroups,
 }: {
   trip: Tables<"trips">;
   isCaptain: boolean;
@@ -101,6 +103,7 @@ export function TripTabs({
   nineteenthHoleRounds: NineteenthHoleRound[];
   nineteenthHoleMembers: NineteenthHoleMember[];
   recorderNameByUserId: Record<string, string>;
+  myGroups: { id: string; name: string }[];
 }) {
   const [tab, setTab] = useState<Tab>("Overview");
   const [reviewedBalances, setReviewedBalances] = useState(false);
@@ -450,6 +453,18 @@ export function TripTabs({
                   </CardHeader>
                   <CardContent>
                     <EditTripForm trip={trip} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Golf group</CardTitle>
+                    <CardDescription>
+                      Optional — connect this trip to one of your saved groups so its rounds show up in that
+                      group&apos;s history and leaderboard too.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AttachGroupForm tripId={trip.id} currentGroupId={trip.golf_group_id} groups={myGroups} />
                   </CardContent>
                 </Card>
                 <Card>

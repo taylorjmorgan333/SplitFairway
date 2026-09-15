@@ -85,7 +85,7 @@ export function NativeSessionRecovery({
 
     void restoreSessionCookiesFromNative().then((restored) => {
       if (restored) {
-        window.location.href = isSafeRelativePath(next) ? next : "/dashboard";
+        window.location.href = isSafeRelativePath(next) ? next : "/home";
         return;
       }
       setRecovering(false);

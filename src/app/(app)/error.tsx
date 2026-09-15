@@ -46,7 +46,7 @@ export default function AppError({
         >
           Try again
         </button>
-        <ButtonLink href="/dashboard" variant="outline">
+        <ButtonLink href="/home" variant="outline">
           Back to dashboard
         </ButtonLink>
       </div>

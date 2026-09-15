@@ -21,7 +21,7 @@ export default function UnauthorizedPage() {
       <p className="mt-2 max-w-sm text-sm text-charcoal-500">
         Either you&apos;re signed in as the wrong account, or this belongs to someone else.
       </p>
-      <ButtonLink href="/dashboard" variant="primary" className="mt-8">
+      <ButtonLink href="/home" variant="primary" className="mt-8">
         Back to your dashboard
       </ButtonLink>
     </Container>

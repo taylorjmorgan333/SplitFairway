@@ -6,7 +6,7 @@ import { applyRememberPolicy, isRemembered, REMEMBER_COOKIE_NAME } from "@/lib/s
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-const PROTECTED_PREFIXES = ["/dashboard", "/trips", "/account"];
+const PROTECTED_PREFIXES = ["/dashboard", "/home", "/play", "/groups", "/trips", "/account"];
 
 /**
  * Refreshes the Supabase auth session on every request and redirects
@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/" &&
     isNativeAppUserAgent(request.headers.get("user-agent") ?? "")
   ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   return response;

@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "SplitFairway",
     description:
       "Split lodging, tee times, rental cars and every other golf trip expense.",
-    start_url: "/dashboard",
+    start_url: "/home",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",

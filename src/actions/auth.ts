@@ -27,7 +27,7 @@ export type ActionState = {
  * URL) — is rejected in favor of the safe default.
  */
 function safeNextPath(next: FormDataEntryValue | null): string {
-  return isSafeRelativePath(next) ? next : "/dashboard";
+  return isSafeRelativePath(next) ? next : "/home";
 }
 
 export async function signUpAction(

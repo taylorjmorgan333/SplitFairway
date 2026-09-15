@@ -6,6 +6,9 @@ import type { MetadataRoute } from "next";
 // none of it should be crawled or indexed regardless.
 const DISALLOWED_PREFIXES = [
   "/dashboard",
+  "/home",
+  "/play",
+  "/groups",
   "/trips",
   "/account",
   "/invite",

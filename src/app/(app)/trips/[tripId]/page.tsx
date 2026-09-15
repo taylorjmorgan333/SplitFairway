@@ -400,6 +400,20 @@ export default async function TripDetailPage({
         ? formatDate(trip.start_date)
         : "Dates TBD";
 
+  // Only the captain sees the "connect to a group" control (Settings
+  // tab is captain-only for this section), so this is skipped for
+  // everyone else rather than paying for a query nobody can act on.
+  let myGroups: { id: string; name: string }[] = [];
+  if (isCaptain) {
+    const { data: groupMemberships } = await supabase
+      .from("golf_group_members")
+      .select("golf_groups(id, name)")
+      .eq("user_id", user.id);
+    myGroups = (groupMemberships ?? [])
+      .filter((g) => g.golf_groups !== null)
+      .map((g) => ({ id: g.golf_groups!.id, name: g.golf_groups!.name }));
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -457,12 +471,13 @@ export default async function TripDetailPage({
           nineteenthHoleRounds={nineteenthHoleRounds}
           nineteenthHoleMembers={sortMembersCaptainFirst(activeMembers).map((m) => ({ id: m.id, displayName: m.display_name }))}
           recorderNameByUserId={recorderNameByUserId}
+          myGroups={myGroups}
         />
       </div>
 
       <div className="mt-8">
-        <ButtonLink href="/dashboard" variant="outline">
-          Back to dashboard
+        <ButtonLink href="/home" variant="outline">
+          Back to home
         </ButtonLink>
       </div>
     </div>

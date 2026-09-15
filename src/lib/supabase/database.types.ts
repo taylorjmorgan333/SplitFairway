@@ -534,6 +534,137 @@ export type Database = {
           },
         ]
       }
+      golf_group_game_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          group_id: string
+          id: string
+          name: string
+          settings: Json
+          side_game_type: Database["public"]["Enums"]["side_game_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          group_id: string
+          id?: string
+          name: string
+          settings?: Json
+          side_game_type: Database["public"]["Enums"]["side_game_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          group_id?: string
+          id?: string
+          name?: string
+          settings?: Json
+          side_game_type?: Database["public"]["Enums"]["side_game_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golf_group_game_presets_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "golf_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_game_presets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      golf_group_members: {
+        Row: {
+          created_at: string
+          default_handicap_index: number | null
+          display_name: string
+          email: string | null
+          group_id: string
+          id: string
+          preferred_tee_name: string | null
+          role: Database["public"]["Enums"]["golf_group_member_role"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_handicap_index?: number | null
+          display_name: string
+          email?: string | null
+          group_id: string
+          id?: string
+          preferred_tee_name?: string | null
+          role?: Database["public"]["Enums"]["golf_group_member_role"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_handicap_index?: number | null
+          display_name?: string
+          email?: string | null
+          group_id?: string
+          id?: string
+          preferred_tee_name?: string | null
+          role?: Database["public"]["Enums"]["golf_group_member_role"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golf_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "golf_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      golf_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golf_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       golf_profiles: {
         Row: {
           created_at: string
@@ -1640,7 +1771,9 @@ export type Database = {
           description: string | null
           destination: string | null
           end_date: string | null
+          golf_group_id: string | null
           id: string
+          kind: Database["public"]["Enums"]["trip_kind"]
           name: string
           owner_id: string | null
           start_date: string | null
@@ -1655,7 +1788,9 @@ export type Database = {
           description?: string | null
           destination?: string | null
           end_date?: string | null
+          golf_group_id?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["trip_kind"]
           name: string
           owner_id?: string | null
           start_date?: string | null
@@ -1670,7 +1805,9 @@ export type Database = {
           description?: string | null
           destination?: string | null
           end_date?: string | null
+          golf_group_id?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["trip_kind"]
           name?: string
           owner_id?: string | null
           start_date?: string | null
@@ -1690,6 +1827,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_golf_group_id_fkey"
+            columns: ["golf_group_id"]
+            isOneToOne: false
+            referencedRelation: "golf_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -1727,6 +1871,32 @@ export type Database = {
       add_trip_member_manually: {
         Args: { p_display_name: string; p_email?: string; p_trip_id: string }
         Returns: Json
+      }
+      attach_trip_to_group: {
+        Args: { p_group_id: string | null; p_trip_id: string }
+        Returns: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          destination: string | null
+          end_date: string | null
+          golf_group_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["trip_kind"]
+          name: string
+          owner_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       can_edit_round_score: {
         Args: { p_round_player_id: string }
@@ -1793,6 +1963,53 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_group: {
+        Args: { p_description?: string; p_name: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "golf_groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_hosted_round_trip: {
+        Args: {
+          p_golf_group_id?: string
+          p_kind: Database["public"]["Enums"]["trip_kind"]
+          p_name: string
+        }
+        Returns: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          destination: string | null
+          end_date: string | null
+          golf_group_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["trip_kind"]
+          name: string
+          owner_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1973,6 +2190,58 @@ export type Database = {
         Args: { p_other_user_id: string }
         Returns: boolean
       }
+      start_group_round_trip: {
+        Args: { p_group_id: string }
+        Returns: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          destination: string | null
+          end_date: string | null
+          golf_group_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["trip_kind"]
+          name: string
+          owner_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_quick_round_trip: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cover_image_url: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          destination: string | null
+          end_date: string | null
+          golf_group_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["trip_kind"]
+          name: string
+          owner_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "trips"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       transfer_trip_ownership: {
         Args: { p_new_owner_trip_member_id: string; p_trip_id: string }
         Returns: {
@@ -2046,6 +2315,7 @@ export type Database = {
         | "merchandise"
         | "activity"
         | "other"
+      golf_group_member_role: "owner" | "member"
       handicap_source: "manual" | "ghin_screenshot_import"
       invitation_status: "pending" | "accepted" | "declined" | "revoked"
       member_role: "captain" | "member"
@@ -2095,6 +2365,7 @@ export type Database = {
         | "cha_cha_cha"
         | "custom"
       split_method: "equal" | "selected" | "custom"
+      trip_kind: "trip" | "quick_round" | "group_round"
       trip_status: "planning" | "active" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -2234,6 +2505,7 @@ export const Constants = {
         "activity",
         "other",
       ],
+      golf_group_member_role: ["owner", "member"],
       handicap_source: ["manual", "ghin_screenshot_import"],
       invitation_status: ["pending", "accepted", "declined", "revoked"],
       member_role: ["captain", "member"],
@@ -2286,6 +2558,7 @@ export const Constants = {
         "custom",
       ],
       split_method: ["equal", "selected", "custom"],
+      trip_kind: ["trip", "quick_round", "group_round"],
       trip_status: ["planning", "active", "completed", "cancelled"],
     },
   },

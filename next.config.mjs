@@ -1,6 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Nav/product repositioning: Dashboard was renamed Home. Keeps any
+  // bookmarked/linked /dashboard URL working (requirement: preserve
+  // existing URLs, redirect where routes move) without keeping a
+  // second copy of the page around -- src/app/(app)/home/page.tsx is
+  // the only real implementation now.
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/home", permanent: false },
+    ];
+  },
 };
 
 // Loud, hard-to-miss build-time reminder — not a build failure, since a

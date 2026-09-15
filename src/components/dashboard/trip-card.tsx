@@ -21,7 +21,7 @@ export function TripCard({ trip }: { trip: TripSummary }) {
           <div>
             <h3 className="text-base text-forest-900">{trip.name}</h3>
             {trip.destination && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-charcoal-400">
+              <p className="mt-1 flex items-center gap-1 text-sm text-charcoal-400">
                 <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
                 {trip.destination}
               </p>
@@ -32,7 +32,7 @@ export function TripCard({ trip }: { trip: TripSummary }) {
           </Badge>
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-cream-200 pt-4 text-sm">
+        <div className="mt-4 flex items-center justify-between border-t border-cream-200 pt-4 text-base">
           <span className="text-charcoal-500">{trip.dateRange}</span>
           <span className="flex items-center gap-1 text-charcoal-500">
             <Users className="h-3.5 w-3.5" aria-hidden="true" />
@@ -40,7 +40,7 @@ export function TripCard({ trip }: { trip: TripSummary }) {
           </span>
         </div>
 
-        <p className="mt-3 text-sm font-medium text-forest-900">
+        <p className="mt-3 text-base font-medium text-forest-900">
           {trip.outstandingLabel}
         </p>
       </Card>

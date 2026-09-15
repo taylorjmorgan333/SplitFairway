@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/actions/auth";
 import { DeleteAccountForm } from "@/components/account/delete-account-form";
 import { GolfProfileSection } from "@/components/account/golf-profile-section";
+import { ButtonLink } from "@/components/ui/button";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function AccountPage() {
   }
 
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? "";
+  const { data: isAdmin } = await supabase.rpc("is_app_admin");
 
   return (
     <div className="mx-auto max-w-xl">
@@ -55,6 +57,23 @@ export default async function AccountPage() {
       </Card>
 
       {GOLF_SCORING_ENABLED && <GolfProfileSection userId={user.id} />}
+
+      {isAdmin && GOLF_SCORING_ENABLED && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Admin</CardTitle>
+            <CardDescription>Course data tools — visible only to app admins.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <ButtonLink href="/admin/golfcourseapi" variant="outline" size="sm">
+              GolfCourseAPI
+            </ButtonLink>
+            <ButtonLink href="/admin/course-corrections" variant="outline" size="sm">
+              Course Corrections
+            </ButtonLink>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mt-6">
         <CardHeader>
