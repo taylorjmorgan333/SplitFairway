@@ -1498,6 +1498,8 @@ export type Database = {
           course_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           hole_count: number
           id: string
           live_score_visibility: boolean
@@ -1514,6 +1516,8 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           hole_count: number
           id?: string
           live_score_visibility?: boolean
@@ -1530,6 +1534,8 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           hole_count?: number
           id?: string
           live_score_visibility?: boolean
@@ -1553,6 +1559,13 @@ export type Database = {
           {
             foreignKeyName: "rounds_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rounds_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2306,6 +2319,7 @@ export type Database = {
       }
       decline_trip_invitation: { Args: { p_token: string }; Returns: undefined }
       delete_own_account: { Args: never; Returns: undefined }
+      discard_round: { Args: { p_round_id: string }; Returns: undefined }
       enforce_rate_limit: {
         Args: {
           p_event_type: string
@@ -2396,6 +2410,7 @@ export type Database = {
         Args: { p_trip_member_id: string }
         Returns: Json
       }
+      restore_round: { Args: { p_round_id: string }; Returns: undefined }
       revoke_group_guest_invitation: {
         Args: { p_invitation_id: string }
         Returns: undefined

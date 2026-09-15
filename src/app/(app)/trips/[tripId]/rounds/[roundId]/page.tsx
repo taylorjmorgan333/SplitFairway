@@ -13,8 +13,10 @@ import { AddRoundPlayerForm } from "@/components/rounds/add-round-player-form";
 import { RoundPlayerRow } from "@/components/rounds/round-player-row";
 import { CourseTeesDisclosure } from "@/components/rounds/course-tees-disclosure";
 import { EditRoundDetailsForm } from "@/components/rounds/edit-round-details-form";
+import { DeleteRoundButton } from "@/components/rounds/delete-round-button";
 import { SetupStepNav, RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { phaseForStatus, isScoringComplete } from "@/components/rounds/round-phase";
+import { canDiscardRound, type RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +57,7 @@ export default async function RoundDetailPage({
       .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .maybeSingle(),
-    supabase.from("trips").select("golf_group_id").eq("id", tripId).maybeSingle(),
+    supabase.from("trips").select("golf_group_id, kind").eq("id", tripId).maybeSingle(),
   ]);
 
   if (!round || round.trip_id !== tripId) {
@@ -68,6 +70,17 @@ export default async function RoundDetailPage({
   const safeUser = user;
 
   const isCaptain = myMembership?.role === "captain" && myMembership.status === "active";
+  // Same rule discard_round()/restore_round() enforce authoritatively
+  // in the database: a Quick Round only by its creator, a Group/Trip
+  // Round by any current captain. Gates the "Delete Round" control
+  // below (item 4/5 of the round-discard spec) -- this is UI-only
+  // gating, not the real authorization.
+  const canManageRound = canDiscardRound({
+    tripKind: (tripRow?.kind ?? "trip") as RoundHostTripKind,
+    roundCreatedBy: safeRound.created_by,
+    currentUserId: safeUser.id,
+    isCaptain,
+  });
 
   let guestInvitations: GuestInvitationRow[] = [];
   if (isCaptain && GUEST_SCORING_ENABLED) {
@@ -277,7 +290,7 @@ export default async function RoundDetailPage({
         {safeRound.start_time ? ` · ${safeRound.start_time.slice(0, 5)}` : ""} · {safeRound.hole_count} holes ·{" "}
         {phase === "play" ? (scoresComplete ? "Scores Complete" : "In progress") : "Finished"}
       </p>
-      <div className="mt-2">
+      <div className="mt-2" id="round-settings">
         <EditRoundDetailsForm
           tripId={tripId}
           roundId={safeRound.id}
@@ -304,6 +317,15 @@ export default async function RoundDetailPage({
           Players, groups, tees and handicaps can still be adjusted here if something changes.
         </p>
         <PlayersAndGroups />
+
+        {(safeRound.status === "completed" || safeRound.status === "locked") && canManageRound && (
+          <div className="mt-6 border-t border-charcoal-400/15 pt-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-charcoal-400">Danger Zone</p>
+            <div className="mt-3">
+              <DeleteRoundButton tripId={tripId} roundId={safeRound.id} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-8">

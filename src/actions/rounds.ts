@@ -231,6 +231,57 @@ export async function removeRoundPlayerAction(roundId: string, playerId: string)
   revalidatePath(`/trips`);
 }
 
+export interface DiscardRoundResult {
+  status: "success" | "error";
+  message?: string;
+}
+
+/**
+ * Soft-deletes a round (Home's "Round Options" menu, and the stronger
+ * "Delete Round" confirmation on a completed round's Settings page --
+ * both call this same action). All the actual authorization --
+ * creator-only for a Quick Round, any current trip captain for a
+ * Group/Trip Round -- is enforced inside the discard_round() database
+ * function itself (supabase/migrations/20260918100000_round_soft_delete.sql),
+ * not here, so this action can't be bypassed by calling it directly
+ * with a different roundId than the UI shows. Revalidates every page
+ * that can display this round so it disappears immediately rather than
+ * only after a hard refresh.
+ */
+export async function discardRoundAction(tripId: string, roundId: string): Promise<DiscardRoundResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("discard_round", { p_round_id: roundId });
+  if (error) {
+    console.error("discardRoundAction: discard_round RPC failed", { tripId, roundId, error });
+    return { status: "error", message: "Couldn't discard this round. Please try again." };
+  }
+  revalidatePath("/home");
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/rounds`);
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}`);
+  return { status: "success" };
+}
+
+/**
+ * Undo for discardRoundAction -- the "Round discarded — Undo" toast
+ * calls this within its short display window. Same authorization
+ * (re-checked independently inside restore_round(), not trusted from
+ * the fact that discard just succeeded for this session).
+ */
+export async function restoreRoundAction(tripId: string, roundId: string): Promise<DiscardRoundResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restore_round", { p_round_id: roundId });
+  if (error) {
+    console.error("restoreRoundAction: restore_round RPC failed", { tripId, roundId, error });
+    return { status: "error", message: "Couldn't undo — please refresh and try again." };
+  }
+  revalidatePath("/home");
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/rounds`);
+  revalidatePath(`/trips/${tripId}/rounds/${roundId}`);
+  return { status: "success" };
+}
+
 /**
  * Lets either the organizer or the golfer themselves adjust the tee
  * set, group, or playing handicap actually used for a round -- RLS

@@ -710,3 +710,166 @@ begin
   delete from public.trips where id = v_trip2_id;
   delete from auth.users where id in (v_captain2, v_member2, v_recipient, v_new_owner, v_bystander, v_outsider2);
 end $$;
+
+-- A third, independent do-block covering discard_round()/restore_round()
+-- (20260918100000_round_soft_delete.sql), the "Discard Round"/"Delete
+-- Round" soft-delete feature:
+--  22. anon cannot call discard_round at all.
+--  23. A Quick Round can only be discarded by its own creator -- not by
+--      a user with no relationship to that trip at all.
+--  24. A Group Round can be discarded by its trip captain, but not by
+--      a non-captain member of that same trip.
+--  25. Discarding a round immediately removes it from that round's own
+--      SELECT visibility for every trip member, including the captain
+--      who discarded it.
+--  26. restore_round() undoes it -- the round becomes selectable again
+--      -- and is blocked for the same non-captain member restore_round
+--      was never granted to.
+--  27. Both functions are idempotent: discarding an already-discarded
+--      round, or restoring an already-active one, is a silent no-op
+--      rather than an error.
+
+do $$
+declare
+  v_qr_creator uuid := gen_random_uuid();
+  v_gr_captain uuid := gen_random_uuid();
+  v_gr_member uuid := gen_random_uuid();
+  v_outsider3 uuid := gen_random_uuid();
+  v_qr_trip_id uuid;
+  v_gr_trip_id uuid;
+  v_qr_round_id uuid;
+  v_gr_round_id uuid;
+  v_course_id uuid;
+  v_count int;
+  v_blocked boolean;
+begin
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data, is_super_admin,
+    confirmation_token, recovery_token, email_change_token_new, email_change
+  ) values
+  ('00000000-0000-0000-0000-000000000000', v_qr_creator, 'authenticated', 'authenticated', 'rls-qr-creator@example.com', crypt('pw', gen_salt('bf')), now(), now(), now(), '{}', '{}', false, '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', v_gr_captain, 'authenticated', 'authenticated', 'rls-gr-captain@example.com', crypt('pw', gen_salt('bf')), now(), now(), now(), '{}', '{}', false, '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', v_gr_member,  'authenticated', 'authenticated', 'rls-gr-member@example.com',  crypt('pw', gen_salt('bf')), now(), now(), now(), '{}', '{}', false, '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', v_outsider3,  'authenticated', 'authenticated', 'rls-discard-outsider@example.com', crypt('pw', gen_salt('bf')), now(), now(), now(), '{}', '{}', false, '', '', '', '');
+
+  -- 22. anon cannot call discard_round at all.
+  v_blocked := false;
+  begin
+    set local role anon;
+    perform public.discard_round(gen_random_uuid());
+  exception when others then
+    v_blocked := true;
+  end;
+  reset role;
+  assert v_blocked, 'anon must not be able to call discard_round';
+
+  insert into public.courses (name, hole_count, created_by, status)
+  values ('RLS Verification Course', 18, v_qr_creator, 'approved')
+  returning id into v_course_id;
+
+  -- Quick Round: v_qr_creator starts it via the real hosted-trip RPC,
+  -- exactly like startQuickRoundSetupAction does, then a round is
+  -- added directly (round creation itself is untouched by this
+  -- feature -- only discard/restore is under test here).
+  perform set_config('request.jwt.claims', json_build_object('sub', v_qr_creator, 'role', 'authenticated', 'email', 'rls-qr-creator@example.com')::text, true);
+  set local role authenticated;
+  select (public.start_quick_round_trip()).id into v_qr_trip_id;
+  insert into public.rounds (trip_id, course_id, round_date, hole_count, status, created_by)
+  values (v_qr_trip_id, v_course_id, current_date, 18, 'in_progress', v_qr_creator)
+  returning id into v_qr_round_id;
+  reset role;
+
+  -- 23a. A user with no relationship to this Quick Round cannot
+  -- discard it.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_outsider3, 'role', 'authenticated', 'email', 'rls-discard-outsider@example.com')::text, true);
+  set local role authenticated;
+  v_blocked := false;
+  begin
+    perform public.discard_round(v_qr_round_id);
+  exception when others then
+    v_blocked := true;
+  end;
+  reset role;
+  assert v_blocked, 'a user with no relationship to a Quick Round must not be able to discard it';
+
+  -- 23b. The creator can discard their own Quick Round.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_qr_creator, 'role', 'authenticated', 'email', 'rls-qr-creator@example.com')::text, true);
+  set local role authenticated;
+  perform public.discard_round(v_qr_round_id);
+
+  -- 25. Discarding removes it from the creator's own SELECT visibility.
+  select count(*) into v_count from public.rounds where id = v_qr_round_id;
+  assert v_count = 0, 'a discarded round must not be selectable, even by its own creator';
+
+  -- 27a. Discarding again is a silent no-op, not an error.
+  perform public.discard_round(v_qr_round_id);
+  reset role;
+
+  -- 26a. restore_round() by the same creator brings it back.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_qr_creator, 'role', 'authenticated', 'email', 'rls-qr-creator@example.com')::text, true);
+  set local role authenticated;
+  perform public.restore_round(v_qr_round_id);
+  select count(*) into v_count from public.rounds where id = v_qr_round_id;
+  assert v_count = 1, 'restore_round must make the round selectable again';
+
+  -- 27b. Restoring an already-active round is a silent no-op.
+  perform public.restore_round(v_qr_round_id);
+  reset role;
+
+  -- Group Round: v_gr_captain starts it, then adds v_gr_member as a
+  -- plain (non-captain) trip member -- matching exactly what
+  -- add_trip_member_manually()/start_group_round_trip() actually
+  -- produce, where only the golfer who started the round is ever a
+  -- captain.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_gr_captain, 'role', 'authenticated', 'email', 'rls-gr-captain@example.com')::text, true);
+  set local role authenticated;
+  select (public.create_hosted_round_trip('RLS Group Round', 'group_round')).id into v_gr_trip_id;
+  insert into public.trip_members (trip_id, user_id, display_name, email, role, status, joined_at)
+  values (v_gr_trip_id, v_gr_member, 'RLS Group Member', 'rls-gr-member@example.com', 'member', 'active', now());
+  insert into public.rounds (trip_id, course_id, round_date, hole_count, status, created_by)
+  values (v_gr_trip_id, v_course_id, current_date, 18, 'scheduled', v_gr_captain)
+  returning id into v_gr_round_id;
+  reset role;
+
+  -- 24a. The non-captain member cannot discard the Group Round.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_gr_member, 'role', 'authenticated', 'email', 'rls-gr-member@example.com')::text, true);
+  set local role authenticated;
+  v_blocked := false;
+  begin
+    perform public.discard_round(v_gr_round_id);
+  exception when others then
+    v_blocked := true;
+  end;
+  reset role;
+  assert v_blocked, 'a non-captain trip member must not be able to discard a Group Round';
+
+  -- 24b. The trip captain can discard the Group Round, and it
+  -- disappears immediately (same SELECT-visibility guarantee as 25).
+  perform set_config('request.jwt.claims', json_build_object('sub', v_gr_captain, 'role', 'authenticated', 'email', 'rls-gr-captain@example.com')::text, true);
+  set local role authenticated;
+  perform public.discard_round(v_gr_round_id);
+  select count(*) into v_count from public.rounds where id = v_gr_round_id;
+  assert v_count = 0, 'the trip captain must be able to discard a Group Round, and it must disappear immediately';
+  reset role;
+
+  -- 26b. The non-captain member cannot restore it either.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_gr_member, 'role', 'authenticated', 'email', 'rls-gr-member@example.com')::text, true);
+  set local role authenticated;
+  v_blocked := false;
+  begin
+    perform public.restore_round(v_gr_round_id);
+  exception when others then
+    v_blocked := true;
+  end;
+  reset role;
+  assert v_blocked, 'a non-captain trip member must not be able to restore a discarded Group Round';
+
+  raise notice 'ALL ROUND-DISCARD/RESTORE AUTHORIZATION CHECKS PASSED';
+
+  delete from public.rounds where id in (v_qr_round_id, v_gr_round_id);
+  delete from public.trips where id in (v_qr_trip_id, v_gr_trip_id);
+  delete from public.courses where id = v_course_id;
+  delete from auth.users where id in (v_qr_creator, v_gr_captain, v_gr_member, v_outsider3);
+end $$;

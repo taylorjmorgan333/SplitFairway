@@ -11,6 +11,8 @@ import {
   type HomeGroupSummary,
   type HomeRecentRound,
 } from "@/components/home/home-sections";
+import { ActiveRoundCardShell } from "@/components/rounds/active-round-card-shell";
+import { canDiscardRound, type RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { primaryHrefForRound } from "@/components/rounds/round-phase";
 import { calculateBalances, type ExpenseInput, type PaymentInput } from "@/lib/balances";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -30,6 +32,11 @@ export default async function HomePage() {
     // just a type-narrowing guard.
     return null;
   }
+  // Nested function declarations below (canDiscardHomeRound) don't
+  // retain `user`'s null-narrowing from TS's point of view, so it's
+  // captured here once, same pattern as safeRound/safeUser on the round
+  // details page.
+  const userId = user.id;
 
   const [{ data: profile }, { data: memberships }] = await Promise.all([
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
@@ -121,6 +128,23 @@ export default async function HomePage() {
 
   // ---- Rounds: Continue / Upcoming / Recent, across every trip ----
   const tripNameById = new Map(rows.map((m) => [m.trip_id, m.trips!.name]));
+  const tripKindById = new Map(rows.map((m) => [m.trip_id, m.trips!.kind as RoundHostTripKind]));
+  const myRoleByTrip = new Map(rows.map((m) => [m.trip_id, m.role]));
+  // Whether the signed-in user may discard this round from its Home
+  // card's "Round Options" menu -- same rule discard_round() enforces
+  // authoritatively in the database (see round-discard-permission.ts):
+  // a Quick Round only by its creator, a Group/Trip Round by any
+  // current captain.
+  function canDiscardHomeRound(tripId: string, createdBy: string | null): boolean {
+    const kind = tripKindById.get(tripId);
+    if (!kind) return false;
+    return canDiscardRound({
+      tripKind: kind,
+      roundCreatedBy: createdBy,
+      currentUserId: userId,
+      isCaptain: myRoleByTrip.get(tripId) === "captain",
+    });
+  }
   let continueRound: {
     roundId: string;
     tripId: string;
@@ -128,6 +152,7 @@ export default async function HomePage() {
     courseName: string;
     holesCompleted: number;
     holeCount: number;
+    canDiscard: boolean;
   } | null = null;
   let upcomingRound: {
     roundId: string;
@@ -136,13 +161,14 @@ export default async function HomePage() {
     courseName: string;
     roundDate: string;
     startTime: string | null;
+    canDiscard: boolean;
   } | null = null;
   let recentRounds: HomeRecentRound[] = [];
 
   if (GOLF_SCORING_ENABLED && allTripIds.length > 0) {
     const { data: roundRows } = await supabase
       .from("rounds")
-      .select("id, trip_id, round_date, start_time, hole_count, status")
+      .select("id, trip_id, round_date, start_time, hole_count, status, created_by")
       .in("trip_id", allTripIds)
       .order("round_date", { ascending: false })
       .order("start_time", { ascending: false, nullsFirst: false });
@@ -184,6 +210,7 @@ export default async function HomePage() {
           courseName: courseNameByRound.get(activeRound.id) ?? "Course",
           holesCompleted,
           holeCount: activeRound.hole_count,
+          canDiscard: canDiscardHomeRound(activeRound.trip_id, activeRound.created_by),
         };
       }
 
@@ -199,6 +226,7 @@ export default async function HomePage() {
           courseName: courseNameByRound.get(nextScheduled.id) ?? "Course",
           roundDate: nextScheduled.round_date,
           startTime: nextScheduled.start_time,
+          canDiscard: canDiscardHomeRound(nextScheduled.trip_id, nextScheduled.created_by),
         };
       }
 
@@ -258,13 +286,22 @@ export default async function HomePage() {
 
       <div className="mt-8 space-y-8">
         {continueRound && (
-          <ContinueRoundCard
-            tripName={continueRound.tripName}
-            courseName={continueRound.courseName}
-            holesCompleted={continueRound.holesCompleted}
-            holeCount={continueRound.holeCount}
-            href={primaryHrefForRound(continueRound.tripId, continueRound.roundId, "in_progress")}
-          />
+          <ActiveRoundCardShell
+            tripId={continueRound.tripId}
+            roundId={continueRound.roundId}
+            canDiscard={continueRound.canDiscard}
+            viewHref={`/trips/${continueRound.tripId}/rounds/${continueRound.roundId}`}
+            editHref={`/trips/${continueRound.tripId}/rounds/${continueRound.roundId}#round-settings`}
+            variant="dark"
+          >
+            <ContinueRoundCard
+              tripName={continueRound.tripName}
+              courseName={continueRound.courseName}
+              holesCompleted={continueRound.holesCompleted}
+              holeCount={continueRound.holeCount}
+              href={primaryHrefForRound(continueRound.tripId, continueRound.roundId, "in_progress")}
+            />
+          </ActiveRoundCardShell>
         )}
 
         {GOLF_SCORING_ENABLED && (
@@ -304,13 +341,22 @@ export default async function HomePage() {
             </h2>
             <div className="mt-3">
               {upcomingRound ? (
-                <UpcomingCard
-                  title={upcomingRound.courseName}
-                  subtitle={upcomingRound.tripName}
-                  dateLabel={formatDate(upcomingRound.roundDate)}
-                  href={`/trips/${upcomingRound.tripId}/rounds/${upcomingRound.roundId}`}
-                  actionLabel="View"
-                />
+                <ActiveRoundCardShell
+                  tripId={upcomingRound.tripId}
+                  roundId={upcomingRound.roundId}
+                  canDiscard={upcomingRound.canDiscard}
+                  viewHref={`/trips/${upcomingRound.tripId}/rounds/${upcomingRound.roundId}`}
+                  editHref={`/trips/${upcomingRound.tripId}/rounds/${upcomingRound.roundId}#round-settings`}
+                  variant="light"
+                >
+                  <UpcomingCard
+                    title={upcomingRound.courseName}
+                    subtitle={upcomingRound.tripName}
+                    dateLabel={formatDate(upcomingRound.roundDate)}
+                    href={`/trips/${upcomingRound.tripId}/rounds/${upcomingRound.roundId}`}
+                    actionLabel="View"
+                  />
+                </ActiveRoundCardShell>
               ) : (
                 <UpcomingCard
                   title={upcomingTrip!.name}
