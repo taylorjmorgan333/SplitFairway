@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Info } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { phaseForStatus, type RoundStatus } from "@/components/rounds/round-phase";
 
@@ -94,18 +95,25 @@ interface PlayFinishTab {
  * visible and always shows where you are.
  *
  * The tab SET itself is phase-aware, not just which ones are enabled:
- * while a round is being played it shows only the three screens that
- * matter mid-round (Scorecard, Games, Leaderboard); once it's finished
- * it swaps to the two post-round screens (Results, Settle Up). This
- * keeps the nav to 2-3 items at a time instead of piling every screen
- * into one row regardless of what's actually usable right now.
+ * while a round is being played it shows only the screens that matter
+ * mid-round -- Scorecard, Games, 19th Hole -- once it's finished it
+ * swaps to the two post-round screens (Results, Settle Up). Leaderboard
+ * is no longer its own tab: the Scorecard screen now shows live
+ * standings alongside score entry itself (desktop: side by side;
+ * mobile: below score entry), so a separate tab for the same
+ * information just added a click. Its standalone route still exists
+ * for a direct link, it's just not promoted in this nav.
+ *
+ * "Round Details" moved off this row and into a three-dot "Round
+ * options" menu at the end of it -- it was competing for space with the
+ * tab pills and, being plain text, read as a fourth tab rather than the
+ * secondary/settings action it actually is.
  */
 export function RoundPhaseTabs({
   tripId,
   roundId,
   status,
   sideGamesEnabled,
-  leaderboardEnabled,
   nineteenthHoleEnabled = false,
   scoresComplete = false,
 }: {
@@ -113,7 +121,6 @@ export function RoundPhaseTabs({
   roundId: string;
   status: RoundStatus;
   sideGamesEnabled: boolean;
-  leaderboardEnabled: boolean;
   /** Shows "19th Hole" alongside Scorecard/Games -- the app-wide rollout
    * flag, not the trip's own on/off switch, so the tab exists and links
    * into the feature's own enable screen even before a captain has
@@ -125,11 +132,21 @@ export function RoundPhaseTabs({
   const pathname = usePathname();
   const base = `/trips/${tripId}/rounds/${roundId}`;
   const phase = phaseForStatus(status);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocPointer(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocPointer);
+    return () => document.removeEventListener("mousedown", onDocPointer);
+  }, [menuOpen]);
 
   const playTabs: PlayFinishTab[] = [
     { key: "score", label: "Scorecard", href: `${base}/score`, show: true },
     { key: "games", label: "Games", href: `${base}/games`, show: sideGamesEnabled },
-    { key: "leaderboard", label: "Leaderboard", href: `${base}/leaderboard`, show: leaderboardEnabled },
     { key: "nineteenth-hole", label: "19th Hole", href: `${base}/nineteenth-hole`, show: nineteenthHoleEnabled },
   ];
   const finishTabs: PlayFinishTab[] = [
@@ -164,13 +181,33 @@ export function RoundPhaseTabs({
               );
             })}
           </div>
-          <Link
-            href={base}
-            className="flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-base font-medium text-charcoal-500 hover:bg-cream-100 hover:text-forest-800"
-          >
-            <Info className="h-4 w-4" aria-hidden="true" />
-            Round Details
-          </Link>
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Round options"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-charcoal-500 transition-colors hover:bg-cream-100 hover:text-forest-800"
+            >
+              <MoreVertical className="h-5 w-5" aria-hidden="true" />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-lg border border-forest-900/10 bg-white shadow-lg"
+              >
+                <Link
+                  href={base}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="block min-h-11 w-full px-4 py-2.5 text-left text-base leading-[2.75rem] text-forest-900 hover:bg-cream-100"
+                >
+                  Round Details
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <p className="mt-2 text-sm text-charcoal-400">

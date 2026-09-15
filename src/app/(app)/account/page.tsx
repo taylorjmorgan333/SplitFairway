@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/actions/auth";
 import { DeleteAccountForm } from "@/components/account/delete-account-form";
-import { GolfProfileSection } from "@/components/account/golf-profile-section";
 import { ButtonLink } from "@/components/ui/button";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 
@@ -56,7 +55,19 @@ export default async function AccountPage() {
         </CardContent>
       </Card>
 
-      {GOLF_SCORING_ENABLED && <GolfProfileSection userId={user.id} />}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>More</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <ButtonLink href="/account/settings" variant="outline" size="sm">
+            Settings
+          </ButtonLink>
+          <ButtonLink href="/plans" variant="outline" size="sm">
+            Plans
+          </ButtonLink>
+        </CardContent>
+      </Card>
 
       {isAdmin && GOLF_SCORING_ENABLED && (
         <Card className="mt-6">

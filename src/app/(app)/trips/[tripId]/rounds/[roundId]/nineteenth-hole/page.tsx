@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import {
   GOLF_SCORING_ENABLED,
   SIDE_GAMES_ENABLED,
-  LIVE_LEADERBOARD_ENABLED,
   NINETEENTH_HOLE_ENABLED,
 } from "@/lib/config";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { roundTypeLabel } from "@/lib/golf/round-type-label";
+import type { RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { NineteenthHoleTab } from "@/components/nineteenth-hole/nineteenth-hole-tab";
 import { buildRecorderNameByUserId, loadNineteenthHoleTripData } from "@/lib/nineteenth-hole/data";
 import { sortMembersCaptainFirst } from "@/lib/member-order";
@@ -52,6 +53,7 @@ export default async function RoundNineteenthHolePage({
       .eq("trip_id", tripId)
       .order("created_at", { ascending: true }),
   ]);
+  const { data: tripRow } = await supabase.from("trips").select("kind").eq("id", tripId).maybeSingle();
 
   if (!round || round.trip_id !== tripId) {
     notFound();
@@ -65,21 +67,19 @@ export default async function RoundNineteenthHolePage({
   const recorderNameByUserId = buildRecorderNameByUserId(allMembers);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl md:max-w-content">
       <RoundContextHeader
         roundName={round.name}
+        roundType={roundTypeLabel((tripRow?.kind ?? "trip") as RoundHostTripKind)}
         courseName={snapshot?.course_name ?? "Course"}
-        courseLocation={
-          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
-        }
         roundDate={round.round_date}
+        holeCount={round.hole_count}
       />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
       />
 

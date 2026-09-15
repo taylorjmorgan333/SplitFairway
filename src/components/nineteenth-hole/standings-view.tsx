@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { POSITIVE_ACHIEVEMENT_KEYS } from "@/lib/validation/nineteenth-hole";
 import type {
   NineteenthHoleActivityEntry,
@@ -157,6 +158,40 @@ export function NineteenthHoleStandings({
           <StandingsList standings={tripStandings} unitLabel={unitLabel} />
         </div>
       </div>
+
+      <ComingSoonFeaturesCard />
+    </div>
+  );
+}
+
+const COMING_SOON_FEATURES = [
+  { label: "All-Time Records", badge: "Organizer Pro" },
+  { label: "Custom Awards", badge: "Organizer Pro" },
+  { label: "Shareable Recap Graphics", badge: "Trip Pass" },
+] as const;
+
+/**
+ * Honest placeholder for the three premium 19th Hole features the spec
+ * lists that don't exist yet -- View All-Time Records, Create Custom
+ * Award, Generate Shareable Recap. Unlike "Add a custom counter" (a
+ * real, already-working feature just labeled Pro), these have no
+ * screen to open, so this says "Coming soon" rather than "included
+ * with your beta access" -- it would be dishonest to imply clicking
+ * one does something today. No lock icon per spec; this card is purely
+ * informational; nothing here is a button.
+ */
+function ComingSoonFeaturesCard() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-gold-100/60">Coming soon</p>
+      <ul className="mt-2 space-y-2">
+        {COMING_SOON_FEATURES.map((f) => (
+          <li key={f.label} className="flex items-center justify-between gap-2 text-sm text-gold-100/80">
+            <span>{f.label}</span>
+            <Badge variant="gold">{f.badge}</Badge>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -29,9 +29,14 @@ function isActive(pathname: string, href: string) {
 
 export function DesktopNav() {
   const pathname = usePathname();
+  // "Account" is dropped from the desktop row only -- it's one of the
+  // five tabs a phone needs (no room there for a separate profile
+  // menu), but on desktop it would just duplicate the Account link
+  // already inside ProfileMenu, right next to Plans/Settings/Sign Out.
+  const items = NAV_ITEMS.filter((item) => item.href !== "/account");
   return (
     <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link

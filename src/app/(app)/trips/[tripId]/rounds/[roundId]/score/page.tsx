@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { MobileScorecard, type SnapshotTeeSet, type ScorecardSideGame } from "@/components/rounds/mobile-scorecard";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { roundTypeLabel } from "@/lib/golf/round-type-label";
+import type { RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { isScoringComplete } from "@/components/rounds/round-phase";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,7 @@ export default async function ScorePage({
     redirect("/login");
   }
 
-  const [{ data: round }, { data: snapshot }, { data: myMembership }] = await Promise.all([
+  const [{ data: round }, { data: snapshot }, { data: myMembership }, { data: tripRow }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).maybeSingle(),
     supabase.from("round_course_snapshots").select("*").eq("round_id", roundId).maybeSingle(),
     supabase
@@ -38,6 +40,7 @@ export default async function ScorePage({
       .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase.from("trips").select("kind").eq("id", tripId).maybeSingle(),
   ]);
 
   if (!round || round.trip_id !== tripId) {
@@ -111,21 +114,19 @@ export default async function ScorePage({
   const scoresComplete = isScoringComplete(round.hole_count, rows.length, scoreRows ?? []);
 
   return (
-    <div className="mx-auto max-w-md md:max-w-4xl">
+    <div className="mx-auto max-w-md md:max-w-content">
       <RoundContextHeader
         roundName={round.name}
+        roundType={roundTypeLabel((tripRow?.kind ?? "trip") as RoundHostTripKind)}
         courseName={snapshot?.course_name ?? "Course"}
-        courseLocation={
-          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
-        }
         roundDate={round.round_date}
+        holeCount={round.hole_count}
       />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { roundTypeLabel } from "@/lib/golf/round-type-label";
+import type { RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { FinishRoundButton } from "@/components/rounds/finish-round-button";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
 import { formatToPar } from "@/lib/golf/scoring";
@@ -33,13 +35,13 @@ export default async function ResultsPage({
   if (data.redirectToLogin) {
     redirect("/login");
   }
-  const { round, isCaptain, courseName, courseLocation, standings, totalsById, displayNameById, hasAnyMonetaryGame } = data;
+  const { round, isCaptain, courseName, standings, totalsById, displayNameById, hasAnyMonetaryGame } = data;
 
   // Rounds linked to a saved group get a Group Recap after locking
   // (spec item 7) instead of just staying on this page -- everyone
   // else's flow is completely unchanged.
   const supabase = await createClient();
-  const { data: trip } = await supabase.from("trips").select("golf_group_id").eq("id", tripId).maybeSingle();
+  const { data: trip } = await supabase.from("trips").select("golf_group_id, kind").eq("id", tripId).maybeSingle();
   const groupId = trip?.golf_group_id ?? null;
   const golferCount = displayNameById.size;
   const scoresComplete =
@@ -49,16 +51,16 @@ export default async function ResultsPage({
     <div className="mx-auto max-w-2xl">
       <RoundContextHeader
         roundName={round.name}
+        roundType={roundTypeLabel((trip?.kind ?? "trip") as RoundHostTripKind)}
         courseName={courseName}
-        courseLocation={courseLocation}
         roundDate={round.round_date}
+        holeCount={round.hole_count}
       />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />

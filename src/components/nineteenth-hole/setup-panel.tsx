@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
@@ -236,7 +237,13 @@ export function NineteenthHoleSetupPanel({
       </div>
 
       <div>
-        <Label htmlFor="newCounterLabel">Add a custom counter</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="newCounterLabel" className="mb-0">Add a custom counter</Label>
+          <Badge variant="gold">Pro</Badge>
+        </div>
+        <p className="mb-1.5 text-xs text-charcoal-400">
+          Organizer Pro feature — included with your beta access.
+        </p>
         <div className="flex gap-2">
           <Input
             id="newCounterLabel"

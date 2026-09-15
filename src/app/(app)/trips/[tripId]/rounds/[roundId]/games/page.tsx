@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED, LIVE_LEADERBOARD_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, MONETARY_GAME_VALUES_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
 import { GameTypePicker } from "@/components/rounds/game-type-picker";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { roundTypeLabel } from "@/lib/golf/round-type-label";
+import type { RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { ActiveGamesSummary, type ActiveGameSummary } from "@/components/rounds/active-games-summary";
 import { computeSkins } from "@/lib/golf/skins";
 import { segmentHoleNumbers } from "@/lib/golf/nassau";
@@ -77,6 +79,7 @@ export default async function GamesPage({
       .eq("round_id", roundId)
       .order("created_at", { ascending: true }),
   ]);
+  const { data: tripRow } = await supabase.from("trips").select("kind").eq("id", tripId).maybeSingle();
 
   if (!round || round.trip_id !== tripId) {
     notFound();
@@ -199,21 +202,19 @@ export default async function GamesPage({
   });
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl md:max-w-content">
       <RoundContextHeader
         roundName={round.name}
+        roundType={roundTypeLabel((tripRow?.kind ?? "trip") as RoundHostTripKind)}
         courseName={snapshot?.course_name ?? "Course"}
-        courseLocation={
-          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
-        }
         roundDate={round.round_date}
+        holeCount={round.hole_count}
       />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED, GUEST_SCORING_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED, GUEST_SCORING_ENABLED } from "@/lib/config";
 import { InviteGuestForm } from "@/components/rounds/invite-guest-form";
 import { GuestInvitationsList, type GuestInvitationRow } from "@/components/rounds/guest-invitations-list";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -262,13 +262,12 @@ export default async function RoundDetailPage({
   // moved below the fold as "Round Settings" rather than the primary
   // content, since there's nothing left to set up once play has begun. ----
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl md:max-w-content">
       <RoundPhaseTabs
         tripId={tripId}
         roundId={safeRound.id}
         status={safeRound.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />

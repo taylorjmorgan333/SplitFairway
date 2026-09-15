@@ -5,6 +5,8 @@ import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED, NIN
 import { LiveLeaderboard } from "@/components/rounds/live-leaderboard";
 import { RoundPhaseTabs } from "@/components/rounds/round-nav";
 import { RoundContextHeader } from "@/components/rounds/round-context-header";
+import { roundTypeLabel } from "@/lib/golf/round-type-label";
+import type { RoundHostTripKind } from "@/lib/golf/round-discard-permission";
 import { isScoringComplete } from "@/components/rounds/round-phase";
 import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
 
@@ -43,6 +45,7 @@ export default async function LeaderboardPage({
       ? supabase.from("side_games").select("id, name, game_type").eq("round_id", roundId)
       : Promise.resolve({ data: [] as { id: string; name: string; game_type: string }[] }),
   ]);
+  const { data: tripRow } = await supabase.from("trips").select("kind").eq("id", tripId).maybeSingle();
 
   // rounds_select_members RLS already means this query returns null for
   // anyone who isn't a trip member -- notFound() here just turns that
@@ -88,18 +91,16 @@ export default async function LeaderboardPage({
     <div className="mx-auto max-w-md">
       <RoundContextHeader
         roundName={round.name}
+        roundType={roundTypeLabel((tripRow?.kind ?? "trip") as RoundHostTripKind)}
         courseName={snapshot?.course_name ?? "Course"}
-        courseLocation={
-          snapshot?.course_city ? `${snapshot.course_city}${snapshot.course_state ? `, ${snapshot.course_state}` : ""}` : null
-        }
         roundDate={round.round_date}
+        holeCount={round.hole_count}
       />
       <RoundPhaseTabs
         tripId={tripId}
         roundId={roundId}
         status={round.status}
         sideGamesEnabled={SIDE_GAMES_ENABLED}
-        leaderboardEnabled={LIVE_LEADERBOARD_ENABLED}
         nineteenthHoleEnabled={NINETEENTH_HOLE_ENABLED}
         scoresComplete={scoresComplete}
       />

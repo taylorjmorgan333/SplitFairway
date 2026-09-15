@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
-import { UserMenu } from "@/components/layout/user-menu";
+import { ProfileMenu } from "@/components/layout/profile-menu";
 import { DesktopNav, MobileTabs } from "@/components/layout/primary-nav";
 
 export function AppShell({
@@ -42,7 +42,7 @@ export function AppShell({
             >
               Start a Round
             </ButtonLink>
-            <UserMenu email={email} />
+            <ProfileMenu email={email} />
           </div>
         </Container>
       </header>

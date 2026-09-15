@@ -42,6 +42,12 @@ export function FullScorecardTable({
   onCellSelect?: (roundPlayerId: string, holeNumber: number) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("gross");
+  // Which nine is shown on a phone -- Front 9 / Back 9 tabs replace the
+  // old continuous horizontal scroll for the full 18-hole table. Out,
+  // In and Total stay visible regardless of which nine is selected (they
+  // were never part of frontHiddenOnMobile/backHiddenOnMobile below), so
+  // switching tabs never hides a golfer's running total.
+  const [mobileNine, setMobileNine] = useState<Nine>("front");
 
   // Whether the table is actually wider than the visible scroll area
   // right now -- drives a small "scroll for more" hint so a table that
@@ -75,15 +81,13 @@ export function FullScorecardTable({
   const frontHoles = holeNumbers.filter((h) => h <= 9);
   const backHoles = holeNumbers.filter((h) => h > 9);
 
-  // All 18 holes (plus Out/In/Tot) always render and scroll together
-  // horizontally, on a phone included -- an earlier version split
-  // mobile into a Front 9 / Back 9 toggle instead of one continuous
-  // scroll, which is exactly the "flip back and forth" experience a
-  // captain asked to get rid of after using it mid-round. The
-  // horizontal scroller and its "more to scroll" hint (canScrollMore
-  // above) already handle a table wider than the screen.
-  const frontHiddenOnMobile = false;
-  const backHiddenOnMobile = false;
+  // On a phone, only the selected nine's hole columns render; Out, In
+  // and Total are never part of this and always stay visible. Desktop
+  // (md+) always shows all 18 holes side by side regardless of
+  // mobileNine -- the tabs are a mobile-only affordance for fitting a
+  // full scorecard on a narrow screen without clipping it.
+  const frontHiddenOnMobile = hasBack && mobileNine !== "front";
+  const backHiddenOnMobile = hasBack && mobileNine !== "back";
 
   // Par and stroke index don't vary by tee in the overwhelming majority
   // of real courses (only yardage does), so one reference tee's holes
@@ -136,9 +140,27 @@ export function FullScorecardTable({
         </div>
       </div>
 
+      {hasBack && (
+        <div className="mt-3 flex gap-1 rounded-full bg-cream-100 p-1 md:hidden">
+          {(["front", "back"] as const).map((nine) => (
+            <button
+              key={nine}
+              type="button"
+              onClick={() => setMobileNine(nine)}
+              className={cn(
+                "flex-1 rounded-full px-3 py-2 text-base font-medium transition-colors",
+                mobileNine === nine ? "bg-white text-forest-900 shadow-sm" : "text-charcoal-500",
+              )}
+            >
+              {nine === "front" ? "Front 9" : "Back 9"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="relative mt-3">
         <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-max border-separate border-spacing-0 text-center text-sm">
+        <table className="w-full min-w-max border-separate border-spacing-0 text-center text-base">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 bg-white pb-1 pr-3 text-left align-bottom text-xs font-medium uppercase tracking-wide text-charcoal-400">
@@ -148,28 +170,28 @@ export function FullScorecardTable({
                 <th
                   key={h}
                   className={cn(
-                    "min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500",
+                    "min-w-[2.5rem] pb-1 align-bottom font-medium text-charcoal-500",
                     frontHiddenOnMobile && "hidden md:table-cell",
                   )}
                 >
                   {h}
                 </th>
               ))}
-              <th className="min-w-[2.75rem] pb-1 align-bottom font-medium text-charcoal-700">Out</th>
+              <th className="min-w-[3rem] pb-1 align-bottom font-medium text-charcoal-700">Out</th>
               {hasBack &&
                 backHoles.map((h) => (
                   <th
                     key={h}
                     className={cn(
-                      "min-w-[2.25rem] pb-1 align-bottom font-medium text-charcoal-500",
+                      "min-w-[2.5rem] pb-1 align-bottom font-medium text-charcoal-500",
                       backHiddenOnMobile && "hidden md:table-cell",
                     )}
                   >
                     {h}
                   </th>
                 ))}
-              {hasBack && <th className="min-w-[2.75rem] pb-1 align-bottom font-medium text-charcoal-700">In</th>}
-              <th className="min-w-[3rem] pb-1 align-bottom font-medium text-forest-900">Tot</th>
+              {hasBack && <th className="min-w-[3rem] pb-1 align-bottom font-medium text-charcoal-700">In</th>}
+              <th className="min-w-[3.25rem] pb-1 align-bottom font-medium text-forest-900">Tot</th>
             </tr>
             <tr className="text-xs text-charcoal-400">
               <th className="sticky left-0 z-10 bg-white py-1 pr-3 text-left font-normal">Par</th>
@@ -264,7 +286,7 @@ export function FullScorecardTable({
                       onClick={() => onCellSelect?.(p.roundPlayerId, h)}
                       title={wonSkin ? `Won the skin on hole ${h}` : undefined}
                       className={cn(
-                        "relative mx-auto flex h-7 w-7 items-center justify-center text-sm text-charcoal-800",
+                        "relative mx-auto flex h-8 w-8 items-center justify-center text-base text-charcoal-800",
                         canEdit && onCellSelect && "cursor-pointer hover:bg-cream-100",
                         !canEdit && "text-charcoal-500",
                         isEagleOrBetter && "rounded-full text-gold-700",

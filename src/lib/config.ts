@@ -87,3 +87,17 @@ export const GOLFCOURSE_API_DAILY_REQUEST_LIMIT = Number(
  * isn't turned on yet" message, never a broken or insecure state).
  */
 export const GUEST_SCORING_ENABLED = flagEnabled(process.env.GUEST_SCORING_ENABLED);
+
+/**
+ * The single on/off switch for real billing (Stripe checkout, webhooks,
+ * paid-plan enforcement). Off for the entire beta: see
+ * src/lib/billing/entitlements.ts, which -- while this is false -- gives
+ * every signed-in golfer full Organizer Pro + Trip Pass access rather
+ * than gating anything, exactly as the beta is meant to work ("Give
+ * beta users access to all working features" while still showing the
+ * finished Plans/upgrade UI for review). Flipping this to true later is
+ * meant to be the ONLY code change needed to start enforcing real
+ * plans, once computeEntitlements' billing-enabled branch is wired to
+ * actual subscription/pass records instead of its current placeholder.
+ */
+export const BILLING_ENABLED = flagEnabled(process.env.BILLING_ENABLED);
