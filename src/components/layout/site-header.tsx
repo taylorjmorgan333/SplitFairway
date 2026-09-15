@@ -2,12 +2,17 @@ import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 const NAV_LINKS = [
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/#games", label: "Games & Groups" },
+  { href: "/#trip-mode", label: "Trip Mode" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
+
+const MOBILE_LINKS = [...NAV_LINKS, { href: "/login", label: "Log in" }];
 
 export function SiteHeader() {
   return (
@@ -19,7 +24,7 @@ export function SiteHeader() {
 
         <nav
           aria-label="Primary"
-          className="hidden items-center gap-8 md:flex"
+          className="hidden items-center gap-7 md:flex"
         >
           {NAV_LINKS.map((link) => (
             <Link
@@ -32,24 +37,18 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Plain text below sm: there isn't room for two full pill
-              buttons next to the logo on a phone, and this still reads
-              clearly as "the other option" without competing with the
-              primary CTA. The existing ghost button takes over at sm
-              and up, where there's space for it. */}
-          <Link
-            href="/login"
-            className="text-sm font-medium text-forest-900 transition-colors hover:text-forest-700 sm:hidden"
-          >
-            Log in
-          </Link>
+        <div className="flex items-center gap-1 sm:gap-3">
+          {/* Below sm there's only room for the primary CTA and the
+              menu toggle -- Log in lives in MobileNav's link list
+              there instead of competing for space. From sm up, the
+              ghost button has room to stand on its own again. */}
           <ButtonLink href="/login" variant="ghost" size="sm" className="hidden sm:inline-flex">
             Log in
           </ButtonLink>
           <ButtonLink href="/signup" variant="primary" size="sm">
-            Create Your Trip
+            Start Playing Free
           </ButtonLink>
+          <MobileNav links={MOBILE_LINKS} />
         </div>
       </Container>
     </header>

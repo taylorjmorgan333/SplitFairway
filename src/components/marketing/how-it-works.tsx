@@ -3,23 +3,23 @@ import { Container } from "@/components/ui/container";
 const STEPS = [
   {
     number: "01",
-    title: "Build the trip",
-    body: "Add your golfers, lodging, tee times, transportation and other trip details.",
+    title: "Start a round",
+    body: "Choose a course and begin scoring.",
   },
   {
     number: "02",
-    title: "Split it fairly",
-    body: "We calculate what each golfer owes — even when rooms, rounds and expenses aren't shared evenly.",
+    title: "Play your games",
+    body: "Add Skins, Nassau, Match Play or another supported format.",
   },
   {
     number: "03",
-    title: "Play the rounds",
-    body: "Keep hole-by-hole scores, follow the leaderboard and track the group's side games.",
+    title: "Keep the group together",
+    body: "Save golfers, standings and history for next week.",
   },
   {
     number: "04",
-    title: "Settle everything",
-    body: "See the final trip balances, record payments and send a friendly reminder when needed.",
+    title: "Take the group on the road",
+    body: "Turn the same group into a complete golf trip.",
   },
 ];
 
@@ -30,8 +30,8 @@ export function HowItWorks() {
         <div className="max-w-2xl">
           <h2 className="text-3xl sm:text-4xl">How it works</h2>
           <p className="mt-4 text-lg text-charcoal-500">
-            Four steps between booking the trip and everyone actually
-            settling up.
+            From today&apos;s round to the group you play every week to the trip everyone talks
+            about all year.
           </p>
         </div>
 

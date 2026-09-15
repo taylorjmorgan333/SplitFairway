@@ -3,13 +3,15 @@ import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 
 const PRODUCT_LINKS = [
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/#games", label: "Games & Groups" },
+  { href: "/#trip-mode", label: "Trip Mode" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
 
 const ACCOUNT_LINKS = [
-  { href: "/signup", label: "Create your trip" },
+  { href: "/signup", label: "Start Playing Free" },
   { href: "/login", label: "Log in" },
 ];
 
@@ -27,8 +29,7 @@ export function SiteFooter() {
         <div className="sm:col-span-2 md:col-span-2">
           <Logo variant="light" />
           <p className="mt-4 max-w-sm text-sm text-cream-100/70">
-            Golf trip planning, expense splitting, scorekeeping and game
-            tracking—all in one place.
+            Scores, side games, weekly groups and golf trips—all in one place.
           </p>
         </div>
 

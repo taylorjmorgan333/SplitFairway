@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Hero } from "@/components/marketing/hero";
-import { ProblemSection } from "@/components/marketing/problem-section";
-import { HowItWorks } from "@/components/marketing/how-it-works";
+import { UseCasesSection } from "@/components/marketing/use-cases";
+import { GamesSection } from "@/components/marketing/games-section";
+import { GroupsSection } from "@/components/marketing/groups-section";
+import { NineteenthHoleSection } from "@/components/marketing/nineteenth-hole-section";
+import { TripModeSection } from "@/components/marketing/trip-mode-section";
 import { DashboardPreview } from "@/components/marketing/dashboard-preview";
-import { FeatureList } from "@/components/marketing/feature-list";
+import { HowItWorks } from "@/components/marketing/how-it-works";
 import { PricingPreview } from "@/components/marketing/pricing-preview";
 import { FAQ } from "@/components/marketing/faq";
 import { CtaSection } from "@/components/marketing/cta-section";
 
 const DESCRIPTION =
-  "Split lodging, tee times, rental cars and every other golf trip expense. Everyone sees exactly what they owe and when it's due.";
+  "Track golf scores, side games, weekly groups, trip expenses and payments—all in one golf app.";
 
 // Absolute title — bypasses the root layout's "%s · SplitFairway"
-// template so the homepage reads exactly "SplitFairway | Golf Trip
-// Expense Tracking" instead of doubling up the brand name.
+// template so the homepage reads exactly "SplitFairway | Scores,
+// Games, Groups & Golf Trips" instead of doubling up the brand name.
 // Next.js does NOT deep-merge nested metadata objects (openGraph, twitter)
 // across route segments — a page-level `openGraph`/`twitter` block replaces
 // the root layout's entirely, field for field. So even though the layout
@@ -28,24 +31,24 @@ const OG_IMAGE = {
   url: "/og-image.png",
   width: 1200,
   height: 630,
-  alt: "SplitFairway — keep the trip together, split everything else.",
+  alt: "SplitFairway — every round, every game, every trip.",
 };
 
 export const metadata: Metadata = {
-  title: { absolute: "SplitFairway | Golf Trips Made Easy" },
+  title: { absolute: "SplitFairway | Scores, Games, Groups & Golf Trips" },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
     siteName: "SplitFairway",
     type: "website",
-    title: "SplitFairway | Golf Trips Made Easy",
+    title: "SplitFairway | Scores, Games, Groups & Golf Trips",
     description: DESCRIPTION,
     url: "/",
     images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SplitFairway | Golf Trips Made Easy",
+    title: "SplitFairway | Scores, Games, Groups & Golf Trips",
     description: DESCRIPTION,
     images: ["/og-image.png"],
   },
@@ -57,10 +60,13 @@ export default function LandingPage() {
       <SiteHeader />
       <main>
         <Hero />
-        <ProblemSection />
-        <HowItWorks />
+        <UseCasesSection />
+        <GamesSection />
+        <GroupsSection />
+        <NineteenthHoleSection />
+        <TripModeSection />
         <DashboardPreview />
-        <FeatureList />
+        <HowItWorks />
         <PricingPreview />
         <FAQ />
         <CtaSection />
