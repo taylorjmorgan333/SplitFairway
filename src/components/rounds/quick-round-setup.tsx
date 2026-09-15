@@ -269,7 +269,12 @@ export function QuickRoundSetup({
         <input type="hidden" name="players" value={playersJson} />
         <input type="hidden" name="gameType" value={gameType} />
 
-        {/* Course */}
+        {/* Course -- one clean summary card when a course is chosen (name,
+            city/state, saved indicator, Change Course), or a single
+            Choose Course button when nothing's picked yet. Never both a
+            summary card and a separate quick-pick row -- that was the
+            duplicate "pill + Choose Course button" the redesign asked
+            to remove. */}
         <Card>
           <CardContent className="space-y-3 p-5">
             <p className="text-base font-medium text-forest-900">Course</p>
@@ -285,13 +290,6 @@ export function QuickRoundSetup({
                 <div className="mt-2 flex flex-wrap items-center gap-4">
                   <button
                     type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className="text-base font-medium text-forest-800 underline underline-offset-2"
-                  >
-                    Change
-                  </button>
-                  <button
-                    type="button"
                     onClick={toggleFavorite}
                     disabled={isTogglingFavorite}
                     className="inline-flex items-center gap-1 text-base font-medium text-charcoal-600 hover:text-forest-800"
@@ -305,36 +303,23 @@ export function QuickRoundSetup({
                     />
                     {favoritedIds.has(selectedCourse.id) ? "Saved" : "Save Course"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="text-base font-medium text-forest-800 underline underline-offset-2"
+                  >
+                    Change Course
+                  </button>
                 </div>
               </div>
             ) : (
-              <p className="text-base text-charcoal-500">Choose a course to get started.</p>
+              <>
+                <p className="text-base text-charcoal-500">Choose a course to get started.</p>
+                <Button type="button" size="sm" className="text-base" onClick={() => setPickerOpen(true)}>
+                  Choose Course
+                </Button>
+              </>
             )}
-
-            {quickPicks.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {quickPicks.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => handleCourseSelected(toSelected(c))}
-                    className={cn(
-                      "flex h-11 items-center gap-1.5 rounded-full border px-3.5 text-base font-medium transition-colors",
-                      selectedCourse?.id === c.id
-                        ? "border-forest-700 bg-forest-800/[0.08] text-forest-900"
-                        : "border-charcoal-400/25 text-charcoal-700 hover:bg-forest-800/5",
-                    )}
-                  >
-                    {c.favorited && <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-500" aria-hidden="true" />}
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <Button type="button" variant="outline" size="sm" className="text-base" onClick={() => setPickerOpen(true)}>
-              Choose Course
-            </Button>
           </CardContent>
         </Card>
 
@@ -364,27 +349,39 @@ export function QuickRoundSetup({
                     )}
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-3">
-                    <select
-                      value={p.teeSetName}
-                      onChange={(e) => updatePlayer(p.key, { teeSetName: e.target.value })}
-                      className="h-11 rounded-lg border border-charcoal-400/25 bg-white px-2 text-base text-charcoal focus:border-forest-600"
-                      disabled={!selectedCourse || selectedCourse.teeSetNames.length === 0}
-                    >
-                      <option value="">No tee</option>
-                      {(selectedCourse?.teeSetNames ?? []).map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="Handicap"
-                      className="text-base"
-                      value={p.playingHandicap}
-                      onChange={(e) => updatePlayer(p.key, { playingHandicap: e.target.value })}
-                    />
+                    <div>
+                      <label htmlFor={`tee-${p.key}`} className="mb-1 block text-base font-medium text-forest-900">
+                        Tee
+                      </label>
+                      <select
+                        id={`tee-${p.key}`}
+                        value={p.teeSetName}
+                        onChange={(e) => updatePlayer(p.key, { teeSetName: e.target.value })}
+                        className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-2 text-base text-charcoal focus:border-forest-600"
+                        disabled={!selectedCourse || selectedCourse.teeSetNames.length === 0}
+                      >
+                        <option value="">No tee</option>
+                        {(selectedCourse?.teeSetNames ?? []).map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor={`handicap-${p.key}`} className="mb-1 block text-base font-medium text-forest-900">
+                        Handicap Index (optional)
+                      </label>
+                      <Input
+                        id={`handicap-${p.key}`}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="e.g. 12.4"
+                        className="text-base"
+                        value={p.playingHandicap}
+                        onChange={(e) => updatePlayer(p.key, { playingHandicap: e.target.value })}
+                      />
+                    </div>
                   </div>
                   {!p.playingHandicap && (
                     <p className="mt-1.5 text-base text-charcoal-400">
@@ -544,6 +541,7 @@ export function QuickRoundSetup({
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         courseChoices={courseChoices}
+        excludeCourseId={selectedCourse?.id}
         courseSearchEnabled={courseSearchEnabled}
         manualCourseEntryEnabled={manualCourseEntryEnabled}
         onSelect={handleCourseSelected}

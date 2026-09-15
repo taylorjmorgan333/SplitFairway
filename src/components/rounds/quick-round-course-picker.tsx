@@ -80,6 +80,7 @@ export function QuickRoundCoursePicker({
   open,
   onClose,
   courseChoices,
+  excludeCourseId,
   courseSearchEnabled,
   manualCourseEntryEnabled,
   onSelect,
@@ -87,6 +88,8 @@ export function QuickRoundCoursePicker({
   open: boolean;
   onClose: () => void;
   courseChoices: QuickRoundCourseChoice[];
+  /** The course already selected on the main screen -- left out of Saved/Recently Played here, since "Change Course" implies picking something else. */
+  excludeCourseId?: string;
   courseSearchEnabled: boolean;
   manualCourseEntryEnabled: boolean;
   onSelect: (course: SelectedQuickRoundCourse) => void;
@@ -99,8 +102,9 @@ export function QuickRoundCoursePicker({
   const [isSavingManual, startManualTransition] = useTransition();
   const [manualHoleCount, setManualHoleCount] = useState<9 | 18>(18);
 
-  const saved = courseChoices.filter((c) => c.favorited);
-  const recent = courseChoices.filter((c) => !c.favorited);
+  const selectableChoices = courseChoices.filter((c) => c.id !== excludeCourseId);
+  const saved = selectableChoices.filter((c) => c.favorited);
+  const recent = selectableChoices.filter((c) => !c.favorited);
 
   function handleSelectChoice(course: QuickRoundCourseChoice) {
     onSelect({

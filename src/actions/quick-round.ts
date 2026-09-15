@@ -119,6 +119,7 @@ export async function startQuickRoundSetupAction(
 
   const { data: trip, error: tripError } = await supabase.rpc("start_quick_round_trip");
   if (tripError || !trip) {
+    console.error("startQuickRoundSetupAction: start_quick_round_trip failed", tripError);
     return { status: "error", message: "Something went wrong starting your round. Please try again." };
   }
 
@@ -134,12 +135,17 @@ export async function startQuickRoundSetupAction(
     .maybeSingle();
 
   if (!myTripMember) {
+    console.error("startQuickRoundSetupAction: no trip_members row for the captain right after create_hosted_round_trip", {
+      tripId: trip.id,
+      userId: user.id,
+    });
     await rollBackTrip();
     return { status: "error", message: "Something went wrong starting your round. Please try again." };
   }
 
   const snapshotInput = await loadCourseSnapshotInput(supabase, courseId);
   if (!snapshotInput.ok) {
+    console.error("startQuickRoundSetupAction: loadCourseSnapshotInput failed", { courseId });
     await rollBackTrip();
     return { status: "error", message: "That course couldn't be found. Please choose another." };
   }
@@ -160,12 +166,14 @@ export async function startQuickRoundSetupAction(
     .single();
 
   if (roundError || !round) {
+    console.error("startQuickRoundSetupAction: rounds insert failed", roundError);
     await rollBackTrip();
     return { status: "error", message: "Something went wrong creating the round. Please try again." };
   }
 
   const snapshotResult = await insertRoundCourseSnapshot(supabase, round.id, holeCount, snapshotInput);
   if (!snapshotResult.ok) {
+    console.error("startQuickRoundSetupAction: insertRoundCourseSnapshot failed", { roundId: round.id });
     await supabase.from("rounds").delete().eq("id", round.id);
     await rollBackTrip();
     return { status: "error", message: "Something went wrong saving the course details. Please try again." };
@@ -176,7 +184,21 @@ export async function startQuickRoundSetupAction(
   // start_quick_round_trip -> create_hosted_round_trip); every
   // "Add Golfer" entry gets a brand-new trip_member first, exactly like
   // addNewGolferToRoundAction already does for any other round.
-  let addedAny = false;
+  //
+  // All-or-nothing: a Quick Round with only some of the requested
+  // golfers actually seated is worse than no round at all (the captain
+  // asked for a specific roster), so a single failure here rolls back
+  // the whole round + hidden trip, the same as a course/snapshot
+  // failure above -- never a partially-built round left behind.
+  //
+  // addRoundPlayerSchema (validation/round.ts) only accepts `""` or
+  // `undefined` for its optional fields, never a bare `null` -- and
+  // FormData.get() returns `null` (not `undefined`) for a key that was
+  // never set(). teeSetName/playingHandicap must always be set here,
+  // even to an empty string, or a blank optional field (very common --
+  // it's exactly what "gross scoring, no handicap on file" looks like)
+  // fails validation and silently reads to the caller as a generic
+  // "couldn't add any golfers" with no indication why.
   for (const p of players) {
     let tripMemberId: string | undefined;
     if (p.kind === "self") {
@@ -186,26 +208,49 @@ export async function startQuickRoundSetupAction(
         p_trip_id: trip.id,
         p_display_name: p.displayName,
       });
-      if (!memberError) {
+      if (memberError) {
+        console.error("startQuickRoundSetupAction: add_trip_member_manually failed", {
+          displayName: p.displayName,
+          error: memberError,
+        });
+      } else {
         tripMemberId = (memberResult as { trip_member_id?: string } | null)?.trip_member_id;
       }
     }
-    if (!tripMemberId) continue;
+
+    if (!tripMemberId) {
+      console.error("startQuickRoundSetupAction: no trip_member_id resolved for player, rolling back", {
+        kind: p.kind,
+        displayName: p.displayName,
+      });
+      await supabase.from("rounds").delete().eq("id", round.id);
+      await rollBackTrip();
+      return {
+        status: "error",
+        message: `Couldn't add ${p.kind === "self" ? "you" : p.displayName} to this round. Please try again.`,
+      };
+    }
 
     const fd = new FormData();
     fd.set("tripMemberId", tripMemberId);
-    if (p.teeSetName) fd.set("teeSetName", p.teeSetName);
-    if (p.playingHandicap !== "" && p.playingHandicap != null) {
-      fd.set("playingHandicap", String(p.playingHandicap));
-    }
+    fd.set("teeSetName", p.teeSetName ?? "");
+    fd.set("playingHandicap", p.playingHandicap ?? "");
     const addResult = await addRoundPlayerAction(round.id, { status: "idle" }, fd);
-    if (addResult.status === "success") addedAny = true;
-  }
-
-  if (!addedAny) {
-    await supabase.from("rounds").delete().eq("id", round.id);
-    await rollBackTrip();
-    return { status: "error", message: "Couldn't add any golfers to this round. Please try again." };
+    if (addResult.status !== "success") {
+      console.error("startQuickRoundSetupAction: addRoundPlayerAction failed, rolling back", {
+        kind: p.kind,
+        displayName: p.displayName,
+        tripMemberId,
+        addResultMessage: addResult.message,
+        addResultFieldErrors: addResult.fieldErrors,
+      });
+      await supabase.from("rounds").delete().eq("id", round.id);
+      await rollBackTrip();
+      return {
+        status: "error",
+        message: `Couldn't add ${p.kind === "self" ? "you" : p.displayName} to this round. Please try again.`,
+      };
+    }
   }
 
   // The optional "Game" row (spec item 4): at most one of the four
