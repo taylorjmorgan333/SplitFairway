@@ -1,3 +1,5 @@
+"use client";
+
 import { Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +9,20 @@ import type { PlanDefinition } from "@/lib/billing/plans";
 import { ComingSoonTrigger } from "@/components/billing/coming-soon-dialog";
 
 /**
+ * "use client" is required here, not optional: this card hands
+ * ComingSoonTrigger a render-prop function
+ * (`{(open) => <Button onClick={open}>...}`), and a function can never
+ * cross the Server->Client serialization boundary. As a Server
+ * Component this built fine locally but broke the instant a *static*
+ * page rendered it (Next tries to serialize the RSC payload at build
+ * time and fails with "Functions cannot be passed directly to Client
+ * Components") -- /plans avoided that failure only because it's
+ * force-dynamic, which defers the identical serialization to
+ * request time instead of catching it at build time. Making the whole
+ * card a Client Component removes the boundary entirely, fixing both
+ * the homepage prerender failure and the latent per-request risk on
+ * /plans. Nothing here needs server-only data, so this is free.
+ *
  * One plan card, shared by the signed-in /plans page and the public
  * pricing section (marketing/pricing-preview.tsx) so both surfaces stay
  * factually and visually identical -- the only thing that ever differs
