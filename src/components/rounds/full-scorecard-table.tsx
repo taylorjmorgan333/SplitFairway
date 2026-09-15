@@ -148,7 +148,7 @@ export function FullScorecardTable({
               type="button"
               onClick={() => setMobileNine(nine)}
               className={cn(
-                "flex-1 rounded-full px-3 py-2 text-base font-medium transition-colors",
+                "flex-1 rounded-full px-3 py-2.5 text-base font-medium transition-colors",
                 mobileNine === nine ? "bg-white text-forest-900 shadow-sm" : "text-charcoal-500",
               )}
             >
