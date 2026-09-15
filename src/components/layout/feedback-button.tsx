@@ -50,7 +50,13 @@ export function FeedbackButton() {
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/invite/") ||
     pathname?.startsWith("/legal") ||
-    pathname === "/contact";
+    pathname === "/contact" ||
+    // Quick Round's single-screen setup hides the tab bar and relies on
+    // its own one sticky "Start Scoring" button being the only fixed
+    // control at the bottom of the screen -- a second floating button
+    // here would crowd a screen that's specifically trying to declutter
+    // (spec: the sticky button must not overlap the feedback button).
+    pathname?.startsWith("/play/quick");
 
   if (hidden) return null;
 

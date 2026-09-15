@@ -393,25 +393,6 @@ export async function deleteGroupSeasonAction(groupId: string, seasonId: string)
 }
 
 /**
- * Start a Round, "Quick Round" path: begins scoring without creating a
- * group or a trip the user ever sees. Under the hood this still needs a
- * trip row for round_players/expenses to hang off of (see the migration
- * comment on trips.kind) -- start_quick_round_trip() creates one, hidden
- * from /trips, and this redirects straight into the existing round-setup
- * screen exactly as if a captain had just made a real trip.
- */
-export async function startQuickRoundAction(): Promise<void> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("start_quick_round_trip");
-
-  if (error || !data) {
-    redirect("/play?error=quick-round");
-  }
-
-  redirect(`/trips/${data!.id}/rounds/new`);
-}
-
-/**
  * Start a Round, "Group Round" path, full roster: same idea, but the
  * hidden trip's roster is pre-filled from every one of the saved
  * group's golfers (start_group_round_trip copies them in as

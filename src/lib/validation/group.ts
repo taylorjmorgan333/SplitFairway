@@ -45,6 +45,19 @@ export const GROUP_PRESET_GAME_TYPES = [
 export const PRESET_GAME_TYPES = ["skins", "nassau", "stableford", "match_play"] as const;
 export type PresetGameType = (typeof PRESET_GAME_TYPES)[number];
 
+/**
+ * Display labels for the four preset-able formats -- shared between the
+ * group preset UI and the Quick Round setup screen's single ad-hoc
+ * "Game" row (src/actions/quick-round.ts, quick-round-setup.tsx), so
+ * both spell each format's name identically.
+ */
+export const GAME_TYPE_LABELS: Record<PresetGameType, string> = {
+  skins: "Skins",
+  nassau: "Nassau",
+  stableford: "Stableford",
+  match_play: "Match Play",
+};
+
 export const createGroupSchema = z.object({
   name: z.string().trim().min(1, "Group name is required").max(120),
   description: z.string().trim().max(500).optional().or(z.literal("")),

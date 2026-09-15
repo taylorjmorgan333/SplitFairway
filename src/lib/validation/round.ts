@@ -37,7 +37,7 @@ export type CreateRoundInput = z.infer<typeof createRoundSchema>;
 // Reuses the same bound (-10.0 to 54.0) as golf_profiles.handicap_index —
 // a playing handicap for one round should never fall further outside
 // that range than a profile handicap can.
-const playingHandicapString = z
+export const playingHandicapString = z
   .string()
   .trim()
   .regex(/^[+-]?\d{1,2}(\.\d)?$/, "Enter a handicap like 12.4 or +2.0")

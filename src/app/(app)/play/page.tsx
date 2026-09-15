@@ -5,18 +5,19 @@ import { Search, Users, Luggage, Zap, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 import { Card } from "@/components/ui/card";
-import { startQuickRoundAction } from "@/actions/groups";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Play" };
 
 /**
  * Start a Round, step one: three plain-language choices, no unnecessary
- * information collected before scoring can begin. Quick Round submits
- * right here (nothing else to ask); Group Round and Trip Round each
- * need one more pick (which group / which trip) so they get their own
- * short step at /play/group and /play/trip. Course search lives here
- * too instead of its own nav item -- see /courses.
+ * information collected before scoring can begin. Quick Round has its
+ * own single-screen setup at /play/quick (course, golfers, and options
+ * all on one page -- see quick-round-setup.tsx); Group Round and Trip
+ * Round each need one more pick first (which group / which trip), so
+ * they get their own short step at /play/group and /play/trip before
+ * reaching the fuller setup wizard. Course search lives here too
+ * instead of its own nav item -- see /courses.
  */
 export default async function PlayPage() {
   if (!GOLF_SCORING_ENABLED) {
@@ -37,22 +38,20 @@ export default async function PlayPage() {
       <p className="mt-1.5 text-base text-charcoal-500">How do you want to play today?</p>
 
       <div className="mt-8 space-y-4">
-        <form action={startQuickRoundAction}>
-          <button type="submit" className="block w-full text-left">
-            <Card className="flex items-center gap-4 p-5 transition-shadow hover:shadow-card-hover">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold-100">
-                <Zap className="h-6 w-6 text-gold-700" aria-hidden="true" strokeWidth={1.75} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-medium text-forest-900">Quick Round</p>
-                <p className="mt-0.5 text-base text-charcoal-500">
-                  Start scoring right now — no group or trip needed.
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 shrink-0 text-charcoal-400" aria-hidden="true" />
-            </Card>
-          </button>
-        </form>
+        <Link href="/play/quick" className="block">
+          <Card className="flex items-center gap-4 p-5 transition-shadow hover:shadow-card-hover">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold-100">
+              <Zap className="h-6 w-6 text-gold-700" aria-hidden="true" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-medium text-forest-900">Quick Round</p>
+              <p className="mt-0.5 text-base text-charcoal-500">
+                Start scoring right now — no group or trip needed.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-charcoal-400" aria-hidden="true" />
+          </Card>
+        </Link>
 
         <Link href="/play/group" className="block">
           <Card className="flex items-center gap-4 p-5 transition-shadow hover:shadow-card-hover">

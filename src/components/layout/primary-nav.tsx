@@ -65,6 +65,17 @@ export function DesktopNav() {
  */
 export function MobileTabs() {
   const pathname = usePathname();
+
+  // The Quick Round single-screen setup (spec: "hide the main bottom
+  // navigation while Quick Round setup is open; show a clear Back or
+  // Cancel action instead") replaces the tab bar with its own in-page
+  // Cancel link and sticky "Start Scoring" button -- both would be
+  // fighting the tab bar for the same strip of screen otherwise. Every
+  // other route keeps the tab bar exactly as before.
+  if (pathname?.startsWith("/play/quick")) {
+    return null;
+  }
+
   return (
     <nav
       aria-label="Primary"
