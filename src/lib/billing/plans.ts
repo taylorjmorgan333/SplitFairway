@@ -64,6 +64,7 @@ export const PLANS: PlanDefinition[] = [
     name: "Trip Pass",
     price: "$29.99/trip",
     supportingText: "One purchase unlocks the complete trip for everyone invited.",
+    priceDetail: "One payment covers everyone invited.",
     badge: "Best for golf trips",
     features: [
       "Unlimited golfers for that trip",

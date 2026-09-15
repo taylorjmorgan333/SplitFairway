@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS } from "@/lib/billing/plans";
+import { PLANS, planById } from "@/lib/billing/plans";
 import { PlanCard } from "@/components/billing/plan-card";
 import { BILLING_ENABLED } from "@/lib/config";
 
@@ -17,6 +17,12 @@ export const metadata: Metadata = { title: "Plans" };
  * this page is selling, which is why the beta note appears on both
  * paid cards rather than only showing after a real purchase).
  */
+const PLAN_CHOOSER: Array<{ question: string; planId: (typeof PLANS)[number]["id"] }> = [
+  { question: "Joining and playing?", planId: "free" },
+  { question: "Running a regular group?", planId: "organizer_pro" },
+  { question: "Planning a golf trip?", planId: "trip_pass" },
+];
+
 export default async function PlansPage() {
   const supabase = await createClient();
   const {
@@ -47,11 +53,16 @@ export default async function PlansPage() {
         ))}
       </div>
 
-      <p className="mt-6 text-xs text-charcoal-400">
-        A Trip Pass unlocks one specific trip for everyone invited to it. Organizer Pro applies to
-        a recurring group and its Group Rounds. Neither charges the golfers you invite -- only the
-        organizer or trip captain who chooses the plan.
-      </p>
+      <div className="mt-8 max-w-xl">
+        <p className="text-sm font-medium text-forest-900">Which plan is right for you?</p>
+        <ul className="mt-3 space-y-2 text-sm text-charcoal-500">
+          {PLAN_CHOOSER.map(({ question, planId }) => (
+            <li key={planId}>
+              {question} <span className="font-semibold text-forest-900">{planById(planId).name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
