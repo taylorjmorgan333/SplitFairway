@@ -152,6 +152,18 @@ export const createGroupInvitationSchema = z.object({
 });
 export type CreateGroupInvitationInput = z.infer<typeof createGroupInvitationSchema>;
 
+/**
+ * Passwordless guest scoring (spec item 1) -- a captain names the
+ * guest slot when creating the link; the guest themselves never fills
+ * in a name, they just tap "Continue as <name>". Optional/blank is
+ * allowed here (the RPC itself falls back to the literal name
+ * "Guest") so the form never blocks on this one field.
+ */
+export const createGuestInvitationSchema = z.object({
+  guestDisplayName: z.string().trim().max(60, "Keep the guest's name under 60 characters").optional().or(z.literal("")),
+});
+export type CreateGuestInvitationInput = z.infer<typeof createGuestInvitationSchema>;
+
 
 /**
  * The fast Group Round start wizard (spec: "make starting a Group Round

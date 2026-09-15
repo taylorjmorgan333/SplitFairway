@@ -72,3 +72,18 @@ export const MANUAL_COURSE_ENTRY_ENABLED = process.env.MANUAL_COURSE_ENTRY_ENABL
 export const GOLFCOURSE_API_DAILY_REQUEST_LIMIT = Number(
   process.env.GOLFCOURSE_API_DAILY_REQUEST_LIMIT || 50,
 );
+
+/**
+ * Passwordless guest scoring (Phase 2 cleanup, spec item 1). Gated
+ * separately from GOLF_SCORING_ENABLED/SIDE_GAMES_ENABLED because it
+ * has one extra real-world dependency this app's own env vars can't
+ * satisfy: Supabase Auth's "Anonymous Sign-Ins" project setting must
+ * ALSO be turned on (Supabase Dashboard -> Authentication -> Sign In /
+ * Providers -> Anonymous Sign-Ins) before supabase.auth.signInAnonymously()
+ * will succeed. This flag only controls whether the "Invite a Guest to
+ * Score" UI is offered at all -- flipping it on without also enabling
+ * Anonymous Sign-Ins in the dashboard fails safely (redeemGuestInvitationAction
+ * catches the resulting auth error and shows a plain "guest scoring
+ * isn't turned on yet" message, never a broken or insecure state).
+ */
+export const GUEST_SCORING_ENABLED = flagEnabled(process.env.GUEST_SCORING_ENABLED);

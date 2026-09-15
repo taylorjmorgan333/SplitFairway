@@ -417,6 +417,49 @@ export async function importExternalCourseAction(
   return { ok: true, courseId: courseRow.id, alreadyImported: false };
 }
 
+/**
+ * Loads exactly what the Fast Round Start wizard (spec item 2) needs
+ * to add a freshly-searched-and-selected course into its own step 3
+ * (tee/handicap confirmation): name and tee set names. Deliberately
+ * separate from the group-round-start page's own recent-courses
+ * query -- that one loads several courses at once for the "recently
+ * played" list; this loads exactly one, for whichever course the
+ * wizard's search just resolved to, whether it came from this app's
+ * own library or was just imported from GolfCourseAPI.
+ * courses_select_visible RLS already scopes this to approved courses
+ * plus ones the caller created, so a just-imported (always
+ * 'approved') or just-manually-added (visible to its own creator even
+ * while 'pending') course both work here with no special-casing.
+ */
+export interface WizardCourseDetail {
+  id: string;
+  name: string;
+  holeCount: number;
+  teeSetNames: string[];
+}
+
+export async function getCourseForWizardAction(courseId: string): Promise<WizardCourseDetail | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const [{ data: course }, { data: teeSetRows }] = await Promise.all([
+    supabase.from("courses").select("id, name, hole_count").eq("id", courseId).maybeSingle(),
+    supabase.from("course_tee_sets").select("name").eq("course_id", courseId),
+  ]);
+
+  if (!course) return null;
+
+  return {
+    id: course.id,
+    name: course.name,
+    holeCount: course.hole_count,
+    teeSetNames: (teeSetRows ?? []).map((t) => t.name),
+  };
+}
+
 export type RefreshExternalCourseResult =
   | { ok: true; refreshed: boolean }
   | { ok: false; error: string };

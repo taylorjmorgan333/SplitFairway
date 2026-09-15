@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, LIVE_LEADERBOARD_ENABLED, SIDE_GAMES_ENABLED, NINETEENTH_HOLE_ENABLED, GUEST_SCORING_ENABLED } from "@/lib/config";
+import { InviteGuestForm } from "@/components/rounds/invite-guest-form";
+import { GuestInvitationsList, type GuestInvitationRow } from "@/components/rounds/guest-invitations-list";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +46,7 @@ export default async function RoundDetailPage({
     redirect("/login");
   }
 
-  const [{ data: round }, { data: snapshot }, { data: myMembership }] = await Promise.all([
+  const [{ data: round }, { data: snapshot }, { data: myMembership }, { data: tripRow }] = await Promise.all([
     supabase.from("rounds").select("*").eq("id", roundId).maybeSingle(),
     supabase.from("round_course_snapshots").select("*").eq("round_id", roundId).maybeSingle(),
     supabase
@@ -53,6 +55,7 @@ export default async function RoundDetailPage({
       .eq("trip_id", tripId)
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase.from("trips").select("golf_group_id").eq("id", tripId).maybeSingle(),
   ]);
 
   if (!round || round.trip_id !== tripId) {
@@ -65,6 +68,22 @@ export default async function RoundDetailPage({
   const safeUser = user;
 
   const isCaptain = myMembership?.role === "captain" && myMembership.status === "active";
+
+  let guestInvitations: GuestInvitationRow[] = [];
+  if (isCaptain && GUEST_SCORING_ENABLED) {
+    const { data: guestInvitationRows } = await supabase
+      .from("golf_group_guest_invitations")
+      .select("id, guest_display_name, status, expires_at")
+      .eq("round_id", roundId)
+      .neq("status", "revoked")
+      .order("created_at", { ascending: false });
+    guestInvitations = (guestInvitationRows ?? []).map((inv) => ({
+      id: inv.id,
+      guestDisplayName: inv.guest_display_name,
+      status: inv.status,
+      expiresAt: inv.expires_at,
+    }));
+  }
 
   const [{ data: groups }, { data: players }, { data: activeMembers }] = await Promise.all([
     supabase.from("round_groups").select("*").eq("round_id", roundId).order("sort_order"),
@@ -163,6 +182,22 @@ export default async function RoundDetailPage({
             )}
           </CardContent>
         </Card>
+
+        {isCaptain && GUEST_SCORING_ENABLED && safeRound.status !== "locked" && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Invite a Guest to Score</CardTitle>
+              <CardDescription>
+                A one-tap link for a golfer with no SplitFairway account -- no password, straight to
+                this round&apos;s scorecard.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <GuestInvitationsList tripId={tripId} roundId={safeRound.id} invitations={guestInvitations} />
+              <InviteGuestForm tripId={tripId} roundId={safeRound.id} groupId={tripRow?.golf_group_id ?? null} />
+            </CardContent>
+          </Card>
+        )}
       </>
     );
   }

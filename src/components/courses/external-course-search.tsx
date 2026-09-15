@@ -39,7 +39,19 @@ type SearchState =
  * fast typist (or an impatient extra click) can't fire duplicate
  * requests.
  */
-export function ExternalCourseSearch() {
+export function ExternalCourseSearch({
+  onSelect,
+}: {
+  /**
+   * When provided, picking a local-library result or successfully
+   * importing an external one calls this instead of navigating to
+   * /courses/[courseId] -- used by the Fast Round Start wizard
+   * (spec item 2) to select a course in place without leaving the
+   * wizard. Every other caller (the plain /courses/new page) omits
+   * this and keeps the original navigate-away behavior unchanged.
+   */
+  onSelect?: (course: { courseId: string; name: string }) => void;
+} = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [state, setState] = useState<SearchState>({ phase: "idle" });
@@ -103,14 +115,18 @@ export function ExternalCourseSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, retryNonce]);
 
-  function handleImport(externalId: string) {
+  function handleImport(externalId: string, fallbackName: string) {
     setImportError(null);
     setImportingId(externalId);
     startTransition(async () => {
       const result = await importExternalCourseAction(externalId);
       setImportingId(null);
       if (result.ok) {
-        router.push(`/courses/${result.courseId}`);
+        if (onSelect) {
+          onSelect({ courseId: result.courseId, name: fallbackName });
+        } else {
+          router.push(`/courses/${result.courseId}`);
+        }
       } else {
         setImportError(result.error);
       }
@@ -166,7 +182,7 @@ export function ExternalCourseSearch() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => router.push(`/courses/${c.courseId}`)}
+                      onClick={() => (onSelect ? onSelect({ courseId: c.courseId, name: c.name }) : router.push(`/courses/${c.courseId}`))}
                     >
                       Use
                     </Button>
@@ -199,7 +215,12 @@ export function ExternalCourseSearch() {
                       size="sm"
                       variant="outline"
                       disabled={importingId === c.externalId}
-                      onClick={() => handleImport(c.externalId)}
+                      onClick={() =>
+                        handleImport(
+                          c.externalId,
+                          c.courseName && c.courseName !== c.clubName ? `${c.clubName} – ${c.courseName}` : c.clubName,
+                        )
+                      }
                     >
                       {importingId === c.externalId ? "Adding…" : "Add"}
                     </Button>

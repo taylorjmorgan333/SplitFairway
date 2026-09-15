@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/app-shell";
+import { GuestShell } from "@/components/layout/guest-shell";
 
 export default async function AppLayout({
   children,
@@ -14,6 +15,23 @@ export default async function AppLayout({
 
   if (!user) {
     redirect("/login");
+  }
+
+  // A passwordless guest (spec item 1) is a real Supabase Auth user
+  // (is_anonymous = true) so every RLS-gated query below still works
+  // for them exactly as it does for anyone else -- but they get the
+  // minimal GuestShell instead of the full dashboard chrome, and skip
+  // the new-user onboarding gate and the admin check entirely (there
+  // is nothing there for a one-round guest to onboard into or ever be
+  // an admin of).
+  if (user.is_anonymous) {
+    const { data: guestMembership } = await supabase
+      .from("trip_members")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .eq("is_guest", true)
+      .maybeSingle();
+    return <GuestShell guestName={guestMembership?.display_name}>{children}</GuestShell>;
   }
 
   // New users only (spec item 8) -- onboarding_completed_at is

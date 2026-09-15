@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { GOLF_SCORING_ENABLED } from "@/lib/config";
+import { GOLF_SCORING_ENABLED, GOLFCOURSE_API_ENABLED, GOLFCOURSE_API_SEARCH_ENABLED } from "@/lib/config";
 import { GroupRoundStartWizard } from "@/components/groups/group-round-start-wizard";
-import { ButtonLink } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Start a Group Round" };
 
 /**
- * The fast Group Round start wizard's data loader (spec item 2). Keeps
- * the fast path to "a small handful of recently played courses" -- a
- * captain picking a course this group has never played before still
- * has the full course picker at /trips/[tripId]/rounds/new, one tap
- * away below; that's a deliberate scope line (see the Phase 2 report's
- * deferred list), not a bug, so a brand-new group's very first-ever
- * round still works, just not through this particular fast path.
+ * The fast Group Round start wizard's data loader. Recently played
+ * courses stay the fast path (spec item 2: "keep the normal
+ * recent-course path fast"), but "Search All Courses" (also spec item
+ * 2) means a group with zero round history is no longer a dead end --
+ * the wizard renders unconditionally now, with an empty recent-courses
+ * list simply meaning the search box opens by default (see
+ * GroupRoundStartWizard's own showSearch default).
  */
 export default async function GroupRoundStartPage({ params }: { params: Promise<{ groupId: string }> }) {
   if (!GOLF_SCORING_ENABLED) {
@@ -96,25 +94,6 @@ export default async function GroupRoundStartPage({ params }: { params: Promise<
 
   const presets = (presetRows ?? []).map((p) => ({ id: p.id, name: p.name, sideGameType: p.side_game_type }));
 
-  if (recentCourses.length === 0) {
-    return (
-      <div className="mx-auto max-w-lg">
-        <h1 className="text-2xl">Start a Group Round</h1>
-        <Card className="mt-6">
-          <CardContent className="space-y-4 p-5">
-            <p className="text-base text-charcoal-600">
-              This group hasn&apos;t played a course yet, so there&apos;s nothing to fast-start from.
-              Set up your first round the regular way -- next time, it&apos;ll show up here.
-            </p>
-            <ButtonLink href="/play" variant="outline">
-              Back to Play
-            </ButtonLink>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-lg pb-10">
       <h1 className="text-2xl">Start a Round for {group.name}</h1>
@@ -123,6 +102,7 @@ export default async function GroupRoundStartPage({ params }: { params: Promise<
         members={members}
         recentCourses={recentCourses}
         presets={presets}
+        courseSearchEnabled={GOLFCOURSE_API_ENABLED && GOLFCOURSE_API_SEARCH_ENABLED}
       />
     </div>
   );

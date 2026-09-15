@@ -579,6 +579,103 @@ export type Database = {
           },
         ]
       }
+      golf_group_guest_invitations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          group_id: string | null
+          guest_display_name: string
+          id: string
+          redeemed_at: string | null
+          redeemed_user_id: string | null
+          revoked_at: string | null
+          round_id: string
+          round_player_id: string
+          status: Database["public"]["Enums"]["guest_invitation_status"]
+          token_hash: string
+          trip_id: string
+          trip_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          group_id?: string | null
+          guest_display_name: string
+          id?: string
+          redeemed_at?: string | null
+          redeemed_user_id?: string | null
+          revoked_at?: string | null
+          round_id: string
+          round_player_id: string
+          status?: Database["public"]["Enums"]["guest_invitation_status"]
+          token_hash: string
+          trip_id: string
+          trip_member_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          group_id?: string | null
+          guest_display_name?: string
+          id?: string
+          redeemed_at?: string | null
+          redeemed_user_id?: string | null
+          revoked_at?: string | null
+          round_id?: string
+          round_player_id?: string
+          status?: Database["public"]["Enums"]["guest_invitation_status"]
+          token_hash?: string
+          trip_id?: string
+          trip_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "golf_group_guest_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_guest_invitations_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "golf_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_guest_invitations_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_guest_invitations_round_player_id_fkey"
+            columns: ["round_player_id"]
+            isOneToOne: false
+            referencedRelation: "round_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_guest_invitations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "golf_group_guest_invitations_trip_member_id_fkey"
+            columns: ["trip_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       golf_group_invitations: {
         Row: {
           accepted_at: string | null
@@ -1804,6 +1901,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          is_guest: boolean
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
@@ -1820,6 +1918,7 @@ export type Database = {
           display_name: string
           email?: string | null
           id?: string
+          is_guest?: boolean
           joined_at?: string | null
           payment_handle?: string | null
           phone?: string | null
@@ -1836,6 +1935,7 @@ export type Database = {
           display_name?: string
           email?: string | null
           id?: string
+          is_guest?: boolean
           joined_at?: string | null
           payment_handle?: string | null
           phone?: string | null
@@ -1953,6 +2053,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          is_guest: boolean
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
@@ -2087,6 +2188,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_group_guest_invitation: {
+        Args: {
+          p_group_id?: string
+          p_guest_display_name: string
+          p_round_id: string
+          p_trip_id: string
+        }
+        Returns: Json
+      }
       create_group_invitation: {
         Args: {
           p_email?: string
@@ -2170,6 +2280,7 @@ export type Database = {
         Returns: undefined
       }
       get_group_invitation_preview: { Args: { p_token: string }; Returns: Json }
+      get_guest_invitation_preview: { Args: { p_token: string }; Returns: Json }
       get_invitation_preview: { Args: { p_token: string }; Returns: Json }
       get_trip_mate_handicap: {
         Args: { p_user_id: string }
@@ -2193,8 +2304,10 @@ export type Database = {
         Returns: Json
       }
       is_app_admin: { Args: never; Returns: boolean }
+      is_full_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       is_group_member: { Args: { p_group_id: string }; Returns: boolean }
       is_group_owner: { Args: { p_group_id: string }; Returns: boolean }
+      is_guest_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_captain: { Args: { p_trip_id: string }; Returns: boolean }
       is_trip_member: { Args: { p_trip_id: string }; Returns: boolean }
       log_reminder_sent: {
@@ -2210,6 +2323,14 @@ export type Database = {
       nineteenth_hole_can_record: {
         Args: { p_trip_id: string }
         Returns: boolean
+      }
+      redeem_group_guest_invitation: {
+        Args: { p_token: string }
+        Returns: Json
+      }
+      regenerate_group_guest_invitation: {
+        Args: { p_invitation_id: string }
+        Returns: Json
       }
       reject_payment: {
         Args: { p_payment_id: string; p_reason?: string }
@@ -2239,6 +2360,10 @@ export type Database = {
         Args: { p_trip_member_id: string }
         Returns: Json
       }
+      revoke_group_guest_invitation: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       revoke_group_invitation: {
         Args: { p_invitation_id: string }
         Returns: undefined
@@ -2260,6 +2385,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          is_guest: boolean
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
@@ -2288,6 +2414,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          is_guest: boolean
           joined_at: string | null
           payment_handle: string | null
           phone: string | null
@@ -2444,6 +2571,7 @@ export type Database = {
         | "other"
       golf_group_invitation_role: "member" | "guest"
       golf_group_member_role: "owner" | "member"
+      guest_invitation_status: "pending" | "redeemed" | "revoked"
       handicap_source: "manual" | "ghin_screenshot_import"
       invitation_status: "pending" | "accepted" | "declined" | "revoked"
       member_role: "captain" | "member"
@@ -2635,6 +2763,7 @@ export const Constants = {
       ],
       golf_group_invitation_role: ["member", "guest"],
       golf_group_member_role: ["owner", "member"],
+      guest_invitation_status: ["pending", "redeemed", "revoked"],
       handicap_source: ["manual", "ghin_screenshot_import"],
       invitation_status: ["pending", "accepted", "declined", "revoked"],
       member_role: ["captain", "member"],

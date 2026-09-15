@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { startFastGroupRoundAction } from "@/actions/group-rounds";
+import { getCourseForWizardAction } from "@/actions/course-import";
+import { mergeCourseChoices } from "@/lib/golf/course-selection";
 import type { ActionState } from "@/actions/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { ExternalCourseSearch } from "@/components/courses/external-course-search";
 
 const initialState: ActionState = { status: "idle" };
 
@@ -56,14 +59,25 @@ export function GroupRoundStartWizard({
   members,
   recentCourses,
   presets,
+  courseSearchEnabled,
 }: {
   groupId: string;
   members: Member[];
   recentCourses: RecentCourse[];
   presets: Preset[];
+  /**
+   * Threaded from the server page rather than read from
+   * lib/config.ts here directly -- this is a client component, and a
+   * non-NEXT_PUBLIC_ env flag reads as undefined in browser code.
+   */
+  courseSearchEnabled: boolean;
 }) {
   const [step, setStep] = useState(0);
   const [courseId, setCourseId] = useState(recentCourses[0]?.id ?? "");
+  const [searchedCourse, setSearchedCourse] = useState<RecentCourse | null>(null);
+  const [showSearch, setShowSearch] = useState(recentCourses.length === 0);
+  const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
+  const [isLoadingCourse, startCourseTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(members.map((m) => m.id)));
   const [drafts, setDrafts] = useState<Record<string, PlayerDraft>>({});
   const [gameChoice, setGameChoice] = useState<string>("none");
@@ -71,7 +85,21 @@ export function GroupRoundStartWizard({
   const action = startFastGroupRoundAction.bind(null, groupId);
   const [state, formAction] = useActionState(action, initialState);
 
-  const course = recentCourses.find((c) => c.id === courseId) ?? recentCourses[0];
+  function handleCourseFound({ courseId: foundId }: { courseId: string; name: string }) {
+    setCourseLoadError(null);
+    startCourseTransition(async () => {
+      const detail = await getCourseForWizardAction(foundId);
+      if (!detail) {
+        setCourseLoadError("Couldn't load that course's tee sets -- try again, or add it manually.");
+        return;
+      }
+      setSearchedCourse({ id: detail.id, name: detail.name, holeCount: detail.holeCount, teeSetNames: detail.teeSetNames });
+      setCourseId(detail.id);
+    });
+  }
+
+  const allCourses = mergeCourseChoices(recentCourses, searchedCourse);
+  const course = allCourses.find((c) => c.id === courseId) ?? allCourses[0];
   const selectedMembers = members.filter((m) => selectedIds.has(m.id));
 
   function draftFor(m: Member): PlayerDraft {
@@ -104,22 +132,69 @@ export function GroupRoundStartWizard({
         <Card>
           <CardContent className="space-y-3 p-5">
             <p className="text-base font-medium text-forest-900">Which course?</p>
-            {recentCourses.map((c) => (
-              <label key={c.id} className="flex items-center gap-3 rounded-lg border border-charcoal-400/15 p-3 text-base text-charcoal-700">
-                <input
-                  type="radio"
-                  name="courseChoice"
-                  checked={courseId === c.id}
-                  onChange={() => setCourseId(c.id)}
-                  className="h-5 w-5 accent-forest-700"
-                />
-                {c.name}
-              </label>
-            ))}
+
+            {recentCourses.length > 0 && (
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Recently played</p>
+                {recentCourses.map((c) => (
+                  <label key={c.id} className="flex items-center gap-3 rounded-lg border border-charcoal-400/15 p-3 text-base text-charcoal-700">
+                    <input
+                      type="radio"
+                      name="courseChoice"
+                      checked={courseId === c.id}
+                      onChange={() => setCourseId(c.id)}
+                      className="h-5 w-5 accent-forest-700"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+                {searchedCourse && (
+                  <label className="flex items-center gap-3 rounded-lg border border-forest-700/25 bg-forest-50 p-3 text-base text-charcoal-700">
+                    <input
+                      type="radio"
+                      name="courseChoice"
+                      checked={courseId === searchedCourse.id}
+                      onChange={() => setCourseId(searchedCourse.id)}
+                      className="h-5 w-5 accent-forest-700"
+                    />
+                    {searchedCourse.name} <span className="text-xs text-charcoal-400">(from search)</span>
+                  </label>
+                )}
+              </>
+            )}
+
+            {!showSearch && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowSearch(true)}>
+                Search All Courses
+              </Button>
+            )}
+
+            {showSearch && (
+              <div className="space-y-2 border-t border-charcoal-400/10 pt-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-charcoal-400">Search All Courses</p>
+                {courseSearchEnabled ? (
+                  <ExternalCourseSearch onSelect={handleCourseFound} />
+                ) : (
+                  <p className="text-sm text-charcoal-500">
+                    Course search isn&apos;t turned on right now.
+                  </p>
+                )}
+                {isLoadingCourse && <p className="text-sm text-charcoal-400">Loading course details…</p>}
+                {courseLoadError && <Alert variant="error">{courseLoadError}</Alert>}
+                <p className="text-xs text-charcoal-400">
+                  Can&apos;t find it?{" "}
+                  <ButtonLink href="/courses/new" variant="ghost" size="sm">
+                    Add a course manually
+                  </ButtonLink>
+                  , then search again here.
+                </p>
+              </div>
+            )}
+
             <ButtonLink href="/play" variant="ghost" size="sm">
               Play somewhere else instead
             </ButtonLink>
-            <Button size="lg" className="w-full" onClick={() => setStep(1)} disabled={!courseId}>
+            <Button size="lg" className="w-full" onClick={() => setStep(1)} disabled={!courseId || isLoadingCourse}>
               Continue
             </Button>
           </CardContent>
