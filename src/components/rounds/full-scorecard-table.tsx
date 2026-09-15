@@ -246,6 +246,16 @@ export function FullScorecardTable({
                 const wonSkin = skinWinnerByHole?.get(h) === p.roundPlayerId;
                 const hiddenOnMobile = section === "front" ? frontHiddenOnMobile : backHiddenOnMobile;
 
+                // Eagle-or-better and double-bogey-or-worse each get a genuine
+                // double ring/box (two nested shapes), not just a bolder single
+                // one -- matches the double-circle/double-square notation golfers
+                // expect on a printed card. The two decorative shapes are inset
+                // absolutely-positioned borders so they stay inside the cell's
+                // fixed footprint instead of expanding outward into neighboring
+                // hole columns (which sit flush against each other).
+                const isEagleOrBetter = diff != null && diff <= -2;
+                const isDoubleBogeyOrWorse = diff != null && diff >= 2;
+
                 return (
                   <td key={h} className={cn("py-1", hiddenOnMobile && "hidden md:table-cell")}>
                     <button
@@ -254,17 +264,40 @@ export function FullScorecardTable({
                       onClick={() => onCellSelect?.(p.roundPlayerId, h)}
                       title={wonSkin ? `Won the skin on hole ${h}` : undefined}
                       className={cn(
-                        "mx-auto flex h-7 w-7 items-center justify-center text-sm text-charcoal-800",
+                        "relative mx-auto flex h-7 w-7 items-center justify-center text-sm text-charcoal-800",
                         canEdit && onCellSelect && "cursor-pointer hover:bg-cream-100",
                         !canEdit && "text-charcoal-500",
-                        diff != null && diff <= -2 && "rounded-full text-gold-700 ring-2 ring-gold-500",
+                        isEagleOrBetter && "rounded-full text-gold-700",
                         diff === -1 && "rounded-full text-forest-800 ring-2 ring-forest-600",
                         diff === 1 && "rounded-sm border border-charcoal-400",
-                        diff != null && diff >= 2 && "rounded-sm border-2 border-charcoal-500",
                         wonSkin && "rounded-md bg-amber-200",
                       )}
                     >
-                      {display ?? "–"}
+                      {isEagleOrBetter && (
+                        <>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 rounded-full border-2 border-gold-500"
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-[3px] rounded-full border-2 border-gold-500"
+                          />
+                        </>
+                      )}
+                      {isDoubleBogeyOrWorse && (
+                        <>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 rounded-sm border-2 border-charcoal-500"
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-[3px] rounded-sm border border-charcoal-500"
+                          />
+                        </>
+                      )}
+                      <span className="relative z-10">{display ?? "–"}</span>
                     </button>
                   </td>
                 );
