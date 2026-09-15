@@ -7,6 +7,7 @@ import { startQuickRoundSchema } from "@/lib/validation/quick-round";
 import { courseSchema } from "@/lib/validation/course";
 import { loadCourseSnapshotInput, insertRoundCourseSnapshot } from "@/lib/golf/round-snapshot";
 import { addRoundPlayerAction } from "@/actions/rounds";
+import { buildAddRoundPlayerFormData } from "@/lib/golf/round-player-form-data";
 import { startRoundAction } from "@/actions/scores";
 import type { ActionState } from "@/actions/auth";
 import { GAME_TYPE_LABELS } from "@/lib/validation/group";
@@ -231,10 +232,10 @@ export async function startQuickRoundSetupAction(
       };
     }
 
-    const fd = new FormData();
-    fd.set("tripMemberId", tripMemberId);
-    fd.set("teeSetName", p.teeSetName ?? "");
-    fd.set("playingHandicap", p.playingHandicap ?? "");
+    const fd = buildAddRoundPlayerFormData(tripMemberId, {
+      teeSetName: p.teeSetName,
+      playingHandicap: p.playingHandicap,
+    });
     const addResult = await addRoundPlayerAction(round.id, { status: "idle" }, fd);
     if (addResult.status !== "success") {
       console.error("startQuickRoundSetupAction: addRoundPlayerAction failed, rolling back", {

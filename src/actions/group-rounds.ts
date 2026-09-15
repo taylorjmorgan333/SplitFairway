@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { startFastGroupRoundSchema } from "@/lib/validation/group";
 import { loadCourseSnapshotInput, insertRoundCourseSnapshot } from "@/lib/golf/round-snapshot";
 import { addRoundPlayerAction } from "@/actions/rounds";
+import { buildAddRoundPlayerFormData } from "@/lib/golf/round-player-form-data";
 import { startRoundAction } from "@/actions/scores";
 import type { ActionState } from "@/actions/auth";
 import type { Database } from "@/lib/supabase/database.types";
@@ -73,6 +74,7 @@ export async function startFastGroupRoundAction(
   });
 
   if (startError || !startResult) {
+    console.error("startFastGroupRoundAction: start_group_round_trip failed", startError);
     return { status: "error", message: "Couldn't start a round for this group. Make sure you're a member." };
   }
 
@@ -93,12 +95,14 @@ export async function startFastGroupRoundAction(
 
   const { data: course } = await supabase.from("courses").select("hole_count").eq("id", courseId).maybeSingle();
   if (!course) {
+    console.error("startFastGroupRoundAction: course not found", { courseId });
     await rollBack();
     return { status: "error", message: "That course couldn't be found." };
   }
 
   const snapshotInput = await loadCourseSnapshotInput(supabase, courseId);
   if (!snapshotInput.ok) {
+    console.error("startFastGroupRoundAction: loadCourseSnapshotInput failed", { courseId });
     await rollBack();
     return { status: "error", message: "That course couldn't be found." };
   }
@@ -119,12 +123,14 @@ export async function startFastGroupRoundAction(
     .single();
 
   if (roundError || !round) {
+    console.error("startFastGroupRoundAction: rounds insert failed", roundError);
     await rollBack();
     return { status: "error", message: "Something went wrong creating the round. Please try again." };
   }
 
   const snapshotResult = await insertRoundCourseSnapshot(supabase, round.id, course.hole_count, snapshotInput);
   if (!snapshotResult.ok) {
+    console.error("startFastGroupRoundAction: insertRoundCourseSnapshot failed", { roundId: round.id });
     await rollBack();
     return { status: "error", message: "Something went wrong saving the course details. Please try again." };
   }
@@ -132,24 +138,49 @@ export async function startFastGroupRoundAction(
   // One addRoundPlayerAction call per selected golfer -- same insert,
   // same permanent handicap snapshot, as adding a golfer to any other
   // round by hand.
-  let addedAny = false;
+  //
+  // All-or-nothing: a single golfer that can't be added rolls back the
+  // whole round + hidden trip rather than leaving a partially-seated
+  // round behind (same guarantee as the Quick Round single-screen
+  // setup's startQuickRoundSetupAction, actions/quick-round.ts).
+  //
+  // addRoundPlayerSchema (validation/round.ts) only accepts `""` or
+  // `undefined` for its optional fields, never a bare `null` -- and
+  // FormData.get() returns `null` (not `undefined`) for a key that was
+  // never set(). teeSetName/playingHandicap must always be set here,
+  // even to an empty string, or a blank optional field (the single most
+  // common case -- a golfer with no saved handicap, or a course with no
+  // tee chosen) fails validation and this golfer is silently dropped.
+  // This was the exact root cause of the Quick Round "Couldn't add any
+  // golfers to this round" bug, fixed here too since this wizard builds
+  // its FormData the same way.
   for (const p of players) {
     const tripMemberId = p.memberId === myGroupMember?.id ? myTripMember?.id : memberMap[p.memberId];
-    if (!tripMemberId) continue;
-    const fd = new FormData();
-    fd.set("tripMemberId", tripMemberId);
-    if (p.teeSetName) fd.set("teeSetName", p.teeSetName);
-    if (p.playingHandicap !== "" && p.playingHandicap != null) {
-      fd.set("playingHandicap", String(p.playingHandicap));
+    if (!tripMemberId) {
+      console.error("startFastGroupRoundAction: no trip_member_id resolved for player, rolling back", {
+        memberId: p.memberId,
+      });
+      await supabase.from("rounds").delete().eq("id", round.id);
+      await rollBack();
+      return { status: "error", message: "Couldn't add every selected golfer to this round. Please try again." };
     }
-    const addResult = await addRoundPlayerAction(round.id, { status: "idle" }, fd);
-    if (addResult.status === "success") addedAny = true;
-  }
 
-  if (!addedAny) {
-    await supabase.from("rounds").delete().eq("id", round.id);
-    await rollBack();
-    return { status: "error", message: "Couldn't add any golfers to this round. Please try again." };
+    const fd = buildAddRoundPlayerFormData(tripMemberId, {
+      teeSetName: p.teeSetName,
+      playingHandicap: p.playingHandicap,
+    });
+    const addResult = await addRoundPlayerAction(round.id, { status: "idle" }, fd);
+    if (addResult.status !== "success") {
+      console.error("startFastGroupRoundAction: addRoundPlayerAction failed, rolling back", {
+        memberId: p.memberId,
+        tripMemberId,
+        addResultMessage: addResult.message,
+        addResultFieldErrors: addResult.fieldErrors,
+      });
+      await supabase.from("rounds").delete().eq("id", round.id);
+      await rollBack();
+      return { status: "error", message: "Couldn't add every selected golfer to this round. Please try again." };
+    }
   }
 
   // Apply the chosen preset, if any -- inserts side_games +
