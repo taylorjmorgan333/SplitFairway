@@ -8,6 +8,7 @@ import { RoundContextHeader } from "@/components/rounds/round-context-header";
 import { FinishRoundButton } from "@/components/rounds/finish-round-button";
 import { loadRoundResultsData } from "@/lib/golf/round-results-data";
 import { formatToPar } from "@/lib/golf/scoring";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Results" };
@@ -33,6 +34,13 @@ export default async function ResultsPage({
     redirect("/login");
   }
   const { round, isCaptain, courseName, courseLocation, standings, totalsById, displayNameById, hasAnyMonetaryGame } = data;
+
+  // Rounds linked to a saved group get a Group Recap after locking
+  // (spec item 7) instead of just staying on this page -- everyone
+  // else's flow is completely unchanged.
+  const supabase = await createClient();
+  const { data: trip } = await supabase.from("trips").select("golf_group_id").eq("id", tripId).maybeSingle();
+  const groupId = trip?.golf_group_id ?? null;
   const golferCount = displayNameById.size;
   const scoresComplete =
     golferCount > 0 && standings.length === golferCount && standings.every((s) => s.thru >= round.hole_count);
@@ -61,7 +69,7 @@ export default async function ResultsPage({
             This round isn&apos;t locked yet — scores (and everything below) can still change.
             {isCaptain ? " Review the standings below, then lock it in when everyone's done." : " Ask your captain to lock it in once everyone's done."}
           </p>
-          {isCaptain && <FinishRoundButton tripId={tripId} roundId={roundId} />}
+          {isCaptain && <FinishRoundButton tripId={tripId} roundId={roundId} groupId={groupId} />}
         </div>
       )}
 

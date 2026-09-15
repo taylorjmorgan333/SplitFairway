@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
-import { startGroupRoundAction } from "@/actions/groups";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Group Round" };
@@ -65,22 +64,20 @@ export default async function PlayGroupPage() {
       ) : (
         <div className="mt-8 space-y-3">
           {groups.map((group) => (
-            <form key={group.id} action={startGroupRoundAction.bind(null, group.id)}>
-              <button type="submit" className="block w-full text-left">
-                <Card className="flex items-center gap-4 p-5 transition-shadow hover:shadow-card-hover">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-forest-800/10">
-                    <Users className="h-5 w-5 text-forest-700" aria-hidden="true" strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-medium text-forest-900">{group.name}</p>
-                    <p className="mt-0.5 text-base text-charcoal-500">
-                      {group.memberCount} {group.memberCount === 1 ? "golfer" : "golfers"}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-charcoal-400" aria-hidden="true" />
-                </Card>
-              </button>
-            </form>
+            <Link key={group.id} href={`/play/group/${group.id}/start`} className="block w-full text-left">
+              <Card className="flex items-center gap-4 p-5 transition-shadow hover:shadow-card-hover">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-forest-800/10">
+                  <Users className="h-5 w-5 text-forest-700" aria-hidden="true" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-medium text-forest-900">{group.name}</p>
+                  <p className="mt-0.5 text-base text-charcoal-500">
+                    {group.memberCount} {group.memberCount === 1 ? "golfer" : "golfers"}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-charcoal-400" aria-hidden="true" />
+              </Card>
+            </Link>
           ))}
           <Link href="/groups/new" className="block text-center text-base font-medium text-forest-800 underline">
             Create a new group instead

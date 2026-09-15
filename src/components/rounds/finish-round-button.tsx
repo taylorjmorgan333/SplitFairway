@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { lockRoundAction } from "@/actions/scores";
 import { Button } from "@/components/ui/button";
 
@@ -12,9 +13,21 @@ import { Button } from "@/components/ui/button";
  * "Review & Finish" on the scorecard, so locking follows an actual
  * review step instead of firing straight from the entry screen.
  * lockRoundAction itself is untouched -- only which screen calls it
- * has moved.
+ * has moved. When this round is linked to a saved group, locking now
+ * sends the captain straight to that round's Group Recap (spec item 7)
+ * instead of just re-rendering this same page -- every other round's
+ * behavior (groupId null) is unchanged.
  */
-export function FinishRoundButton({ tripId, roundId }: { tripId: string; roundId: string }) {
+export function FinishRoundButton({
+  tripId,
+  roundId,
+  groupId,
+}: {
+  tripId: string;
+  roundId: string;
+  groupId?: string | null;
+}) {
+  const router = useRouter();
   const [isLocking, setIsLocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +42,16 @@ export function FinishRoundButton({ tripId, roundId }: { tripId: string; roundId
           if (!window.confirm("Lock this round? No one will be able to change scores after this.")) return;
           setIsLocking(true);
           setError(null);
-          lockRoundAction(tripId, roundId).catch((err) => {
-            setError(err instanceof Error ? err.message : "Couldn't lock the round.");
-          }).finally(() => setIsLocking(false));
+          lockRoundAction(tripId, roundId)
+            .then(() => {
+              if (groupId) {
+                router.push(`/trips/${tripId}/rounds/${roundId}/recap`);
+              }
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : "Couldn't lock the round.");
+            })
+            .finally(() => setIsLocking(false));
         }}
       >
         {isLocking ? "Locking…" : "Lock Round"}

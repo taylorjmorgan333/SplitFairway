@@ -13,6 +13,7 @@ import {
 } from "@/lib/validation/round";
 import type { ActionState } from "@/actions/auth";
 import type { Json } from "@/lib/supabase/database.types";
+import { loadCourseSnapshotInput, insertRoundCourseSnapshot } from "@/lib/golf/round-snapshot";
 
 /**
  * Creates a round and, in the same action, its round_course_snapshots
@@ -75,59 +76,10 @@ export async function createRoundAction(
     resolvedTournamentId = tournamentId;
   }
 
-  const { data: course } = await supabase
-    .from("courses")
-    .select("id, name, city, state, external_source, external_id")
-    .eq("id", courseId)
-    .maybeSingle();
-
-  if (!course) {
+  const snapshotInput = await loadCourseSnapshotInput(supabase, courseId);
+  if (!snapshotInput.ok) {
     return { status: "error", message: "That course couldn't be found." };
   }
-
-  const { data: teeSets } = await supabase
-    .from("course_tee_sets")
-    .select("id, name, color, category, course_rating, slope_rating, total_yards")
-    .eq("course_id", courseId);
-
-  const teeSetRows = teeSets ?? [];
-  const { data: holes } =
-    teeSetRows.length > 0
-      ? await supabase
-          .from("course_holes")
-          .select("tee_set_id, hole_number, par, yardage, stroke_index")
-          .in(
-            "tee_set_id",
-            teeSetRows.map((t) => t.id),
-          )
-      : { data: [] };
-  const holeRows = holes ?? [];
-
-  // Everything the scorecard, the game engine, and every game-results
-  // page read for the life of this round -- see the comment on
-  // round_course_snapshots in supabase/migrations/20260903040000_rounds.sql.
-  // Rating/slope/color/category are included for display and any future
-  // course-handicap conversion; today's scoring/game math only reads
-  // par and stroke_index (see src/lib/golf/*.ts), same as before this
-  // provider integration -- adding these fields here doesn't change what
-  // any existing calculation reads.
-  const teeSetsSnapshot = teeSetRows.map((teeSet) => ({
-    name: teeSet.name,
-    color: teeSet.color,
-    category: teeSet.category,
-    course_rating: teeSet.course_rating,
-    slope_rating: teeSet.slope_rating,
-    total_yards: teeSet.total_yards,
-    holes: holeRows
-      .filter((h) => h.tee_set_id === teeSet.id)
-      .sort((a, b) => a.hole_number - b.hole_number)
-      .map((h) => ({
-        hole_number: h.hole_number,
-        par: h.par,
-        yardage: h.yardage,
-        stroke_index: h.stroke_index,
-      })),
-  }));
 
   const { data: round, error: roundError } = await supabase
     .from("rounds")
@@ -151,18 +103,9 @@ export async function createRoundAction(
     };
   }
 
-  const { error: snapshotError } = await supabase.from("round_course_snapshots").insert({
-    round_id: round.id,
-    course_name: course.name,
-    course_city: course.city,
-    course_state: course.state,
-    hole_count: holeCount,
-    tee_sets: teeSetsSnapshot as unknown as Json,
-    provider: course.external_source,
-    provider_course_id: course.external_id,
-  });
+  const snapshotResult = await insertRoundCourseSnapshot(supabase, round.id, holeCount, snapshotInput);
 
-  if (snapshotError) {
+  if (!snapshotResult.ok) {
     // The round row exists but has no snapshot -- surface this rather
     // than silently leaving a broken round behind. The captain can
     // delete it and try again; nothing downstream trusts a round

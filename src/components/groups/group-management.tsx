@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import {
   removeGroupMemberAction,
-  deleteGroupGamePresetAction,
   deleteGroupAction,
 } from "@/actions/groups";
 import { Alert } from "@/components/ui/alert";
@@ -58,45 +57,6 @@ export function RemoveGroupMemberButton({
   );
 }
 
-export function DeleteGroupPresetButton({
-  groupId,
-  presetId,
-  name,
-}: {
-  groupId: string;
-  presetId: string;
-  name: string;
-}) {
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function handleDelete() {
-    if (!window.confirm(`Delete the "${name}" preset?`)) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await deleteGroupGamePresetAction(groupId, presetId);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not delete that preset.");
-      }
-    });
-  }
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={handleDelete}
-        disabled={isPending}
-        aria-label={`Delete ${name}`}
-        className="flex h-11 w-11 items-center justify-center rounded-full text-charcoal-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-      >
-        <X className="h-5 w-5" aria-hidden="true" />
-      </button>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-    </div>
-  );
-}
 
 export function DeleteGroupButton({ groupId, groupName }: { groupId: string; groupName: string }) {
   const [isPending, startTransition] = useTransition();
