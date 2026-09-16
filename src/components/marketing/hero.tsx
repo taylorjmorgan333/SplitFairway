@@ -1,8 +1,7 @@
 import { ButtonLink } from "@/components/ui/button";
 import { SectionLink } from "@/components/marketing/section-link";
 import { Container } from "@/components/ui/container";
-import { RoundPreview } from "@/components/marketing/round-preview";
-import { TripModeMiniPreview } from "@/components/marketing/trip-mode-mini-preview";
+import { HeroPhoneDemo } from "@/components/marketing/hero-phone-demo";
 
 export function Hero() {
   return (
@@ -47,10 +46,7 @@ export function Hero() {
             </p>
           </div>
 
-          <div className="flex flex-col items-center lg:items-end">
-            <RoundPreview />
-            <TripModeMiniPreview />
-          </div>
+          <HeroPhoneDemo />
         </div>
       </Container>
     </section>
