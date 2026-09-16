@@ -20,7 +20,7 @@ type SectionLinkProps = LinkProps &
  * jump itself (native fragment navigation on load, next/link's default
  * click handling, or a plain scrollIntoView/scrollTop call) has been
  * observed to update the URL hash without moving the viewport at all --
- * the scroll silently no-ops. Forcing an explicit `behavior: "auto"` in
+ * the scroll silently no-ops. Forcing an explicit `behavior: "instant"` in
  * scrollTo sidesteps whatever is swallowing the animated scroll and
  * reliably lands on the target section. This only intercepts same-page
  * hash hrefs; anything else (e.g. "/signup") behaves exactly like a
@@ -56,7 +56,7 @@ export function SectionLink({
 
     e.preventDefault();
     const top = target.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top, behavior: "auto" });
+    window.scrollTo({ top, behavior: "instant" });
     window.history.pushState(null, "", `#${id}`);
   }
 

@@ -5,6 +5,7 @@ import { Search, Users, Luggage, Zap, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { GOLF_SCORING_ENABLED } from "@/lib/config";
 import { Card } from "@/components/ui/card";
+import { primaryHrefForRound } from "@/components/rounds/round-phase";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Play" };
@@ -18,6 +19,14 @@ export const metadata: Metadata = { title: "Play" };
  * they get their own short step at /play/group and /play/trip before
  * reaching the fuller setup wizard. Course search lives here too
  * instead of its own nav item -- see /courses.
+ *
+ * This is also where both "Play" tabs (the mobile tab bar's center
+ * action and the header's "Start a Round" button -- see primary-nav.tsx
+ * and app-shell.tsx) actually land, so before showing the three choices
+ * this checks for a round already in progress and sends the golfer
+ * straight back into it instead -- same active-round lookup Home uses
+ * (home/page.tsx), just without the extra display fields Home's
+ * Continue card needs.
  */
 export default async function PlayPage() {
   if (!GOLF_SCORING_ENABLED) {
@@ -30,6 +39,28 @@ export default async function PlayPage() {
   } = await supabase.auth.getUser();
   if (!user) {
     redirect("/login");
+  }
+
+  const { data: memberships } = await supabase
+    .from("trip_members")
+    .select("trip_id")
+    .eq("user_id", user.id)
+    .eq("status", "active");
+  const tripIds = (memberships ?? []).map((m) => m.trip_id);
+
+  if (tripIds.length > 0) {
+    const { data: activeRounds } = await supabase
+      .from("rounds")
+      .select("id, trip_id")
+      .in("trip_id", tripIds)
+      .eq("status", "in_progress")
+      .order("round_date", { ascending: false })
+      .order("start_time", { ascending: false, nullsFirst: false })
+      .limit(1);
+    const activeRound = activeRounds?.[0];
+    if (activeRound) {
+      redirect(primaryHrefForRound(activeRound.trip_id, activeRound.id, "in_progress"));
+    }
   }
 
   return (

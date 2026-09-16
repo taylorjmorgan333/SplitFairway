@@ -22,6 +22,14 @@ export const NAV_ITEMS = [
   { href: "/account", label: "Account", icon: UserRound },
 ] as const;
 
+// The mobile bottom bar reads Home, Groups, Play, Trips, Account --
+// Play dead center as the primary action -- while DesktopNav (below)
+// keeps NAV_ITEMS' own order untouched. Kept as a separate list rather
+// than reordering NAV_ITEMS itself so the two surfaces can vary
+// independently without one layout's ordering need leaking into the
+// other's.
+const MOBILE_TAB_ORDER = ["/home", "/groups", "/play", "/trips", "/account"] as const;
+
 function isActive(pathname: string, href: string) {
   if (href === "/home") return pathname === "/home" || pathname === "/dashboard";
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -61,15 +69,20 @@ export function DesktopNav() {
 
 /**
  * Bottom-anchored so every tab stays within one-thumb reach on a phone.
- * Play (the app's new primary action -- starting or continuing a round)
- * sits in the center, raised above the bar in a filled gold circle so
- * it reads as the obvious default tap without needing color alone to
- * say so -- it's also physically larger (56px) and the only tab that
- * overlaps the bar itself. Every tab, Play included, keeps its plain
- * text label underneath so nothing here depends on recognizing an icon.
+ * Play (starting or continuing a round) sits dead center -- position 3
+ * of 5, per MOBILE_TAB_ORDER above -- raised above the bar in a filled
+ * gold circle so it reads as the obvious default tap without needing
+ * color alone to say so; it's also physically larger (56px) and the
+ * only tab that overlaps the bar itself. Every tab, Play included,
+ * keeps its plain text label underneath so nothing here depends on
+ * recognizing an icon. All five sit in equal flex-1 columns, so
+ * centering Play is just a matter of its position in the list.
  */
 export function MobileTabs() {
   const pathname = usePathname();
+  const items = MOBILE_TAB_ORDER.map(
+    (href) => NAV_ITEMS.find((item) => item.href === href)!,
+  );
 
   // The Quick Round single-screen setup (spec: "hide the main bottom
   // navigation while Quick Round setup is open; show a clear Back or
@@ -87,7 +100,7 @@ export function MobileTabs() {
       className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-forest-900/[0.08] bg-cream-50/95 backdrop-blur md:hidden"
     >
       <div className="mx-auto flex max-w-content items-end">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isActive(pathname, item.href);
           if (item.href === "/play") {
             return (

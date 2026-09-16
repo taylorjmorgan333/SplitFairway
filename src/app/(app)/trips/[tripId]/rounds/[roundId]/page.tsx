@@ -236,8 +236,13 @@ export default async function RoundDetailPage({
             bottom-0, z-40, hidden at md+) instead of at bottom-0 itself --
             both are fixed to the same edge on a phone, and the tab bar's
             higher z-index was rendering directly over this bar, hiding the
-            primary action entirely with no way to advance the wizard. */}
-        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-forest-900/10 bg-cream-50/95 p-4 backdrop-blur md:static md:bottom-auto md:mt-8 md:border-0 md:bg-transparent md:p-0">
+            primary action entirely with no way to advance the wizard.
+          Raised past 3.5rem to 9rem for the same reason a second time --
+          FeedbackButton (layout.tsx, rendered site-wide, z-50) floats
+          from 4.75rem to 7.75rem above the tab bar, which this bar's
+          old offset sat squarely inside of. 9rem clears its top edge
+          with room to spare. */}
+        <div className="fixed inset-x-0 bottom-[calc(9rem+env(safe-area-inset-bottom))] z-30 border-t border-forest-900/10 bg-cream-50/95 p-4 backdrop-blur md:static md:bottom-auto md:mt-8 md:border-0 md:bg-transparent md:p-0">
           <div className="mx-auto max-w-2xl">
             <ButtonLink
               href={`/trips/${tripId}/rounds/${safeRound.id}/setup/games`}

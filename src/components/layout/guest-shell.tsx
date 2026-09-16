@@ -26,7 +26,11 @@ export function GuestShell({ guestName, children }: { guestName?: string; childr
           </p>
         </Container>
       </header>
-      <main className="flex-1">
+      {/* No tab bar here (a guest has nowhere else to navigate), but
+          FeedbackButton (layout.tsx, rendered site-wide) still shows --
+          same bottom clearance as AppShell's <main> so nothing at the
+          end of a guest's scorecard renders underneath it. */}
+      <main className="flex-1 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-10">
         <Container className="py-6">
           <GuestAccountUpsell />
           {children}
