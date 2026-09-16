@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { MoreVertical, Check } from "lucide-react";
 import { updateRoundPlayerAction, removeRoundPlayerAction } from "@/actions/rounds";
 import type { Tables } from "@/lib/supabase/database.types";
+import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
+import { courseHandicapForTee, findTeeSetByName } from "@/lib/golf/handicap";
 import { Badge } from "@/components/ui/badge";
 import { InfoTip } from "@/components/ui/info-tip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -11,6 +13,16 @@ import { TEAM_COLORS, TEAM_COLOR_SWATCH, TEAM_COLOR_LABEL, type PlayerTeamColor 
 import { cn } from "@/lib/utils";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type HandicapSource = "calculated" | "manual" | "legacy";
+
+function teeLabel(tee: SnapshotTeeSet): string {
+  const parts = [tee.name];
+  if (tee.total_yards) parts.push(`${tee.total_yards.toLocaleString()} yds`);
+  if (tee.course_rating != null && tee.slope_rating != null) {
+    parts.push(`${tee.course_rating.toFixed(1)} / ${tee.slope_rating}`);
+  }
+  return parts.join(" · ");
+}
 
 /**
  * One golfer's setup card on the Players step. Autosaves each field
@@ -21,12 +33,20 @@ type SaveState = "idle" | "saving" | "saved" | "error";
  * already saved by the time a captain reaches it. Destructive removal
  * moved off an always-visible red text link and into a "Player
  * options" menu with a real confirmation dialog.
+ *
+ * Handicap panel: shows the golfer's snapshot Handicap Index, the
+ * selected tee's Rating/Slope, and the Course Handicap calculated from
+ * them (see src/lib/golf/handicap.ts -- the same pure function the
+ * server uses, so this preview always matches what gets saved). An
+ * organizer can override the final Playing Handicap manually; a tee
+ * change never silently clears that override (it only recalculates
+ * when the source is "calculated").
  */
 export function RoundPlayerRow({
   roundId,
   player,
   displayName,
-  teeSetNames,
+  teeSets,
   groups,
   canEdit,
   canRemove,
@@ -34,13 +54,16 @@ export function RoundPlayerRow({
   roundId: string;
   player: Tables<"round_players">;
   displayName: string;
-  teeSetNames: string[];
+  teeSets: SnapshotTeeSet[];
   groups: Tables<"round_groups">[];
   canEdit: boolean;
   canRemove: boolean;
 }) {
   const [teeSetName, setTeeSetName] = useState(player.tee_set_name ?? "");
-  const [playingHandicap, setPlayingHandicap] = useState(
+  const [handicapSource, setHandicapSource] = useState<HandicapSource>(
+    (player.playing_handicap_source as HandicapSource | null) ?? "legacy",
+  );
+  const [manualValue, setManualValue] = useState(
     player.playing_handicap != null ? String(player.playing_handicap) : "",
   );
   const [groupId, setGroupId] = useState(player.group_id ?? "");
@@ -53,6 +76,25 @@ export function RoundPlayerRow({
   const [removed, setRemoved] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handicapIndex = player.profile_handicap_index;
+  const selectedTee = useMemo(() => findTeeSetByName(teeSets, teeSetName || null), [teeSets, teeSetName]);
+  const calculatedCourseHandicap = useMemo(
+    () => courseHandicapForTee(handicapIndex, selectedTee),
+    [handicapIndex, selectedTee],
+  );
+  const missingRatingSlope = Boolean(
+    teeSetName && selectedTee && (selectedTee.course_rating == null || selectedTee.slope_rating == null),
+  );
+  const isManual = handicapSource === "manual";
+  // "legacy" rows (saved before this feature existed) behave like
+  // "calculated" for display purposes -- there's nothing to distinguish
+  // them from a fresh calculation once a tee and index are present.
+  const finalPlayingHandicap = isManual
+    ? manualValue
+      ? Number(manualValue)
+      : null
+    : calculatedCourseHandicap;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -73,13 +115,20 @@ export function RoundPlayerRow({
 
   function save(next: {
     teeSetName?: string;
-    playingHandicap?: string;
+    manualValue?: string;
+    handicapSource?: HandicapSource;
     groupId?: string;
     teamColor?: PlayerTeamColor | "";
   }) {
+    const nextSource = next.handicapSource ?? handicapSource;
     const formData = new FormData();
     formData.set("teeSetName", next.teeSetName ?? teeSetName);
-    formData.set("playingHandicap", next.playingHandicap ?? playingHandicap);
+    formData.set("playingHandicap", next.manualValue ?? manualValue);
+    // "legacy" is a display-only bucket for pre-existing rows -- once a
+    // captain touches anything on this card we tell the server to
+    // calculate, same as a brand-new row, unless they've explicitly
+    // switched to manual.
+    formData.set("handicapSource", nextSource === "manual" ? "manual" : "calculated");
     formData.set("groupId", next.groupId ?? groupId);
     formData.set("teamColor", next.teamColor ?? teamColor);
     setSaveState("saving");
@@ -115,7 +164,7 @@ export function RoundPlayerRow({
           </h3>
           {player.profile_handicap_index != null && (
             <p className="mt-0.5 text-xs text-charcoal-400">
-              Profile handicap when added: {player.profile_handicap_index.toFixed(1)}
+              Handicap Index when added: {player.profile_handicap_index.toFixed(1)}
               {player.profile_handicap_source === "ghin_screenshot_import" ? (
                 <Badge variant="forest" className="ml-1.5">
                   GHIN import
@@ -160,95 +209,171 @@ export function RoundPlayerRow({
       </div>
 
       {canEdit ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {teeSetNames.length > 0 && (
-            <div>
-              <label className="mb-1 block text-base font-medium text-forest-900">Choose tee</label>
-              <select
-                value={teeSetName}
-                onChange={(e) => {
-                  setTeeSetName(e.target.value);
-                  save({ teeSetName: e.target.value });
-                }}
-                className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
-              >
-                <option value="">Not set</option>
-                {teeSetNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        <>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {teeSets.length > 0 && (
+              <div>
+                <label className="mb-1 flex items-center gap-1 text-base font-medium text-forest-900">
+                  Choose tee
+                  <InfoTip label="Rating / Slope">
+                    Course Rating and Slope Rating come from the tee you pick, and are what turn a
+                    Handicap Index into a Course Handicap for this round.
+                  </InfoTip>
+                </label>
+                <select
+                  value={teeSetName}
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    setTeeSetName(nextName);
+                    save({ teeSetName: nextName });
+                  }}
+                  className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
+                >
+                  <option value="">Not set</option>
+                  {teeSets.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {teeLabel(t)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          <div>
-            <label className="mb-1 flex items-center gap-1 text-base font-medium text-forest-900">
-              Playing handicap
-              <InfoTip label="What is a playing handicap?">
-                The playing handicap is the number used for this round. Changing it here will not
-                change the golfer&apos;s profile.
-              </InfoTip>
-            </label>
-            <input
-              value={playingHandicap}
-              onChange={(e) => setPlayingHandicap(e.target.value)}
-              onBlur={() => save({ playingHandicap })}
-              inputMode="decimal"
-              className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
-            />
+            {groups.length > 0 && (
+              <div>
+                <label className="mb-1 block text-base font-medium text-forest-900">Playing group</label>
+                <select
+                  value={groupId}
+                  onChange={(e) => {
+                    setGroupId(e.target.value);
+                    save({ groupId: e.target.value });
+                  }}
+                  className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
+                >
+                  <option value="">Choose a group</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-base font-medium text-forest-900">Team</label>
+              <div className="relative">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "pointer-events-none absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border",
+                    teamColor ? cn(TEAM_COLOR_SWATCH[teamColor], "border-black/10") : "border-dashed border-charcoal-400/40",
+                  )}
+                />
+                <select
+                  value={teamColor}
+                  onChange={(e) => {
+                    const next = e.target.value as PlayerTeamColor | "";
+                    setTeamColor(next);
+                    save({ teamColor: next });
+                  }}
+                  className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white py-0 pl-8 pr-3 text-base focus:border-forest-600"
+                >
+                  <option value="">No team</option>
+                  {TEAM_COLORS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          {groups.length > 0 && (
-            <div>
-              <label className="mb-1 block text-base font-medium text-forest-900">Playing group</label>
-              <select
-                value={groupId}
-                onChange={(e) => {
-                  setGroupId(e.target.value);
-                  save({ groupId: e.target.value });
-                }}
-                className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
-              >
-                <option value="">Choose a group</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="mt-3 rounded-lg bg-cream-100 p-3">
+            {teeSetName && missingRatingSlope && (
+              <p className="mb-2 text-sm text-amber-800">
+                Rating and slope are missing for this tee. Add them to calculate a Course
+                Handicap, or enter a Playing Handicap manually.
+              </p>
+            )}
+            {!teeSetName && teeSets.length > 0 && (
+              <p className="mb-2 text-sm text-charcoal-500">
+                Choose a tee above to calculate a Course Handicap.
+              </p>
+            )}
 
-          <div>
-            <label className="mb-1 block text-base font-medium text-forest-900">Team</label>
-            <div className="relative">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "pointer-events-none absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border",
-                  teamColor ? cn(TEAM_COLOR_SWATCH[teamColor], "border-black/10") : "border-dashed border-charcoal-400/40",
-                )}
-              />
-              <select
-                value={teamColor}
-                onChange={(e) => {
-                  const next = e.target.value as PlayerTeamColor | "";
-                  setTeamColor(next);
-                  save({ teamColor: next });
-                }}
-                className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white py-0 pl-8 pr-3 text-base focus:border-forest-600"
-              >
-                <option value="">No team</option>
-                {TEAM_COLORS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:grid-cols-4">
+              <div>
+                <p className="text-charcoal-400">Handicap Index</p>
+                <p className="font-medium text-forest-900">{handicapIndex != null ? handicapIndex.toFixed(1) : "—"}</p>
+              </div>
+              <div>
+                <p className="text-charcoal-400">Rating / Slope</p>
+                <p className="font-medium text-forest-900">
+                  {selectedTee && selectedTee.course_rating != null && selectedTee.slope_rating != null
+                    ? `${selectedTee.course_rating.toFixed(1)} / ${selectedTee.slope_rating}`
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-charcoal-400">Course Handicap</p>
+                <p className="font-medium text-forest-900">
+                  {calculatedCourseHandicap != null ? calculatedCourseHandicap : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-charcoal-400">Playing Handicap</p>
+                <p className="font-medium text-forest-900">
+                  {finalPlayingHandicap != null ? finalPlayingHandicap : "—"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge variant={isManual ? "gold" : "forest"}>
+                {isManual ? "Manual override" : "Calculated from index and tee"}
+              </Badge>
+
+              {!isManual && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHandicapSource("manual");
+                    setManualValue(calculatedCourseHandicap != null ? String(calculatedCourseHandicap) : "");
+                  }}
+                  className="text-sm font-medium text-forest-700 underline underline-offset-2 hover:text-forest-900"
+                >
+                  Override
+                </button>
+              )}
+
+              {isManual && (
+                <>
+                  <input
+                    aria-label="Manual playing handicap"
+                    value={manualValue}
+                    onChange={(e) => setManualValue(e.target.value)}
+                    onBlur={() => save({ manualValue, handicapSource: "manual" })}
+                    inputMode="decimal"
+                    placeholder="Enter Playing Handicap"
+                    className="h-11 w-40 rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHandicapSource("calculated");
+                      save({ handicapSource: "calculated" });
+                    }}
+                    className="text-sm font-medium text-forest-700 underline underline-offset-2 hover:text-forest-900"
+                  >
+                    Revert to calculated
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        </div>
+        </>
       ) : (
         <p className="mt-2 text-base text-charcoal-500">
           {player.tee_set_name ? `${player.tee_set_name} tees` : "Tee not set"}

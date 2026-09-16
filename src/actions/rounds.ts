@@ -12,8 +12,14 @@ import {
   addNewGolferToRoundSchema,
 } from "@/lib/validation/round";
 import type { ActionState } from "@/actions/auth";
-import type { Json } from "@/lib/supabase/database.types";
-import { loadCourseSnapshotInput, insertRoundCourseSnapshot } from "@/lib/golf/round-snapshot";
+import type { Database, Json } from "@/lib/supabase/database.types";
+import {
+  loadCourseSnapshotInput,
+  insertRoundCourseSnapshot,
+  computeCourseHandicap,
+  mergeMissingTeeRatings,
+} from "@/lib/golf/round-snapshot";
+import { courseHandicapForTee, findTeeSetByName, type HandicapTeeSet } from "@/lib/golf/handicap";
 
 /**
  * Creates a round and, in the same action, its round_course_snapshots
@@ -188,9 +194,23 @@ export async function addRoundPlayerAction(
     }
   }
 
-  const resolvedPlayingHandicap = playingHandicap
-    ? Number(playingHandicap)
-    : profileHandicapIndex;
+  // A typed value here is an explicit manual override of the final
+  // Playing Handicap; otherwise we calculate a tee-specific Course
+  // Handicap from the golfer's Handicap Index and store that as both
+  // the Course Handicap and (absent an override) the Playing Handicap.
+  // See src/lib/golf/handicap.ts for the single source of truth for
+  // this math -- never recompute it independently here.
+  const courseHandicap = await computeCourseHandicap(
+    supabase,
+    roundId,
+    teeSetName || null,
+    profileHandicapIndex,
+  );
+
+  const manualOverride = playingHandicap ? Number(playingHandicap) : null;
+  const resolvedPlayingHandicap = manualOverride ?? courseHandicap;
+  const playingHandicapSource: Database["public"]["Enums"]["playing_handicap_source"] =
+    manualOverride !== null ? "manual" : "calculated";
 
   const { error } = await supabase.from("round_players").insert({
     round_id: roundId,
@@ -199,7 +219,9 @@ export async function addRoundPlayerAction(
     profile_handicap_index: profileHandicapIndex,
     profile_handicap_source: profileHandicapSource,
     profile_handicap_revision_date: profileHandicapRevisionDate,
+    course_handicap: courseHandicap,
     playing_handicap: resolvedPlayingHandicap,
+    playing_handicap_source: playingHandicapSource,
     handicap_entered_by: user.id,
   });
 
@@ -297,6 +319,7 @@ export async function updateRoundPlayerAction(
   const parsed = updateRoundPlayerSchema.safeParse({
     teeSetName: formData.get("teeSetName"),
     playingHandicap: formData.get("playingHandicap"),
+    handicapSource: formData.get("handicapSource"),
     groupId: formData.get("groupId"),
     teamColor: formData.get("teamColor"),
   });
@@ -313,13 +336,44 @@ export async function updateRoundPlayerAction(
     return { status: "error", message: "You need to be signed in to do that." };
   }
 
-  const { teeSetName, playingHandicap, groupId, teamColor } = parsed.data;
+  const { teeSetName, playingHandicap, handicapSource, groupId, teamColor } = parsed.data;
+
+  // A tee change must never silently clear a deliberate manual override
+  // (see src/lib/golf/handicap.ts) -- so we only recompute the Course
+  // Handicap here when the caller explicitly asked for "calculated"
+  // (the default when the field is omitted, for older callers). A
+  // "manual" request keeps whatever Playing Handicap was typed and
+  // still records the Course Handicap informationally so the UI can
+  // show both numbers side by side.
+  const { data: existingPlayer } = await supabase
+    .from("round_players")
+    .select("profile_handicap_index")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  const resolvedTeeSetName = teeSetName || null;
+  const courseHandicap = await computeCourseHandicap(
+    supabase,
+    roundId,
+    resolvedTeeSetName,
+    existingPlayer?.profile_handicap_index ?? null,
+  );
+
+  const wantsManual = handicapSource === "manual";
+  const manualValue = playingHandicap ? Number(playingHandicap) : null;
+
+  const resolvedPlayingHandicap = wantsManual ? manualValue : courseHandicap;
+  const playingHandicapSource: Database["public"]["Enums"]["playing_handicap_source"] = wantsManual
+    ? "manual"
+    : "calculated";
 
   const { error } = await supabase
     .from("round_players")
     .update({
-      tee_set_name: teeSetName || null,
-      playing_handicap: playingHandicap ? Number(playingHandicap) : null,
+      tee_set_name: resolvedTeeSetName,
+      course_handicap: courseHandicap,
+      playing_handicap: resolvedPlayingHandicap,
+      playing_handicap_source: playingHandicapSource,
       group_id: groupId || null,
       team_color: teamColor || null,
       handicap_entered_by: user.id,
@@ -410,6 +464,127 @@ export async function updateRoundSnapshotAction(
 
   revalidatePath(`/trips/${round.trip_id}/rounds/${roundId}`);
   return { ok: true };
+}
+
+export type RefreshRoundTeeDataResult =
+  | { ok: true; updatedTeeNames: string[]; recalculatedPlayerCount: number }
+  | { ok: false; error: string };
+
+/**
+ * Section 4's "existing in-progress rounds with missing tee Rating/Slope"
+ * fallback: lets the trip captain pull this round's own permanent tee
+ * snapshot (round_course_snapshots.tee_sets) back into sync with the
+ * course library, but ONLY to fill in a Rating/Slope this round never
+ * had -- never to correct one it already has, since that could silently
+ * change results for a round already under way (see the "Preserve
+ * historical accuracy" requirement). Matching is by exact tee name (see
+ * mergeMissingTeeRatings) since that's the only identifier this app
+ * stores per tee; there is no separate "show a proposed value" preview
+ * step because that match is exact, not a fuzzy guess.
+ *
+ * Gated the same way updateRoundSnapshotAction is (captain-only, via
+ * round_course_snapshots_update_captain -- see
+ * supabase/migrations/20260918110000_course_handicap_support.sql for
+ * why that policy didn't exist before this feature needed it), but
+ * allows 'in_progress' as well as 'scheduled': a round already being
+ * played is exactly the case this exists for. A completed or locked
+ * round is refused outright -- its results are final.
+ *
+ * After the snapshot itself is patched, recalculates course_handicap /
+ * playing_handicap for players on one of the now-fixed tees, but only
+ * those who previously had no Course Handicap at all (course_handicap
+ * was null) and have never set a manual override -- untouched players
+ * and deliberate overrides are left exactly as they were.
+ */
+export async function refreshRoundTeeDataAction(roundId: string): Promise<RefreshRoundTeeDataResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "You need to be signed in to do that." };
+  }
+
+  const { data: round } = await supabase
+    .from("rounds")
+    .select("id, course_id, status, trip_id")
+    .eq("id", roundId)
+    .maybeSingle();
+
+  if (!round) {
+    return { ok: false, error: "That round couldn't be found." };
+  }
+  if (!round.course_id) {
+    return { ok: false, error: "This round isn't linked to a saved course." };
+  }
+  if (round.status !== "scheduled" && round.status !== "in_progress") {
+    return { ok: false, error: "This round's results are final and can no longer be refreshed." };
+  }
+
+  const { data: snapshotRow } = await supabase
+    .from("round_course_snapshots")
+    .select("tee_sets")
+    .eq("round_id", roundId)
+    .maybeSingle();
+
+  if (!snapshotRow) {
+    return { ok: false, error: "This round has no saved course data to refresh." };
+  }
+
+  const freshCourse = await loadCourseSnapshotInput(supabase, round.course_id);
+  if (!freshCourse.ok) {
+    return { ok: false, error: "Couldn't load the saved course's current tee data." };
+  }
+
+  const existingTeeSets = (snapshotRow.tee_sets as HandicapTeeSet[] | null) ?? [];
+  const { merged, updatedTeeNames } = mergeMissingTeeRatings(
+    existingTeeSets,
+    freshCourse.teeSetsSnapshot as HandicapTeeSet[],
+  );
+
+  if (updatedTeeNames.length === 0) {
+    return { ok: true, updatedTeeNames: [], recalculatedPlayerCount: 0 };
+  }
+
+  const { error: snapshotError } = await supabase
+    .from("round_course_snapshots")
+    .update({ tee_sets: merged as unknown as Json })
+    .eq("round_id", roundId);
+
+  if (snapshotError) {
+    return { ok: false, error: "Couldn't save the refreshed tee data. Make sure you're this trip's captain." };
+  }
+
+  const { data: players } = await supabase
+    .from("round_players")
+    .select("id, tee_set_name, profile_handicap_index, course_handicap, playing_handicap_source")
+    .eq("round_id", roundId);
+
+  let recalculatedPlayerCount = 0;
+  for (const player of players ?? []) {
+    if (!player.tee_set_name || !updatedTeeNames.includes(player.tee_set_name)) continue;
+    if (player.course_handicap != null) continue;
+    if (player.playing_handicap_source === "manual") continue;
+
+    const tee = findTeeSetByName(merged, player.tee_set_name);
+    const courseHandicap = courseHandicapForTee(player.profile_handicap_index, tee);
+    if (courseHandicap == null) continue;
+
+    const { error: playerError } = await supabase
+      .from("round_players")
+      .update({
+        course_handicap: courseHandicap,
+        playing_handicap: courseHandicap,
+        playing_handicap_source: "calculated",
+      })
+      .eq("id", player.id);
+
+    if (!playerError) recalculatedPlayerCount++;
+  }
+
+  revalidatePath(`/trips/${round.trip_id}/rounds/${roundId}`);
+  revalidatePath(`/trips`);
+  return { ok: true, updatedTeeNames, recalculatedPlayerCount };
 }
 
 export async function deleteRoundGroupAction(groupId: string): Promise<void> {
@@ -540,11 +715,38 @@ export async function addNewGolferToRoundAction(
     return { status: "error", message: "Something went wrong adding that golfer. Please try again." };
   }
 
+  // This golfer has no account and so no golf_profiles row to snapshot
+  // a Handicap Index from -- the "Playing handicap" field on this form
+  // is the closest equivalent, so we treat whatever the organizer typed
+  // here as that golfer's Handicap Index for this round (stored in
+  // profile_handicap_index for consistent snapshot semantics with every
+  // other round_players row) and calculate a tee-specific Course
+  // Handicap from it exactly as we would for an invited golfer. If no
+  // tee is selected yet, or the tee is missing Rating/Slope, fall back
+  // to using the typed number directly as the Playing Handicap, marked
+  // manual (see src/lib/golf/handicap.ts for why we never guess).
+  const resolvedTeeSetName = teeSetName || null;
+  const enteredHandicapIndex = playingHandicap ? Number(playingHandicap) : null;
+  const courseHandicap = await computeCourseHandicap(
+    supabase,
+    roundId,
+    resolvedTeeSetName,
+    enteredHandicapIndex,
+  );
+
+  const resolvedPlayingHandicap = courseHandicap ?? enteredHandicapIndex;
+  const playingHandicapSource: Database["public"]["Enums"]["playing_handicap_source"] =
+    courseHandicap !== null ? "calculated" : "manual";
+
   const { error: playerError } = await supabase.from("round_players").insert({
     round_id: roundId,
     trip_member_id: tripMemberId,
-    tee_set_name: teeSetName || null,
-    playing_handicap: playingHandicap ? Number(playingHandicap) : null,
+    tee_set_name: resolvedTeeSetName,
+    profile_handicap_index: enteredHandicapIndex,
+    profile_handicap_source: enteredHandicapIndex !== null ? "manual" : null,
+    course_handicap: courseHandicap,
+    playing_handicap: resolvedPlayingHandicap,
+    playing_handicap_source: playingHandicapSource,
     handicap_entered_by: user.id,
   });
 

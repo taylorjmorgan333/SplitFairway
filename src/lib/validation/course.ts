@@ -57,6 +57,23 @@ export const teeSetSchema = z.object({
 export type TeeSetInput = z.infer<typeof teeSetSchema>;
 
 /**
+ * The course-management fallback for correcting Rating/Slope on a tee
+ * that's missing them (or has them wrong) -- see the course-import
+ * audit that found Pradera's tees stuck with null rating/slope from an
+ * already-fixed import bug. Reuses teeSetSchema's exact courseRating/
+ * slopeRating bounds so a manual correction can never save a value the
+ * initial "add a tee" form would have rejected. Both fields are
+ * independently optional (and independently clearable back to blank)
+ * since an organizer might only have one of the two numbers on hand.
+ */
+export const updateTeeSetRatingSchema = z.object({
+  courseRating: teeSetSchema.shape.courseRating,
+  slopeRating: teeSetSchema.shape.slopeRating,
+});
+
+export type UpdateTeeSetRatingInput = z.infer<typeof updateTeeSetRatingSchema>;
+
+/**
  * One hole's par/yardage/stroke index, as entered in the scorecard grid.
  * Par and hole number are required; yardage and stroke index are
  * optional since not every golfer entering a course from memory will

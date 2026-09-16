@@ -370,6 +370,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          rating_source: string | null
           slope_rating: number | null
           total_yards: number | null
         }
@@ -381,6 +382,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          rating_source?: string | null
           slope_rating?: number | null
           total_yards?: number | null
         }
@@ -392,6 +394,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          rating_source?: string | null
           slope_rating?: number | null
           total_yards?: number | null
         }
@@ -1415,11 +1418,13 @@ export type Database = {
       }
       round_players: {
         Row: {
+          course_handicap: number | null
           created_at: string
           group_id: string | null
           handicap_entered_by: string | null
           id: string
           playing_handicap: number | null
+          playing_handicap_source: Database["public"]["Enums"]["playing_handicap_source"]
           profile_handicap_index: number | null
           profile_handicap_revision_date: string | null
           profile_handicap_source:
@@ -1431,11 +1436,13 @@ export type Database = {
           trip_member_id: string
         }
         Insert: {
+          course_handicap?: number | null
           created_at?: string
           group_id?: string | null
           handicap_entered_by?: string | null
           id?: string
           playing_handicap?: number | null
+          playing_handicap_source?: Database["public"]["Enums"]["playing_handicap_source"]
           profile_handicap_index?: number | null
           profile_handicap_revision_date?: string | null
           profile_handicap_source?:
@@ -1447,11 +1454,13 @@ export type Database = {
           trip_member_id: string
         }
         Update: {
+          course_handicap?: number | null
           created_at?: string
           group_id?: string | null
           handicap_entered_by?: string | null
           id?: string
           playing_handicap?: number | null
+          playing_handicap_source?: Database["public"]["Enums"]["playing_handicap_source"]
           profile_handicap_index?: number | null
           profile_handicap_revision_date?: string | null
           profile_handicap_source?:
@@ -2646,6 +2655,7 @@ export type Database = {
         | "blue"
         | "purple"
         | "pink"
+      playing_handicap_source: "calculated" | "manual" | "legacy"
       round_score_edit_scope: "per_golfer" | "per_group"
       round_status: "scheduled" | "in_progress" | "completed" | "locked"
       side_game_scoring_metric: "gross" | "net"
@@ -2840,6 +2850,7 @@ export const Constants = {
         "purple",
         "pink",
       ],
+      playing_handicap_source: ["calculated", "manual", "legacy"],
       round_score_edit_scope: ["per_golfer", "per_group"],
       round_status: ["scheduled", "in_progress", "completed", "locked"],
       side_game_scoring_metric: ["gross", "net"],

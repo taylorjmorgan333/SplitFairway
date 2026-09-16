@@ -93,3 +93,67 @@ export function mapExternalCourse(course: CourseDetail): MappedCourse {
     teeSets,
   };
 }
+
+
+/**
+ * Where a tee's stored Course/Slope Rating came from: 'api' when
+ * GolfCourseAPI supplied it, 'manual' when an organizer typed a
+ * correction in via the course-management fallback
+ * (src/actions/courses.ts#updateTeeSetRatingAction), or null when
+ * neither has ever set one. Never fabricated -- a tee with no rating
+ * data from either source stays null rather than defaulting to 'api'.
+ */
+export type RatingSource = "api" | "manual" | null;
+
+export function ratingSourceForImportedValues(
+  courseRating: number | null,
+  slopeRating: number | null,
+): RatingSource {
+  return courseRating != null || slopeRating != null ? "api" : null;
+}
+
+export interface ExistingTeeRatingInfo {
+  name: string;
+  course_rating: number | null;
+  slope_rating: number | null;
+  rating_source: RatingSource;
+}
+
+export interface ResolvedTeeRating {
+  courseRating: number | null;
+  slopeRating: number | null;
+  ratingSource: RatingSource;
+  preservedManual: boolean;
+}
+
+/**
+ * Decides what Rating/Slope (and source) a tee should end up with when
+ * a course is refreshed from GolfCourseAPI, given the tee set's
+ * existing row (if any -- looked up by name, the same identifier
+ * round_players.tee_set_name and round_course_snapshots already key
+ * tees on) and what the provider just returned. A tee an organizer
+ * manually corrected (rating_source === 'manual') always keeps its
+ * existing values -- a refresh must never silently overwrite a manual
+ * correction (spec section 5) -- and `preservedManual` tells the caller
+ * that happened so it can be surfaced rather than done invisibly.
+ */
+export function resolveRefreshedTeeRating(
+  mapped: { name: string; courseRating: number | null; slopeRating: number | null },
+  existingByName: ReadonlyMap<string, ExistingTeeRatingInfo>,
+): ResolvedTeeRating {
+  const existing = existingByName.get(mapped.name);
+  if (existing && existing.rating_source === "manual") {
+    return {
+      courseRating: existing.course_rating,
+      slopeRating: existing.slope_rating,
+      ratingSource: "manual",
+      preservedManual: true,
+    };
+  }
+  return {
+    courseRating: mapped.courseRating,
+    slopeRating: mapped.slopeRating,
+    ratingSource: ratingSourceForImportedValues(mapped.courseRating, mapped.slopeRating),
+    preservedManual: false,
+  };
+}

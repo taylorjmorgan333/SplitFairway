@@ -99,6 +99,58 @@ describe("GolfCourseApiProvider", () => {
     });
   });
 
+  it("keeps a men's/women's tee reused across genders with the SAME color and yardage as distinct records with their own ratings (spec section 2's exact example, e.g. \"Gold\" at both)", async () => {
+    getGolfCourse.mockResolvedValue({
+      id: "abc123",
+      club_name: "Pradera",
+      course_name: "Pradera",
+      location: { address: null, city: "Denver", state: "CO", country: "US" },
+      tees: {
+        male: [
+          {
+            tee_name: "Gold",
+            course_rating: 71.4,
+            slope_rating: 129,
+            total_yards: 6200,
+            total_meters: null,
+            number_of_holes: 18,
+            par_total: 72,
+            holes: [{ par: 4, yardage: 380, handicap: 1 }],
+          },
+        ],
+        female: [
+          {
+            tee_name: "Gold",
+            course_rating: 75.8,
+            slope_rating: 133,
+            // Deliberately the SAME yardage as the men's Gold tee above --
+            // matching color/yardage must never be a reason to merge two
+            // gender-specific tee records into one.
+            total_yards: 6200,
+            total_meters: null,
+            number_of_holes: 18,
+            par_total: 72,
+            holes: [{ par: 4, yardage: 380, handicap: 1 }],
+          },
+        ],
+      },
+    });
+
+    const provider = new GolfCourseApiProvider();
+    const detail = await provider.getCourseDetails("abc123");
+
+    expect(detail.teeSets).toHaveLength(2);
+    const mens = detail.teeSets.find((t) => t.category === "male");
+    const womens = detail.teeSets.find((t) => t.category === "female");
+    expect(mens?.name).toBe("Gold (Men's)");
+    expect(womens?.name).toBe("Gold (Women's)");
+    expect(mens?.courseRating).toBe(71.4);
+    expect(mens?.slopeRating).toBe(129);
+    expect(womens?.courseRating).toBe(75.8);
+    expect(womens?.slopeRating).toBe(133);
+    expect(mens?.totalYards).toBe(womens?.totalYards);
+  });
+
   it("getCourseDetails does not disambiguate a tee name that appears only once", async () => {
     getGolfCourse.mockResolvedValue({
       id: "abc",

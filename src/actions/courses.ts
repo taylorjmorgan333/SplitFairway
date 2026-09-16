@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { courseSchema, teeSetSchema, holesFormSchema } from "@/lib/validation/course";
+import { courseSchema, teeSetSchema, updateTeeSetRatingSchema, holesFormSchema } from "@/lib/validation/course";
 import type { ActionState } from "@/actions/auth";
 
 /**
@@ -169,6 +169,11 @@ export async function createTeeSetAction(
     course_rating: parsed.data.courseRating,
     slope_rating: parsed.data.slopeRating,
     total_yards: parsed.data.totalYards,
+    // Only stamped when a rating/slope was actually typed in -- a tee
+    // set added without them stays rating_source = null (nothing to
+    // attribute yet), consistent with the same "no defaulting" rule
+    // the GolfCourseAPI import path follows.
+    rating_source: parsed.data.courseRating != null || parsed.data.slopeRating != null ? "manual" : null,
   });
 
   if (error) {
@@ -180,6 +185,66 @@ export async function createTeeSetAction(
 
   revalidatePath(`/courses/${courseId}`);
   return { status: "success", message: "Tee set added." };
+}
+
+/**
+ * The course-management fallback for section 5 of the handicap-support
+ * work: lets an authorized organizer (the RLS policy
+ * course_tee_sets_update_own_or_admin -- the tee set's course creator
+ * for a manually-entered course, or an app admin for any course,
+ * including a provider-sourced one -- is the sole authorization check,
+ * same as every other course-editing action here) enter or correct a
+ * tee's Course Rating and Slope Rating without touching anything else
+ * about it (name, color, category, yardage). Always stamps
+ * rating_source = 'manual' on a successful save, so the UI can tell a
+ * hand-entered correction apart from a value GolfCourseAPI supplied --
+ * see src/actions/course-import.ts for where 'api' gets set instead,
+ * and refreshExternalCourseAction for why a later automatic refresh
+ * must never overwrite a 'manual' value without warning.
+ */
+export async function updateTeeSetRatingAction(
+  courseId: string,
+  teeSetId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = updateTeeSetRatingSchema.safeParse({
+    courseRating: formData.get("courseRating"),
+    slopeRating: formData.get("slopeRating"),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("course_tee_sets")
+    .update({
+      course_rating: parsed.data.courseRating,
+      slope_rating: parsed.data.slopeRating,
+      rating_source: "manual",
+    })
+    .eq("id", teeSetId)
+    .select("id");
+
+  if (error) {
+    return { status: "error", message: "Something went wrong saving that." };
+  }
+
+  if (!data || data.length === 0) {
+    // Same silent-zero-rows RLS pattern as deleteCourseAction above --
+    // this only happens for a provider-sourced course when the caller
+    // isn't an admin, since the "own course" half of the policy can
+    // never match a course this caller didn't create.
+    return {
+      status: "error",
+      message: "Couldn't save that — you may not have permission to edit this course's tee data.",
+    };
+  }
+
+  revalidatePath(`/courses/${courseId}`);
+  return { status: "success", message: "Rating and slope saved." };
 }
 
 /** Removing a tee set cascades to its holes (course_holes fk on delete cascade). */

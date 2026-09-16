@@ -8,7 +8,13 @@ import {
   CourseProviderError,
   type CourseProviderName,
 } from "@/lib/golf/course-provider";
-import { mapExternalCourse, UnusableCourseDataError } from "@/lib/golf/course-import-mapping";
+import {
+  mapExternalCourse,
+  UnusableCourseDataError,
+  ratingSourceForImportedValues,
+  resolveRefreshedTeeRating,
+  type ExistingTeeRatingInfo,
+} from "@/lib/golf/course-import-mapping";
 import {
   GOLFCOURSE_API_ENABLED,
   GOLFCOURSE_API_SEARCH_ENABLED,
@@ -391,6 +397,11 @@ export async function importExternalCourseAction(
         category: teeSet.category,
         course_rating: teeSet.courseRating,
         slope_rating: teeSet.slopeRating,
+        // Never fabricate a source for data the provider didn't supply
+        // -- only stamp 'api' when GolfCourseAPI actually gave us a
+        // rating or slope for this tee. See course-import-mapping.ts
+        // for the shared, unit-tested rule.
+        rating_source: ratingSourceForImportedValues(teeSet.courseRating, teeSet.slopeRating),
         total_yards: teeSet.totalYards,
       })
       .select("id")
@@ -461,7 +472,7 @@ export async function getCourseForWizardAction(courseId: string): Promise<Wizard
 }
 
 export type RefreshExternalCourseResult =
-  | { ok: true; refreshed: boolean }
+  | { ok: true; refreshed: boolean; preservedManualTees: string[] }
   | { ok: false; error: string };
 
 /**
@@ -529,6 +540,31 @@ export async function refreshExternalCourseAction(courseId: string): Promise<Ref
     return { ok: false, error: friendlyErrorMessage(providerError) };
   }
 
+  // A refresh must never silently clobber a Rating/Slope an organizer
+  // corrected by hand (course-management fallback, src/actions/courses.ts
+  // #updateTeeSetRatingAction) -- so before replacing anything, grab
+  // every existing tee set's own rating/slope/source, keyed by name
+  // (the same identifier round_players.tee_set_name and
+  // round_course_snapshots store tee sets under; GolfCourseAPI has no
+  // stable per-tee-box id of its own to key on instead, and its tee
+  // names are already disambiguated per gender by
+  // course-provider.ts#flattenTeeSets, e.g. "Gold (Women's)"). Any tee
+  // whose rating_source is 'manual' keeps its existing rating/slope
+  // through this refresh; the caller is told which ones so the "do not
+  // overwrite without warning" requirement is met by surfacing it
+  // rather than by silently skipping it.
+  const { data: existingTeeSetsRaw } = await supabase
+    .from("course_tee_sets")
+    .select("name, course_rating, slope_rating, rating_source")
+    .eq("course_id", courseId);
+
+  const existingByName = new Map<string, ExistingTeeRatingInfo>(
+    (existingTeeSetsRaw ?? []).map((t) => [
+      t.name,
+      { ...t, rating_source: t.rating_source === "manual" ? "manual" : t.rating_source === "api" ? "api" : null },
+    ]),
+  );
+
   // Replace-in-place: existing tee sets cascade-delete their holes.
   await supabase.from("course_tee_sets").delete().eq("course_id", courseId);
 
@@ -543,7 +579,12 @@ export async function refreshExternalCourseAction(courseId: string): Promise<Ref
     })
     .eq("id", courseId);
 
+  const preservedManualTees: string[] = [];
+
   for (const teeSet of mapped.teeSets) {
+    const resolved = resolveRefreshedTeeRating(teeSet, existingByName);
+    if (resolved.preservedManual) preservedManualTees.push(teeSet.name);
+
     const { data: teeSetRow } = await supabase
       .from("course_tee_sets")
       .insert({
@@ -551,8 +592,9 @@ export async function refreshExternalCourseAction(courseId: string): Promise<Ref
         name: teeSet.name,
         color: teeSet.color,
         category: teeSet.category,
-        course_rating: teeSet.courseRating,
-        slope_rating: teeSet.slopeRating,
+        course_rating: resolved.courseRating,
+        slope_rating: resolved.slopeRating,
+        rating_source: resolved.ratingSource,
         total_yards: teeSet.totalYards,
       })
       .select("id")
@@ -575,5 +617,5 @@ export async function refreshExternalCourseAction(courseId: string): Promise<Ref
 
   revalidatePath("/courses");
   revalidatePath(`/courses/${courseId}`);
-  return { ok: true, refreshed: true };
+  return { ok: true, refreshed: true, preservedManualTees };
 }

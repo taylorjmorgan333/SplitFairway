@@ -57,6 +57,12 @@ export type AddRoundPlayerInput = z.infer<typeof addRoundPlayerSchema>;
 export const updateRoundPlayerSchema = z.object({
   teeSetName: z.string().trim().max(80).optional().or(z.literal("")),
   playingHandicap: playingHandicapString.optional().or(z.literal("")),
+  // Distinguishes "the organizer just typed a number" (manual) from
+  // "recompute this from the golfer's handicap index and selected tee"
+  // (calculated). Defaults to "calculated" when omitted so existing
+  // callers that don't send it yet keep getting the new tee-based
+  // Course Handicap behavior rather than a raw manual override.
+  handicapSource: z.enum(["calculated", "manual"]).optional().or(z.literal("")),
   groupId: z.string().uuid().optional().or(z.literal("")),
   teamColor: z.enum(PLAYER_TEAM_COLORS as [PlayerTeamColor, ...PlayerTeamColor[]]).optional().or(z.literal("")),
 });

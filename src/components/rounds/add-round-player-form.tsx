@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addRoundPlayerAction, addNewGolferToRoundAction } from "@/actions/rounds";
 import type { ActionState } from "@/actions/auth";
+import type { SnapshotTeeSet } from "@/components/rounds/mobile-scorecard";
+import { courseHandicapForTee, findTeeSetByName } from "@/lib/golf/handicap";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -20,44 +22,94 @@ function AddButton({ label }: { label: string }) {
   );
 }
 
-function HandicapField() {
+/**
+ * The "playingHandicap" text field means two different things depending
+ * on who's being added, so it gets two different labels/helper text
+ * rather than one generic one that would conflate a Handicap Index
+ * with a Playing Handicap (see src/lib/golf/handicap.ts):
+ *
+ * - "override": an existing trip golfer already has a profile Handicap
+ *   Index; this field is an optional manual override of the final
+ *   Playing Handicap the server would otherwise calculate for them.
+ * - "index": a brand-new walk-up golfer has no profile to snapshot a
+ *   Handicap Index from, so this field *is* their Handicap Index for
+ *   this round, and gets converted to a Course Handicap the same way.
+ */
+function HandicapField({ mode, teeSetName, teeSets }: { mode: "override" | "index"; teeSetName: string; teeSets: SnapshotTeeSet[] }) {
+  const [value, setValue] = useState("");
+  const selectedTee = useMemo(() => findTeeSetByName(teeSets, teeSetName || null), [teeSets, teeSetName]);
+  const previewIndex = mode === "index" && value ? Number(value) : null;
+  const previewCourseHandicap =
+    mode === "index" && previewIndex != null && !Number.isNaN(previewIndex)
+      ? courseHandicapForTee(previewIndex, selectedTee)
+      : null;
+
   return (
     <div>
       <label htmlFor="playingHandicap" className="mb-1 flex items-center gap-1 text-sm font-medium text-forest-900">
-        Playing handicap
-        <InfoTip label="What is a playing handicap?">
-          The playing handicap is the number used for this round. Changing it here will not
-          change the golfer&apos;s profile.
+        {mode === "index" ? "Handicap Index" : "Playing handicap override"}
+        <InfoTip label={mode === "index" ? "What is a Handicap Index?" : "What is a playing handicap override?"}>
+          {mode === "index"
+            ? "A portable Handicap Index. Pick a tee above and this will be converted into a Course Handicap for this round."
+            : "Optional. Leave blank to use the Course Handicap calculated from their profile Handicap Index and the selected tee. Typing a number here overrides that calculation for this round only."}
         </InfoTip>
       </label>
       <input
         id="playingHandicap"
         name="playingHandicap"
-        placeholder="Auto from profile"
+        placeholder={mode === "index" ? "e.g. 12.4" : "Auto from profile + tee"}
         inputMode="decimal"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
         className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base focus:border-forest-600"
       />
+      {mode === "index" && teeSetName && (
+        <p className="mt-1 text-xs text-charcoal-400">
+          {previewCourseHandicap != null
+            ? `Course Handicap: ${previewCourseHandicap}`
+            : value
+              ? "Rating and slope are missing for this tee — this will be used as a manual Playing Handicap instead."
+              : ""}
+        </p>
+      )}
     </div>
   );
 }
 
-function TeesField({ teeSetNames }: { teeSetNames: string[] }) {
-  if (teeSetNames.length === 0) return null;
+function TeesField({
+  teeSets,
+  value,
+  onChange,
+}: {
+  teeSets: SnapshotTeeSet[];
+  value: string;
+  onChange: (name: string) => void;
+}) {
+  if (teeSets.length === 0) return null;
   return (
     <div>
-      <label htmlFor="teeSetName" className="mb-1 block text-base font-medium text-forest-900">
+      <label htmlFor="teeSetName" className="mb-1 flex items-center gap-1 text-base font-medium text-forest-900">
         Choose tee
+        <InfoTip label="Rating / Slope">
+          Course Rating and Slope Rating come from the tee picked here, and are what turn a
+          Handicap Index into a Course Handicap for this round.
+        </InfoTip>
       </label>
       <select
         id="teeSetName"
         name="teeSetName"
-        defaultValue=""
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         className="h-11 w-full rounded-lg border border-charcoal-400/25 bg-white px-3 text-base text-charcoal focus:border-forest-600"
       >
         <option value="">Not set</option>
-        {teeSetNames.map((name) => (
-          <option key={name} value={name}>
-            {name}
+        {teeSets.map((t) => (
+          <option key={t.name} value={t.name}>
+            {t.name}
+            {t.total_yards ? ` · ${t.total_yards.toLocaleString()} yds` : ""}
+            {t.course_rating != null && t.slope_rating != null
+              ? ` · ${t.course_rating.toFixed(1)} / ${t.slope_rating}`
+              : ""}
           </option>
         ))}
       </select>
@@ -68,14 +120,15 @@ function TeesField({ teeSetNames }: { teeSetNames: string[] }) {
 function ExistingGolferForm({
   roundId,
   availableMembers,
-  teeSetNames,
+  teeSets,
 }: {
   roundId: string;
   availableMembers: { id: string; display_name: string }[];
-  teeSetNames: string[];
+  teeSets: SnapshotTeeSet[];
 }) {
   const action = addRoundPlayerAction.bind(null, roundId);
   const [state, formAction] = useActionState(action, initialState);
+  const [teeSetName, setTeeSetName] = useState("");
 
   return (
     <form action={formAction} className="space-y-3" noValidate>
@@ -101,8 +154,8 @@ function ExistingGolferForm({
             ))}
           </select>
         </div>
-        <TeesField teeSetNames={teeSetNames} />
-        <HandicapField />
+        <TeesField teeSets={teeSets} value={teeSetName} onChange={setTeeSetName} />
+        <HandicapField mode="override" teeSetName={teeSetName} teeSets={teeSets} />
       </div>
       <AddButton label="Add Golfer" />
       {state.status === "error" && state.message && <Alert variant="error">{state.message}</Alert>}
@@ -117,9 +170,10 @@ function ExistingGolferForm({
  * addNewGolferToRoundAction. Aimed at a walk-up golfer the captain
  * never invited to the trip at all.
  */
-function NewGolferForm({ tripId, roundId, teeSetNames }: { tripId: string; roundId: string; teeSetNames: string[] }) {
+function NewGolferForm({ tripId, roundId, teeSets }: { tripId: string; roundId: string; teeSets: SnapshotTeeSet[] }) {
   const action = addNewGolferToRoundAction.bind(null, tripId, roundId);
   const [state, formAction] = useActionState(action, initialState);
+  const [teeSetName, setTeeSetName] = useState("");
 
   return (
     <form action={formAction} className="space-y-3" noValidate>
@@ -154,8 +208,8 @@ function NewGolferForm({ tripId, roundId, teeSetNames }: { tripId: string; round
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TeesField teeSetNames={teeSetNames} />
-        <HandicapField />
+        <TeesField teeSets={teeSets} value={teeSetName} onChange={setTeeSetName} />
+        <HandicapField mode="index" teeSetName={teeSetName} teeSets={teeSets} />
       </div>
       <p className="text-xs text-charcoal-400">
         They&apos;ll be added to this trip as an active golfer right away — no email or sign-up
@@ -172,12 +226,12 @@ export function AddRoundPlayerForm({
   tripId,
   roundId,
   availableMembers,
-  teeSetNames,
+  teeSets,
 }: {
   tripId: string;
   roundId: string;
   availableMembers: { id: string; display_name: string }[];
-  teeSetNames: string[];
+  teeSets: SnapshotTeeSet[];
 }) {
   const hasExisting = availableMembers.length > 0;
   const [mode, setMode] = useState<"existing" | "new">(hasExisting ? "existing" : "new");
@@ -210,9 +264,9 @@ export function AddRoundPlayerForm({
       )}
 
       {mode === "existing" && hasExisting ? (
-        <ExistingGolferForm roundId={roundId} availableMembers={availableMembers} teeSetNames={teeSetNames} />
+        <ExistingGolferForm roundId={roundId} availableMembers={availableMembers} teeSets={teeSets} />
       ) : (
-        <NewGolferForm tripId={tripId} roundId={roundId} teeSetNames={teeSetNames} />
+        <NewGolferForm tripId={tripId} roundId={roundId} teeSets={teeSets} />
       )}
     </div>
   );

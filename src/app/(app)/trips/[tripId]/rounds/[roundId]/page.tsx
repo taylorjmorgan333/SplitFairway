@@ -12,6 +12,7 @@ import { RoundGroupsSection } from "@/components/rounds/round-groups-section";
 import { AddRoundPlayerForm } from "@/components/rounds/add-round-player-form";
 import { RoundPlayerRow } from "@/components/rounds/round-player-row";
 import { CourseTeesDisclosure } from "@/components/rounds/course-tees-disclosure";
+import { RefreshRoundTeeDataButton } from "@/components/rounds/refresh-round-tee-data-button";
 import { EditRoundDetailsForm } from "@/components/rounds/edit-round-details-form";
 import { DeleteRoundButton } from "@/components/rounds/delete-round-button";
 import { SetupStepNav, RoundPhaseTabs } from "@/components/rounds/round-nav";
@@ -125,7 +126,16 @@ export default async function RoundDetailPage({
   const availableMembers = memberRows.filter((m) => !takenMemberIds.has(m.id));
 
   const teeSets = (snapshot?.tee_sets as SnapshotTeeSet[] | null) ?? [];
-  const teeSetNames = teeSets.map((t) => t.name);
+  // Only offer the "refresh missing tee data" fallback (spec section 4)
+  // while there's actually something to fix, the round is still
+  // scheduled/in_progress (refreshRoundTeeDataAction refuses otherwise),
+  // and the round is linked to a saved course to refresh from.
+  const hasMissingTeeRatings = teeSets.some((t) => t.course_rating == null || t.slope_rating == null);
+  const canRefreshTeeData =
+    isCaptain &&
+    Boolean(safeRound.course_id) &&
+    (safeRound.status === "scheduled" || safeRound.status === "in_progress") &&
+    hasMissingTeeRatings;
 
   const phase = phaseForStatus(safeRound.status);
   const badge =
@@ -177,7 +187,7 @@ export default async function RoundDetailPage({
                   roundId={safeRound.id}
                   player={player}
                   displayName={member?.display_name ?? "Unknown golfer"}
-                  teeSetNames={teeSetNames}
+                  teeSets={teeSets}
                   groups={groupRows}
                   canEdit={isCaptain || isSelf}
                   canRemove={isCaptain}
@@ -187,7 +197,7 @@ export default async function RoundDetailPage({
 
             {isCaptain && (
               <div className="border-t border-charcoal-400/10 pt-4">
-                <AddRoundPlayerForm tripId={tripId} roundId={safeRound.id} availableMembers={availableMembers} teeSetNames={teeSetNames} />
+                <AddRoundPlayerForm tripId={tripId} roundId={safeRound.id} availableMembers={availableMembers} teeSets={teeSets} />
               </div>
             )}
             {!isCaptain && !myPlayerMembership && (
@@ -229,6 +239,7 @@ export default async function RoundDetailPage({
         </p>
 
         <CourseTeesDisclosure teeSets={teeSets} />
+        {canRefreshTeeData && <RefreshRoundTeeDataButton roundId={safeRound.id} />}
 
         <PlayersAndGroups />
 
@@ -306,6 +317,7 @@ export default async function RoundDetailPage({
       </div>
 
       <CourseTeesDisclosure teeSets={teeSets} />
+      {canRefreshTeeData && <RefreshRoundTeeDataButton roundId={safeRound.id} />}
 
       {playerRows.length > 0 && (
         <div className="mt-4">
