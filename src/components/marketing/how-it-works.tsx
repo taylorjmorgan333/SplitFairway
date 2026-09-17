@@ -16,26 +16,17 @@ const STEPS = [
     title: "Keep the group together",
     body: "Save golfers, standings and history for next week.",
   },
-  {
-    number: "04",
-    title: "Take the group on the road",
-    body: "Turn the same group into a complete golf trip.",
-  },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="bg-forest-50 py-20 sm:py-28">
+    <section id="how-it-works" className="bg-forest-50 py-10 sm:py-20 lg:py-28">
       <Container>
         <div className="max-w-2xl">
           <h2 className="text-3xl sm:text-4xl">How it works</h2>
-          <p className="mt-4 text-lg text-charcoal-500">
-            From today&apos;s round to the group you play every week to the trip everyone talks
-            about all year.
-          </p>
         </div>
 
-        <ol className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-10 grid gap-8 sm:grid-cols-3">
           {STEPS.map((step) => (
             <li key={step.number}>
               <span className="font-serif text-3xl text-gold-500">

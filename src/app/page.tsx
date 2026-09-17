@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Hero } from "@/components/marketing/hero";
-import { UseCasesSection } from "@/components/marketing/use-cases";
+import { WaysToPlaySection } from "@/components/marketing/ways-to-play";
 import { GamesSection } from "@/components/marketing/games-section";
-import { GroupsSection } from "@/components/marketing/groups-section";
-import { NineteenthHoleSection } from "@/components/marketing/nineteenth-hole-section";
-import { TripModeSection } from "@/components/marketing/trip-mode-section";
-import { DashboardPreview } from "@/components/marketing/dashboard-preview";
+import { BeyondTheScorecardSection } from "@/components/marketing/beyond-the-scorecard";
+import { TripModePreviewSection } from "@/components/marketing/trip-mode-preview";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { PricingPreview } from "@/components/marketing/pricing-preview";
 import { FAQ } from "@/components/marketing/faq";
@@ -54,21 +52,29 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Mobile-first cleanup (see project notes): the homepage now leads
+ * with three equally-weighted destinations in a fixed order -- playing
+ * a round today, the weekly group, then a golf trip -- instead of
+ * repeating each one's benefits across several sections. Content that
+ * used to live directly on this page but was fully superseded by a
+ * shorter section now lives at its own dedicated page instead of being
+ * deleted: the full Trip Mode walkthrough is at /trip-mode, the full
+ * plan comparison is at /pricing, and the complete FAQ list is at /faq.
+ */
 export default function LandingPage() {
   return (
     <>
       <SiteHeader />
       <main>
         <Hero />
-        <UseCasesSection />
+        <WaysToPlaySection />
         <GamesSection />
-        <GroupsSection />
-        <NineteenthHoleSection />
-        <TripModeSection />
-        <DashboardPreview />
+        <BeyondTheScorecardSection />
+        <TripModePreviewSection />
         <HowItWorks />
         <PricingPreview />
-        <FAQ />
+        <FAQ preview />
         <CtaSection />
       </main>
       <SiteFooter />

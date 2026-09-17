@@ -3,7 +3,7 @@ import { Container } from "@/components/ui/container";
 
 export function CtaSection() {
   return (
-    <section className="bg-forest-950 py-20">
+    <section className="bg-forest-950 py-14 sm:py-20">
       <Container className="text-center">
         <h2 className="text-3xl text-cream-50 sm:text-4xl">
           Your next round starts here.

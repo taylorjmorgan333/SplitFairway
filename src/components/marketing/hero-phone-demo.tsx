@@ -229,7 +229,7 @@ export function HeroPhoneDemo() {
     <div className="flex flex-col items-center lg:items-end">
       <div ref={containerRef} className="relative w-[250px] shrink-0 sm:w-[270px]">
         <div aria-hidden="true" className="rounded-[2.75rem] border-[6px] border-cream-50/10 bg-forest-900 p-1.5 shadow-2xl shadow-black/50">
-          <div className="relative h-[540px] overflow-hidden rounded-[2.15rem] bg-cream-50">
+          <div className="relative h-[480px] overflow-hidden rounded-[2.15rem] bg-cream-50 sm:h-[540px]">
             <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-2">
               <div className="h-5 w-24 rounded-full bg-forest-950" />
             </div>
@@ -491,10 +491,10 @@ export function HeroPhoneDemo() {
           itself is decorative. No aria-live region -- the caption text
           changes with the scene, but a repeating announcement every
           few seconds would be more disruptive than helpful here. */}
-      <div className="mt-4 w-[250px] text-center sm:w-[270px]">
+      <div className="mt-3 w-[250px] text-center sm:mt-4 sm:w-[270px]">
         <p className="text-sm text-cream-100/70">{SCENES[sceneIndex].caption}</p>
 
-        <div className="mt-3 flex items-center justify-center gap-3">
+        <div className="mt-2 flex items-center justify-center gap-3 sm:mt-3">
           <button
             type="button"
             onClick={() => setUserPaused((p) => !p)}

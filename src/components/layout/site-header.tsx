@@ -20,7 +20,7 @@ export function SiteHeader() {
     <header className="safe-top sticky top-0 z-40 border-b border-forest-900/[0.06] bg-cream-50/90 backdrop-blur">
       <Container className="flex h-16 items-center justify-between">
         <Link href="/" aria-label="SplitFairway home">
-          <Logo />
+          <Logo hideWordmarkBelowSm />
         </Link>
 
         <nav

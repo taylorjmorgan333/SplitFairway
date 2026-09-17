@@ -34,16 +34,16 @@ function SkinsResultPreview() {
 
 export function GamesSection() {
   return (
-    <section id="games" className="bg-forest-50 py-20 sm:py-28">
+    <section id="games" className="bg-forest-50 py-10 sm:py-20 lg:py-28">
       <Container>
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
-            <h2 className="text-3xl sm:text-4xl">Run the game, not the math.</h2>
+            <h2 className="text-3xl sm:text-4xl">Games and leaderboards, done automatically.</h2>
             <p className="mt-4 max-w-xl text-lg text-charcoal-500">
-              Set up the games your group already plays and let SplitFairway update the
-              standings as scores are entered.
+              Set up the games your group already plays and watch the standings update
+              themselves as scores are entered.
             </p>
-            <div className="mt-10 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+            <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-5">
               {GAME_FEATURES.map((feature) => (
                 <div key={feature.label} className="flex items-center gap-3">
                   <feature.icon

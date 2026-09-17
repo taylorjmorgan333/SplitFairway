@@ -10,9 +10,16 @@ import { cn } from "@/lib/utils";
 export function Logo({
   className,
   variant = "dark",
+  hideWordmarkBelowSm = false,
 }: {
   className?: string;
   variant?: "dark" | "light";
+  /** Collapses to just the crest icon below the sm breakpoint. Used by
+   * SiteHeader, where the full wordmark plus the primary CTA button
+   * and menu toggle no longer fit side by side on a phone-width
+   * screen without overlapping. Defaults to false everywhere else
+   * (footer, hero phone mockup) so nothing else changes. */
+  hideWordmarkBelowSm?: boolean;
 }) {
   const textColor = variant === "dark" ? "text-forest-900" : "text-cream-50";
 
@@ -27,7 +34,13 @@ export function Logo({
         className="h-10 w-auto shrink-0"
         priority
       />
-      <span className={cn("font-wordmark text-base uppercase tracking-wider", textColor)}>
+      <span
+        className={cn(
+          "font-wordmark text-base uppercase tracking-wider",
+          textColor,
+          hideWordmarkBelowSm && "hidden sm:inline",
+        )}
+      >
         SplitFairway
       </span>
     </span>

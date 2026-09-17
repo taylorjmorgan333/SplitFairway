@@ -12,7 +12,7 @@ export function TripModeMiniPreview({ emphasize = false }: { emphasize?: boolean
   return (
     <div
       aria-hidden="true"
-      className="mt-4 flex w-[250px] items-center justify-between rounded-2xl border px-4 py-3 transition-all duration-500 ease-out sm:w-[270px]"
+      className="mt-3 flex w-[250px] items-center justify-between rounded-2xl border px-4 py-3 transition-all duration-500 ease-out sm:mt-4 sm:w-[270px]"
       style={{
         borderColor: emphasize ? "rgba(201,162,78,0.6)" : "rgba(253,251,246,0.15)",
         backgroundColor: emphasize ? "rgba(24,48,32,0.75)" : "rgba(15,33,23,0.6)",
