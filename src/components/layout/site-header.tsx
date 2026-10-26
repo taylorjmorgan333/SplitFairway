@@ -6,7 +6,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { SectionLink } from "@/components/marketing/section-link";
 
 const NAV_LINKS = [
-  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/how-it-works", label: "How It Works" },
   { href: "/#games", label: "Games & Groups" },
   { href: "/#trip-mode", label: "Trip Mode" },
   { href: "/#pricing", label: "Pricing" },
