@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionLink } from "@/components/marketing/section-link";
 
@@ -60,26 +61,46 @@ const HOMEPAGE_PREVIEW_COUNT = 3;
  */
 export function FAQ({ preview = false }: { preview?: boolean } = {}) {
   const items = preview ? FAQS.slice(0, HOMEPAGE_PREVIEW_COUNT) : FAQS;
+  const Heading = preview ? "h2" : "h1";
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
 
   return (
     <section id="faq" className="bg-cream-50 py-10 sm:py-20 lg:py-28">
+      {!preview && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
       <Container>
         <div className="max-w-2xl">
-          <h2 className="text-3xl sm:text-4xl">Frequently asked questions</h2>
+          <Heading className="text-3xl sm:text-4xl">Frequently asked questions</Heading>
         </div>
 
-        <dl className="mt-8 max-w-3xl divide-y divide-forest-900/10">
+        <div className="mt-8 max-w-3xl divide-y divide-forest-900/10">
           {items.map((faq) => (
-            <div key={faq.question} className="py-4">
-              <dt className="text-base font-medium text-forest-900">
+            <details key={faq.question} className="group" {...(preview ? { open: true } : { name: "faq" })}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-base font-medium text-forest-900 [&::-webkit-details-marker]:hidden">
                 {faq.question}
-              </dt>
-              <dd className="mt-2 text-sm leading-relaxed text-charcoal-500">
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 text-charcoal-400 transition-transform duration-200 group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="pb-4 text-sm leading-relaxed text-charcoal-500">
                 {preview && faq.previewAnswer ? faq.previewAnswer : faq.answer}
-              </dd>
-            </div>
+              </p>
+            </details>
           ))}
-        </dl>
+        </div>
 
         {preview && (
           <div className="mt-8">

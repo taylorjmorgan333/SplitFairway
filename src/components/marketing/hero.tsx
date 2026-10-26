@@ -3,9 +3,41 @@ import { SectionLink } from "@/components/marketing/section-link";
 import { Container } from "@/components/ui/container";
 import { HeroPhoneDemo } from "@/components/marketing/hero-phone-demo";
 
+const SOFTWARE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "SplitFairway",
+  applicationCategory: "SportsApplication",
+  operatingSystem: "Web",
+  url: "https://www.splitfairwaygolf.com",
+  description:
+    "Track golf scores, side games, weekly groups, trip expenses and payments—all in one golf app.",
+  offers: [
+    { "@type": "Offer", name: "Free Player", price: "0", priceCurrency: "USD" },
+    {
+      "@type": "Offer",
+      name: "Organizer Pro",
+      price: "59.99",
+      priceCurrency: "USD",
+      description: "Per year. Unlocked during beta.",
+    },
+    {
+      "@type": "Offer",
+      name: "Trip Pass",
+      price: "29.99",
+      priceCurrency: "USD",
+      description: "Per trip. Unlocked during beta.",
+    },
+  ],
+};
+
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-forest-950">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_JSON_LD) }}
+      />
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-contour-lines opacity-60"
