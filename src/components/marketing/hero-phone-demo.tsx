@@ -315,21 +315,33 @@ export function HeroPhoneDemo() {
                       >
                         <span className="text-[11px] font-medium text-charcoal-700">{row.name}</span>
                         <div className="flex items-center gap-2">
-                          <div
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-forest-900/10 text-forest-900 transition-transform duration-150 ease-out"
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            aria-label={`Decrease ${row.name}'s score`}
+                            className="pointer-events-none flex h-7 w-7 items-center justify-center rounded-full bg-forest-900/10 text-forest-900 transition-transform duration-150 ease-out"
                             style={{
                               transform:
                                 row.name === "Trent" && scoreStep === "pressed" ? "scale(0.85)" : "scale(1)",
                             }}
                           >
-                            <span className="text-sm font-medium leading-none">–</span>
-                          </div>
+                            <span aria-hidden="true" className="text-sm font-medium leading-none">
+                              –
+                            </span>
+                          </button>
                           <span className="w-4 text-center font-serif text-base tabular-nums text-forest-900">
                             {row.score}
                           </span>
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-forest-900/10 text-forest-900">
-                            <span className="text-sm font-medium leading-none">+</span>
-                          </div>
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            aria-label={`Increase ${row.name}'s score`}
+                            className="pointer-events-none flex h-7 w-7 items-center justify-center rounded-full bg-forest-900/10 text-forest-900"
+                          >
+                            <span aria-hidden="true" className="text-sm font-medium leading-none">
+                              +
+                            </span>
+                          </button>
                         </div>
                       </div>
                     ))}
