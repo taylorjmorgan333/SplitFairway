@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { BILLING_ENABLED } from "@/lib/config";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Container } from "@/components/ui/container";
 import { PLANS } from "@/lib/billing/plans";
 import { PlanCard } from "@/components/billing/plan-card";
-import { BILLING_ENABLED } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Pricing",
