@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Container } from "@/components/ui/container";
 import { PLANS } from "@/lib/billing/plans";
 import { PlanCard } from "@/components/billing/plan-card";
+import { BILLING_ENABLED } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -36,6 +37,13 @@ export default function PricingPage() {
               Play for free. Upgrade when you&apos;re ready to organize your group or run the
               complete trip.
             </p>
+            {!BILLING_ENABLED && (
+              <p className="mt-6 rounded-xl bg-gold-100 px-4 py-3 text-sm leading-relaxed text-gold-800">
+                SplitFairway is in beta. Every Organizer Pro and Trip Pass feature is unlocked
+                for signed-in golfers right now, at no charge. Choosing a paid plan later keeps
+                that access — there is nothing to pay today.
+              </p>
+            )}
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-3">
