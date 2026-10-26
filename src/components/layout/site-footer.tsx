@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Container } from "@/components/ui/container";
 import { SectionLink } from "@/components/marketing/section-link";
+import { IosWaitlistForm } from "@/components/marketing/ios-waitlist-form";
 
 const PRODUCT_LINKS = [
   { href: "/how-it-works", label: "How It Works" },
@@ -108,6 +109,9 @@ export function SiteFooter() {
       <div className="contour-divider" />
 
       <Container className="py-6">
+        <div className="max-w-xl pb-6">
+          <IosWaitlistForm source="home_footer" tone="dark" />
+        </div>
         <ul className="grid gap-x-6 gap-y-1.5 text-xs text-cream-100/60 sm:grid-cols-2">
           <li>• We don&apos;t book travel — every reservation is made directly with the vendor.</li>
           <li>• We don&apos;t hold or transfer money — every payment happens outside the app.</li>
