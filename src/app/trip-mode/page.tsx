@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { ButtonLink } from "@/components/ui/button";
 import { TripModeSection } from "@/components/marketing/trip-mode-section";
 import { DashboardPreview } from "@/components/marketing/dashboard-preview";
+import { IosWaitlistForm } from "@/components/marketing/ios-waitlist-form";
 
 export const metadata: Metadata = {
   title: "Trip Mode",
@@ -38,6 +39,12 @@ export default function TripModePage() {
                 Start Playing Free
               </ButtonLink>
             </div>
+          </Container>
+        </section>
+
+        <section className="bg-cream-50 py-12 sm:py-16">
+          <Container className="max-w-xl">
+            <IosWaitlistForm source="trip_mode" tone="light" />
           </Container>
         </section>
 
