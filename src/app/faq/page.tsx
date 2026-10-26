@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { FAQ } from "@/components/marketing/faq";
+import { publicMetadata } from "@/lib/seo/public-metadata";
 
-export const metadata: Metadata = {
-  title: "FAQ",
-  description: "Answers to common questions about SplitFairway — pricing, expenses, privacy and more.",
-  alternates: { canonical: "/faq" },
-};
+export const metadata = publicMetadata(
+  "FAQ",
+  "Answers to common questions about SplitFairway — pricing, expenses, privacy and more.",
+  "/faq",
+);
 
 /**
  * The complete FAQ list, moved here from being fully inline on the

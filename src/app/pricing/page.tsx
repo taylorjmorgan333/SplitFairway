@@ -6,11 +6,27 @@ import { PLANS } from "@/lib/billing/plans";
 import { PlanCard } from "@/components/billing/plan-card";
 import { SocialProof } from "@/components/marketing/social-proof";
 
+const PRICING_DESCRIPTION =
+  "Compare SplitFairway's plans — Free Player, Organizer Pro and Trip Pass — and see exactly what's included in each.";
+
 export const metadata: Metadata = {
   title: "Pricing",
-  description:
-    "Compare SplitFairway's plans — Free Player, Organizer Pro and Trip Pass — and see exactly what's included in each.",
+  description: PRICING_DESCRIPTION,
   alternates: { canonical: "/pricing" },
+  openGraph: {
+    siteName: "SplitFairway",
+    type: "website",
+    title: "Pricing · SplitFairway",
+    description: PRICING_DESCRIPTION,
+    url: "/pricing",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "SplitFairway — every round, every game, every trip." }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pricing · SplitFairway",
+    description: PRICING_DESCRIPTION,
+    images: ["/og-image.png"],
+  },
 };
 
 /**

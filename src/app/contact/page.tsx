@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Mail, MessageSquarePlus } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -6,12 +5,13 @@ import { Container } from "@/components/ui/container";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SupportEmail } from "@/components/ui/support-email";
 import { SUPPORT_EMAIL_CONFIGURED } from "@/lib/config";
+import { publicMetadata } from "@/lib/seo/public-metadata";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Get in touch with the SplitFairway team — support, feedback, or a data request.",
-  alternates: { canonical: "/contact" },
-};
+export const metadata = publicMetadata(
+  "Contact",
+  "Get in touch with the SplitFairway team — support, feedback, or a data request.",
+  "/contact",
+);
 
 export default function ContactPage() {
   return (

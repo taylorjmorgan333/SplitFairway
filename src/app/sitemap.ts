@@ -11,6 +11,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: `${ORIGIN}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: `${ORIGIN}/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${ORIGIN}/about`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${ORIGIN}/guides/golf-side-games`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${ORIGIN}/guides/golf-trip-expenses`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${ORIGIN}/tools/nassau-calculator`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${ORIGIN}/tools/skins-calculator`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${ORIGIN}/faq`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${ORIGIN}/pricing`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${ORIGIN}/trip-mode`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${ORIGIN}/contact`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     {
       url: `${ORIGIN}/legal/privacy`,

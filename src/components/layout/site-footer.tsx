@@ -5,11 +5,13 @@ import { Container } from "@/components/ui/container";
 import { SectionLink } from "@/components/marketing/section-link";
 
 const PRODUCT_LINKS = [
-  { href: "/#how-it-works", label: "How It Works" },
-  { href: "/#games", label: "Games & Groups" },
+  { href: "/how-it-works", label: "How It Works" },
+  { href: "/guides/golf-side-games", label: "Side Games" },
+  { href: "/guides/golf-trip-expenses", label: "Trip Expenses" },
   { href: "/trip-mode", label: "Trip Mode" },
   { href: "/pricing", label: "Pricing" },
   { href: "/faq", label: "FAQ" },
+  { href: "/about", label: "About" },
 ];
 
 const ACCOUNT_LINKS = [
