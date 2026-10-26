@@ -30,17 +30,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.2,
     },
-    {
-      url: `${ORIGIN}/tools/nassau-calculator`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${ORIGIN}/tools/skins-calculator`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
   ];
 }
