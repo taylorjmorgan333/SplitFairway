@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Container } from "@/components/ui/container";
 import { PLANS } from "@/lib/billing/plans";
 import { PlanCard } from "@/components/billing/plan-card";
+import { SocialProof } from "@/components/marketing/social-proof";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -49,6 +50,7 @@ export default function PricingPage() {
             ))}
           </div>
         </Container>
+        <SocialProof />
       </main>
       <SiteFooter />
     </>
