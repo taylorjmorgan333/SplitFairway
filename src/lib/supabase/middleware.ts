@@ -39,9 +39,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // A Supabase outage or an unset local URL should not 500 the public
+  // site. Failing closed (treat the visitor as signed out) still sends
+  // protected routes to /login; it never treats a failed check as a
+  // signed-in user.
+  let user: { id: string } | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    user = null;
+  }
 
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((prefix) =>
