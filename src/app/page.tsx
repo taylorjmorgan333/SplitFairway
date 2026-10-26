@@ -8,6 +8,7 @@ import { BeyondTheScorecardSection } from "@/components/marketing/beyond-the-sco
 import { TripModePreviewSection } from "@/components/marketing/trip-mode-preview";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { PricingPreview } from "@/components/marketing/pricing-preview";
+import { SocialProof } from "@/components/marketing/social-proof";
 import { FAQ } from "@/components/marketing/faq";
 import { CtaSection } from "@/components/marketing/cta-section";
 
@@ -74,6 +75,7 @@ export default function LandingPage() {
         <TripModePreviewSection />
         <HowItWorks />
         <PricingPreview />
+        <SocialProof />
         <FAQ preview />
         <CtaSection />
       </main>
