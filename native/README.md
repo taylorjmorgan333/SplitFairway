@@ -1,6 +1,6 @@
 # SplitFairway — iOS App Store wrapper
 
-This turns the live web app at https://splitfairwaygolf.com into a
+This turns the live web app at https://www.splitfairwaygolf.com into a
 real iOS app you can submit to the App Store. It is a thin native shell
 (via [Capacitor](https://capacitorjs.com/)) that loads the production
 site — there is no separate codebase to maintain. Any change deployed to
