@@ -34,11 +34,14 @@ export async function signUpAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const confirmPassword = formData.get("confirmPassword");
   const parsed = signUpSchema.safeParse({
     fullName: formData.get("fullName"),
     email: formData.get("email"),
     password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
+    // Absent on the public signup form. Guest account upgrade still
+    // sends it, and the schema rejects a mismatch when it is present.
+    ...(typeof confirmPassword === "string" ? { confirmPassword } : {}),
   });
 
   if (!parsed.success) {

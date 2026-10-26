@@ -16,7 +16,8 @@ export default async function SignupPage({
     <div>
       <h1 className="text-2xl">Create your account</h1>
       <p className="mt-1.5 text-sm text-charcoal-500">
-        Set up your trip in a few minutes.
+        Keep scores, run side games, and stay with your weekly group. Set up a trip when you
+        need one.
       </p>
       <div className="mt-7">
         <SignupForm next={safeNext} />
