@@ -10,14 +10,17 @@ const password = z
   .string()
   .min(8, "Password must be at least 8 characters");
 
+// confirmPassword is optional so the public signup form can drop the
+// second field. Callers that still collect it (guest account upgrade)
+// keep the match check whenever a value is actually submitted.
 export const signUpSchema = z
   .object({
     fullName: z.string().trim().min(1, "Name is required").max(120),
     email,
     password,
-    confirmPassword: z.string(),
+    confirmPassword: z.string().optional(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.confirmPassword == null || data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
   });
