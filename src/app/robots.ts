@@ -12,6 +12,7 @@ const DISALLOWED_PREFIXES = [
   "/trips",
   "/account",
   "/invite",
+  "/join",
   "/login",
   "/signup",
   "/forgot-password",
