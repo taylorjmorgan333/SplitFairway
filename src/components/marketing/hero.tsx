@@ -9,7 +9,7 @@ const SOFTWARE_JSON_LD = {
   name: "SplitFairway",
   applicationCategory: "SportsApplication",
   operatingSystem: "Web",
-  url: "https://splitfairwaygolf.com",
+  url: "https://www.splitfairwaygolf.com",
   description:
     "Track golf scores, side games, weekly groups, trip expenses and payments—all in one golf app.",
   offers: [
