@@ -28,6 +28,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: DISALLOWED_PREFIXES,
     },
-    sitemap: "https://www.splitfairwaygolf.com/sitemap.xml",
+    sitemap: "https://splitfairwaygolf.com/sitemap.xml",
   };
 }

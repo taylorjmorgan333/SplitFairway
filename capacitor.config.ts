@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
   // unused since server.url below takes over what's actually loaded.
   webDir: "public",
   server: {
-    url: "https://www.splitfairwaygolf.com",
+    url: "https://splitfairwaygolf.com",
     // The site is served over HTTPS in production, so cleartext (plain
     // HTTP) traffic is never needed and stays disabled.
     cleartext: false,

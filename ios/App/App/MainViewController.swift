@@ -33,7 +33,7 @@ class MainViewController: CAPBridgeViewController {
     // as a plain literal in both places (rather than a shared static)
     // since they're separate top-level types in this file.
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
-    private static let cookieDomain = "www.splitfairwaygolf.com"
+    private static let cookieDomain = "splitfairwaygolf.com"
 
     // Appended to WKWebView's default user agent (not a replacement --
     // this only adds a token at the end) so the server can tell a
@@ -188,7 +188,7 @@ public class SessionCookieStorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Must match MainViewController's equivalents above exactly.
     private static let sessionCookiesKey = "sf.sessionCookiesJSON"
-    private static let cookieDomain = "www.splitfairwaygolf.com"
+    private static let cookieDomain = "splitfairwaygolf.com"
 
     @objc func save(_ call: CAPPluginCall) {
         guard let json = call.getString("json"), !json.isEmpty else {

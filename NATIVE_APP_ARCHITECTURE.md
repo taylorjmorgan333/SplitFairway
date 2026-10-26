@@ -33,7 +33,7 @@ and less secure architecture, not a packaging change. **This app requires
 a hosted backend (the existing Vercel deployment) at all times.** That's
 consistent with Capacitor's "remote URL" mode, which is what
 `capacitor.config.ts` (already added) uses: the native shell loads
-`https://www.splitfairwaygolf.com` directly, so the deployed app is the
+`https://splitfairwaygolf.com` directly, so the deployed app is the
 one and only source of truth — nothing to keep in sync between "the app"
 and "the site."
 
@@ -56,7 +56,7 @@ business logic.
 In remote-URL mode, the WKWebView (iOS) / Chrome-based WebView (Android)
 loads the real site, so **auth works exactly as it does in Safari or
 Chrome today** — Supabase sets its session cookies against
-`www.splitfairwaygolf.com`, middleware reads them, nothing device-specific
+`splitfairwaygolf.com`, middleware reads them, nothing device-specific
 is required for login/signup/password reset to function. This was
 already verified conceptually in the mobile/PWA phase (WKWebView shares
 Safari's cookie store for the same origin) and applies the same way to a
@@ -89,7 +89,7 @@ settings. If native OAuth sign-in is added later, that would need:
   redirect and hand the resulting session back to the web view.
 
 Password reset and email-confirmation links already point at
-`NEXT_PUBLIC_SITE_URL` (`https://www.splitfairwaygolf.com/...`) — those
+`NEXT_PUBLIC_SITE_URL` (`https://splitfairwaygolf.com/...`) — those
 work today inside the wrapped app exactly as they do in a browser tab, no
 change required for a first build.
 
@@ -105,7 +105,7 @@ repo doesn't have:
   at the site root, listing the app's Team ID + bundle ID and the paths to
   hand to the app (`/trips/*`, `/invite/*`). Add the
   `com.apple.developer.associated-domains` entitlement
-  (`applinks:www.splitfairwaygolf.com`) in Xcode. Requires the Apple
+  (`applinks:splitfairwaygolf.com`) in Xcode. Requires the Apple
   Developer Team ID, which only exists once enrollment (already in
   progress separately) completes.
 - **Android App Links**: publish

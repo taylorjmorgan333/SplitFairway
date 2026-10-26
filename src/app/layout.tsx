@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   // image URL set on individual pages resolves against this. Deploy
   // previews and localhost still render fine; this only affects the
   // absolute URLs put into <link rel="canonical"> and social meta tags.
-  metadataBase: new URL("https://www.splitfairwaygolf.com"),
+  metadataBase: new URL("https://splitfairwaygolf.com"),
   title: {
     default: "SplitFairway",
     template: "%s · SplitFairway",

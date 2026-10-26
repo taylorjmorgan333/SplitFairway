@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const ORIGIN = "https://www.splitfairwaygolf.com";
+const ORIGIN = "https://splitfairwaygolf.com";
 
 // Only public, canonical, content-bearing pages — no auth routes, no
 // dashboards/trip pages, no /invite/[token] (each URL carries a secret

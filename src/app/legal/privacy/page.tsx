@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "Learn how SplitFairway collects, uses, shares, protects, and deletes personal information.",
-  alternates: { canonical: "https://www.splitfairwaygolf.com/legal/privacy" },
+  alternates: { canonical: "https://splitfairwaygolf.com/legal/privacy" },
 };
 
 const TOC = [
@@ -330,7 +330,7 @@ export default function PrivacyPolicyPage() {
         <p className="mt-2">
           Additional information is available at:{" "}
           <a href="/legal/data-deletion" className="text-forest-800 underline">
-            https://www.splitfairwaygolf.com/legal/data-deletion
+            https://splitfairwaygolf.com/legal/data-deletion
           </a>
         </p>
         <p className="mt-2">
@@ -457,8 +457,8 @@ export default function PrivacyPolicyPage() {
           Email: <SupportEmail />
           <br />
           Website:{" "}
-          <a href="https://www.splitfairwaygolf.com" className="text-forest-800 underline">
-            https://www.splitfairwaygolf.com
+          <a href="https://splitfairwaygolf.com" className="text-forest-800 underline">
+            https://splitfairwaygolf.com
           </a>
         </p>
       </section>
